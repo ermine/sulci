@@ -1,3 +1,7 @@
+(*                                                                          *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(*                                                                          *)
+
 open Types
 
 exception DictError of string
