@@ -94,9 +94,9 @@ let catch_seen room event out =
 		 ("SELECT last FROM users where jid=" ^ escape jid ^
 		     " AND room=" ^ escape room) then
 		    exec db ("UPDATE users SET last=" ^ last ^
-				" AND action=" ^ escape action ^
-				" AND reason=" ^ escape reason 
-			     ^ " WHERE jid=" ^ escape jid ^ 
+				", action=" ^ escape action ^
+				", reason=" ^ escape reason ^
+				" WHERE jid=" ^ escape jid ^ 
 				" AND room=" ^ escape room)
 	      else
 		 exec db 
