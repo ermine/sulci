@@ -20,10 +20,10 @@
  <debug>
   <logfile>log.log</logfile>
  </debug>
- <google>
-  <key>00000000000000000000000000000</key>
- </google>
  <plugins>
+  <google>
+   <key>00000000000000000000000000000</key>
+  </google>
   <vocabulary name="vocabulary"/>
   <mueller file="/path/to/Mueller24.koi" hashext=".hash" />
   <markov db="markov.db"/>

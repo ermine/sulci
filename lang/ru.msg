@@ -37,3 +37,6 @@ plugin_misc_dns_not_resolved       не резолвится
 plugin_globalstats_uptime_invalid_syntax Имя сервера, сестричка!
 plugin_globalstats_uptime_error    Информация засекречена
 plugin_globalstats_stats_error     Скорее всего, сервер не поддерживает stats
+plugin_google_invalid_syntax       ась?
+plugin_google_not_found            Не нашел :(
+plugin_google_adv_invalid_syntax   гы! Не угадал синтаксис.

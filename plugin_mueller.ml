@@ -81,20 +81,19 @@ let mueller text xml out =
 		     "\n" ^ (get_substring r 1) ^ ": " ^
 		     (get_substring r 2)
 	       with Not_found -> "\n" ^ r in
-	    let r2 = regexp "([0-9]\\.)" in
-	    let rsp2 = substitute_substrings ~rex:r2 
-			  ~subst:(fun a -> "\n   " ^ get_substring a 1) rsp1 in
-	    let r3 = regexp "([a-z]|[0-9]+|_[IVX]+)>" in
+	    let r2 = regexp "_([IXV]+)" in
+	    let rsp2 = substitute_substrings ~rex:r2
+	       ~subst:(fun a -> "\n" ^ get_substring a 1) rsp1 in
+	    let r3 = regexp "([0-9]\\.)" in
 	    let rsp3 = substitute_substrings ~rex:r3 
-			  ~subst:(fun a -> 
-				     "\n      " ^ get_substring a 1 ^ ")") 
-			  rsp2 in
-	    let r4 = regexp ~iflags:(cflags [`UTF8]) "([абвгдежзийклмно])>" in
+	       ~subst:(fun a -> "\n   " ^ get_substring a 1) rsp2 in
+	    let r4 = regexp "([a-z]|[0-9]+|_[IVX]+)>" in
 	    let rsp4 = substitute_substrings ~rex:r4 
-			  ~subst:(fun a -> 
-				     "\n         " ^ get_substring a 1 ^ ")")
-			  rsp3 in
-	       rsp4
+	       ~subst:(fun a ->  "\n      " ^ get_substring a 1 ^ ")") rsp3 in
+	    let r5 = regexp ~iflags:(cflags [`UTF8]) "([абвгдежзийклмно])>" in
+	    let rsp5 = substitute_substrings ~rex:r5 
+	       ~subst:(fun a -> "\n         " ^ get_substring a 1 ^ ")") rsp4 in
+	       rsp5
 	 with Not_found -> "Не нашёл :("
       in
 	 out (make_msg xml reply)

@@ -36,3 +36,6 @@ plugin_misc_dns_not_resolved       cannot resolve
 plugin_globalstats_uptime_invalid_syntax Servername, dear sister!
 plugin_globalstats_uptime_error    Information is secret
 plugin_globalstats_stats_error     It seems that server does not support stats
+plugin_google_invalid_syntax       hm?
+plugin_google_not_found            Not found :(
+plugin_google_adv_invalid_syntax   He-he! You have not guessed the proper syntax

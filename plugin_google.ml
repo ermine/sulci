@@ -21,7 +21,8 @@ open Common
    "oe"         (output encoding). 
 *)
 
-let google_key = trim (Xml.get_cdata Config.config ~path:["google"; "key"])
+let google_key = trim (Xml.get_cdata Config.config 
+			  ~path:["plugins"; "google"; "key"])
 
 let make_query start maxResults query =
    let filter = "true" in
@@ -164,12 +165,15 @@ let google_spell request =
 
 let google text xml out =
    if text = "" then
-      out (make_msg xml "Гм?")
+      out (make_msg xml 
+	      (Lang.get_msg ~xml "plugin_google_invalid_syntax" []))
    else
       let proc () =
 	 let response = 
 	    let r = google_search "0" "1" text in
-	       if r = "" then "Не нашёл :(" else r 
+	       if r = "" then 
+		  Lang.get_msg ~xml "plugin_google_not_found" []
+	       else r 
 	 in
 	    out (make_msg xml response)
       in
@@ -185,17 +189,21 @@ let google_adv text xml out =
       let proc () =
 	 let response = 
 	    let r = google_search start limit request in
-	       if r = "" then "Не нашёл :(" else r
+	       if r = "" then 
+		  Lang.get_msg ~xml "plugin_google_not_found" []
+	       else r
 	 in
 	    out (make_msg xml response)
       in
 	 ignore (Thread.create proc ())
    with Not_found ->
-      out (make_msg xml "гы! Не угадал синтаксис.")
+      out (make_msg xml 
+	      (Lang.get_msg ~xml "plugin_google_adv_invalid_syntax" []))
 
 let gspell text xml out =
    if text = "" then
-      out (make_msg xml "Ась?")
+      out (make_msg xml 
+	      (Lang.get_msg ~xml "plugin_google_invalid_suntax" []))
    else
       let proc () =
 	 let response = google_spell text in
