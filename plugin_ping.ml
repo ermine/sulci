@@ -32,7 +32,7 @@ let ping text event xml (out:element -> unit) =
 					  else
 					     Lang.get_msg ~xml
 						"plugin_ping_pong_from_somebody"
-						[diff]
+						[victim; diff]
 				 in
 				    out (make_msg xml reply)
 			    | Iq `Error ->
