@@ -28,6 +28,7 @@ ifdef PLUGIN_VOCABULARY
 endif
 ifdef PLUGIN_PING
   SOURCES += plugin_ping.ml
+  DBM_LIB = dbm
 endif
 ifdef PLUGIN_USERINFO
   SOURCES += plugin_userinfo.ml
