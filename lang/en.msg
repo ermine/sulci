@@ -70,5 +70,5 @@ plugin_seen_not_in_room           This command is available only in conferences
 plugin_talkers_top_header_man     Man
 plugin_talkers_top_header_words   Words
 plugin_talkers_top_header_actions Actions
-plugin_talkers_top_header_sentences Sentences
+plugin_talkers_top_header_sentences Phrs.
 plugin_talkers_top_header_average   Avg.
