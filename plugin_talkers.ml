@@ -46,8 +46,10 @@ let talkers xml out =
 	       if author <> room_env.mynick then
 		  let nick, text = split_nick_body room_env body in
 		  let words = string_of_int (List.length (split_words text)) in
-		  let me = if length text > 3 &&
-		     String.sub text 0 4 = "/me " then "1" else "0" in
+		  let me = 
+		     if (length text = 3 && text = "/me") ||
+			(length text > 3 && String.sub text 0 3 = "/me ") then 
+			   "1" else "0" in
 		  let jid = 
 		     get_bare_jid ((Nicks.find author room_env.nicks).jid) in
 		     if result_bool db
