@@ -25,7 +25,6 @@ let get_weather code =
       Http_client.request "weather.noaa.gov"
 	 (Get ("/pub/data/observations/metar/decoded/" ^ code ^ ".TXT"))
 	 [] in
-      
    let lines = Str.split (Str.regexp "\n") content in
 
    let line1 = List.hd lines in
@@ -39,15 +38,19 @@ let get_weather code =
    let map = split_lines lines in
    let weather = 
       try List.assoc "Weather" map with _ ->
-	 List.assoc "Sky conditions" map
+	 try List.assoc "Sky conditions" map with _ -> ""
    in
    let f, c = 
-      let z = List.assoc "Temperature" map in
-	 if Str.string_match (Str.regexp "\\(.+\\) F (\\(.+\\) C)") z 0 then
-	    Str.matched_group 1 z, Str.matched_group 2 z
-	 else
-	    "", "" in
-   let hum = List.assoc "Relative Humidity" map in
+      try 
+	 let z = List.assoc "Temperature" map in
+	    if Str.string_match (Str.regexp "\\(.+\\) F (\\(.+\\) C)") z 0 then
+	       Str.matched_group 1 z, Str.matched_group 2 z
+	    else
+	       "", ""
+      with Not_found -> "", ""
+   in
+   let hum = try List.assoc "Relative Humidity" map with Not_found -> "n/a" in
+(* *)
    let wind = 
       try
 	 let w = List.assoc "Wind" map in
@@ -66,8 +69,9 @@ let get_weather code =
    in
 
       Printf.sprintf 
-	 "%s - %s / %s, %sC/%sF, humidity %s wind: %s visibility: %s"
-	 place time weather c f hum wind vis
+	 "%s - %s / %s%sC/%sF, humidity %s, wind: %s, visibility: %s"
+	 place time (if weather <> "" then weather ^ ", " else "")
+	 c f hum wind vis
 
 let r = Pcre.regexp "[a-zA-Z]{4}"
 
@@ -75,8 +79,9 @@ let weather text xml out =
    if pmatch ~rex:r text then
       let proc () =
 	 let response = 
-	    try get_weather (String.uppercase text) with _ -> 
-	       "Undefined error" in
+	    try get_weather (String.uppercase text) with exn ->
+	       Printexc.to_string exn
+		  (* "Undefined error" *) in
 	    out (make_msg xml response)
       in
 	 ignore (Thread.create proc ())

@@ -65,9 +65,9 @@ SOURCES += sulci.ml
 
 THREADS = yes
 PACKS = ulex unix str netstring $(DBM_LIB)
-INCDIRS = ../xmpp ../xml ../libs/timer ../libs/strftime $(HTTP_INC) $(SQLITE_INC)
+INCDIRS = ../xmpp ../xml ../libs/scheduler ../libs/strftime $(HTTP_INC) $(SQLITE_INC)
 OCAMLLDFLAGS = nums.cmxa cryptokit.cmxa \
-		xml.cmxa xmpp.cmxa strftime.cmxa timer.cmxa \
+		xml.cmxa xmpp.cmxa strftime.cmxa scheduler.cmxa \
 		$(SQLITE_LIB) $(HTTP_LIB) -linkall -linkpkg
 RESULT = sulci
 

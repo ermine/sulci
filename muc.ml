@@ -9,7 +9,8 @@ open Hooks
 open Unix
 open Pcre
 
-let () = Timer.init ~tck_unit:1000. ()
+(* let () = Timer.init ~tck_unit:1000. () *)
+let _ = Scheduler.init ()
 
 type muc_event = | MUC_join of string 
 		 | MUC_leave of string * string
@@ -64,7 +65,8 @@ let get_next_noun () =
    let noun, _ = mktime {curr_tm with 
 			    tm_sec = 0; tm_min = 0; tm_hour = 0;
 			    tm_mday = curr_tm.tm_mday + 1} in
-      noun -. curr_time
+     (* noun -. curr_time *)
+      noun
 
 let rec rotate_logs () =
    logmap := LogMap.mapi (fun room lf ->
@@ -73,7 +75,8 @@ let rec rotate_logs () =
 			     close_out lf;
 			     open_log room) !logmap
    
-let _ = Timer.register rotate_logs ((get_next_noun ()) *. 1000.) 86400000.
+(* let _ = Timer.register rotate_logs ((get_next_noun ()) *. 1000.) 86400000. *)
+let _ = Scheduler.add_task rotate_logs (get_next_noun ()) 86400000.
 
 let get_logfile room =
    try 

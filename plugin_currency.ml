@@ -53,11 +53,13 @@ let get_next_update () =
 	  tm_mday = (if curr_tm.tm_hour < 11 then 
 			curr_tm.tm_mday else curr_tm.tm_mday + 1)} 
    in
-      noun -. curr_time
+      (* noun -. curr_time *)
+      noun
 
 let _ = 
    load_curr ();
-   Timer.register load_curr ((get_next_update ()) *. 1000.) 86400000.
+   (* Timer.register load_curr ((get_next_update ()) *. 1000.) 86400000. *)
+   Scheduler.add_task load_curr (get_next_update ()) 86400000.
 
 let list_curr =
    let sorted = List.sort (fun (v1, _) (v2, _) ->
