@@ -1,3 +1,7 @@
+(*                                                                          *)
+(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(*                                                                          *)
+
 open Common
 open Xml
 open Xmpp
