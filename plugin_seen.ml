@@ -118,10 +118,7 @@ let verify_nick nick jid nicks xml =
    try
       let item = Nicks.find nick nicks in
 	 if jid = get_bare_jid item.jid then
-	    if nick = item.orig_nick then
-	       Lang.get_msg ~xml "plugin_seen_you" []
-	    else
-	       Lang.get_msg ~xml "plugin_seen_is_here" [nick]
+	    Lang.get_msg ~xml "plugin_seen_is_here" [nick]
 	 else
 	    try let changed = find_nick jid nicks in
 	       Lang.get_msg ~xml "plugin_seen_changed_nick" 
