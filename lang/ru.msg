@@ -27,12 +27,12 @@ plugin_userinfo_chat_syntax_error  "%s" игнорируется
 plugin_userinfo_time_me            Щас у меня в компе %s
 plugin_userinfo_time_you           У тебя в компе показываются %s
 plugin_userinfo_time_somebody      У %s в компе показываются %s
-plugin_roulette_suntax_error       Возьми у отца ружье и попробуй...
+plugin_roulette_syntax_error       Возьми у отца ружье и попробуй...
 plugin_roulette_kick_reason        Пшиииик!
 plugin_roulette_bye                Адью.
 plugin_roulette_kick_failed        Ыыыы... у тебя наверное иммунитет....
 plugin_roulette_next_time          Как-нить в следующий раз...
-plugin_vocabulary_invalid_suntax   ну?
+plugin_vocabulary_invalid_syntax   ну?
 plugin_vocabulary_wrote            записал.
 plugin_vocabulary_not_found        хз
 plugin_misc_dns_invalid_syntax     ась?
@@ -46,3 +46,10 @@ plugin_google_adv_invalid_syntax   гы! Не угадал синтаксис.
 plugin_calc_number_too_big         Многовато... :(
 plugin_calc_cannot_float_fact Не, я не умею вычислять факториал нецелых чисел :(
 plugin_calc_negative_number       Так не бывает.
+plugin_weather_invalid_syntax     гы! попробуй еще разок, сына!
+plugin_admin_quit_bye             Пока! Я ушел...
+plugin_admin_quit_no_access       Это ты мне? Quit? Фиг!
+plugin_admin_join_no_access       Не, с тобой я не пойду туда.
+plugin_dict_invalid_syntax        гы! Инвалид синтаксис.
+plugin_dict_db_not_found          Нет такой базы данных
+plugin_dict_word_not_found        Не найдено ничего подходящего

@@ -55,15 +55,9 @@ let get_next_update () =
    in
       noun -. curr_time
 
-let rec update_curr () =
-   load_curr ();
-   let _ = Timer.register update_curr ((get_next_update ()) *. 1000.) 0. in ()
-   (* Timer.add_timer (get_next_update ()) update_curr *)
-
 let _ = 
    load_curr ();
-   Timer.register update_curr ((get_next_update ()) *. 1000.) 0.
-   (* Timer.add_timer (get_next_update ()) update_curr *)
+   Timer.register load_curr ((get_next_update ()) *. 1000.) 86400000.
 
 let list_curr =
    let sorted = List.sort (fun (v1, _) (v2, _) ->

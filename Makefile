@@ -71,7 +71,10 @@ OCAMLLDFLAGS = nums.cmxa cryptokit.cmxa \
 		$(SQLITE_LIB) $(HTTP_LIB) -linkall -linkpkg
 RESULT = sulci
 
-all: nc
+all: nc langcompile
+
+langcompile: langcompile.ml
+	ocamlopt langcompile.ml -o langcompile
 
 include $(OCAMLMAKEFILE)
 

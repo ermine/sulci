@@ -7,13 +7,43 @@ open Common
 
 exception DictError of string
 
+let dictd_server = 
+   try trim (Xml.get_cdata Config.config ~path:["plugins"; "dict"; "server"])
+   with _ -> "localhost"
+
+let dictd_port = 
+   try int_of_string 
+      (trim (Xml.get_attr_s Config.config ~path:["plugins"; "dict"; "server"] 
+		"port"))
+   with _ -> 2628
+
 let connect server port =
    let inet_addr =
       try Unix.inet_addr_of_string server with Failure("inet_addr_of_string") ->
          (Unix.gethostbyname server).Unix.h_addr_list.(0) in
    let sock_addr = Unix.ADDR_INET (inet_addr, port) in
-      Unix.open_connection sock_addr
-
+      try
+	 let pair = Unix.open_connection sock_addr in
+	    Printf.printf "%s:%d connected\n" server port;
+	    pair
+      with 
+	 | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect", _) ->
+	      let rec cycle () = 
+		 Printf.printf "attempting to connect [%s][%d]\n" server port;
+		 try 
+		    let pair = Unix.open_connection sock_addr in
+		       Printf.printf "again: %s:%d\n" server port;
+		       pair
+		 with 
+		    | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect", _) ->
+			 cycle ()
+		    | _ ->
+			 raise (DictError "unable to connect")
+	      in
+		 cycle ()
+	 | _ ->
+	      raise (DictError "unable to connect")
+		   
 exception NoStatus
 
 let status = regexp "([0-9][0-9][0-9]) (.*)"
@@ -24,7 +54,8 @@ let get_status in_dict =
       let r = Pcre.exec ~rex:status line in
 	 Pcre.get_substring r 1, Pcre.get_substring r 2
    with Not_found ->
-      raise (DictError "Unable to connect")
+      raise 
+	 (DictError "Hmm.. It seems i was connectod to inproper dictd server")
 
 let read_text in_dict =
    let rec cycle acc =
@@ -40,13 +71,14 @@ let cmdlist = ["-list"]
 
 let process_cmd_dict cmd =
    if List.mem cmd cmdlist then
-      let in_dict, out_dict = connect "localhost" 2628 in
+      let in_dict, out_dict = connect dictd_server dictd_port in
       let reply = 
 	 (match get_status in_dict with
 	     | "220", _ ->
 		  (match cmd with
 		      | "-list" ->
 			   output_string out_dict "SHOW DB\r\n";
+		      | _ -> raise (DictError "unknown command")
 		  );
 		  flush out_dict;
 		  (match get_status in_dict with
@@ -68,16 +100,18 @@ let process_cmd_dict cmd =
    else
       "Unknown command"
 
-let process_dict db word =
-   let in_dict, out_dict = connect "localhost" 2628 in
+let process_dict db word lang =
+   let in_dict, out_dict = connect dictd_server dictd_port in
    let reply = match get_status in_dict with
       | "220", _ ->
 	   output_string out_dict 
 	       (Printf.sprintf "DEFINE %s %s\r\n" db word);
 	   flush out_dict;
 	   (match get_status in_dict with
-	       | "550", err -> "Нет такой базы данных, юзай dict -list"
-	       | "552", err -> "Не найдено ничего подходящего."
+	       | "550", err -> 
+		    Lang.get_msg ~lang "plugin_dict_db_not_found" []
+	       | "552", err -> 
+		    Lang.get_msg ~lang "plugin_dict_word_not_found" []
 	       | "150", rsp -> 
 		    let rec cycle acc =
 		       match get_status in_dict with
@@ -104,12 +138,13 @@ let process_dict db word =
       close_in in_dict;
       reply
 
-let rex1 = Pcre.regexp "([^\\s]+)[\\s]*$"
-let rex2 = regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
+let rex1 = Pcre.regexp ~iflags:(cflags [`UTF8]) "([^\\s]+)[\\s]*$"
+let rex2 = Pcre.regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
 
 let dict text xml out =
    if text = "" then
-      out (make_msg xml "гы! Инвалид синтаксис.")
+      out (make_msg xml
+	      (Lang.get_msg ~xml "plugin_dict_invalid_syntax" []))
    else
       if String.get text 0 = '-' then
 	 let proc () =
@@ -127,7 +162,8 @@ let dict text xml out =
 	    let word = Pcre.get_substring r 2 in
 	    let proc () =
 	       let response = try
-		  process_dict db word
+		  let lang = Lang.get_lang xml in
+		     process_dict db word lang
 	       with (DictError error) -> error
 	       in
 		  out (make_msg xml (Xml.crypt response))
@@ -138,15 +174,17 @@ let dict text xml out =
 	       let r = Pcre.exec ~rex:rex1 text in
 	       let word = Pcre.get_substring r 1 in
 	       let proc () =
-		  let response = try	    
-		     process_dict "*" word
+		  let response = try
+		     let lang = Lang.get_lang xml in
+			process_dict "*" word lang
 		  with (DictError error) -> error
 		  in
 		     out (make_msg xml (Xml.crypt response))
 	       in
 		  ignore (Thread.create proc ())
 	    with Not_found ->
-	       out (make_msg xml "гы, сина, ЛОЛ!")
+	       out (make_msg xml 
+		       (Lang.get_msg ~xml "plugin_dict_invalid_syntax" []))
 
 let _ =
    Hooks.register_handle (Hooks.Command ("dict", dict))

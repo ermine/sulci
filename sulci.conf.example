@@ -32,5 +32,8 @@
      <store serverlist='servers.list' result='servers.res' interval='3600'/>
     </globalstats>
   -->
+  <dict>
+   <server>dict.org</server>
+  </dict>
  </plugins>
 </sulci>

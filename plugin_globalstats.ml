@@ -6,7 +6,7 @@ open Common
 open Xmpp
 open Xml
 
-let stats_sum serverlist result out =
+let stats_sum serverlist result out () =
    let totals = ref 0 in
    let onlines = ref 0 in
    let servers = ref 0 in
@@ -113,14 +113,10 @@ let _ =
 	 let interval = float_of_string 
 	    (get_attr_s Config.config
 		~path:["plugins"; "globalstats"; "store"] "interval") in
+	    
 	 let start_stats out =
-	    let rec cycle out () =
-	       stats_sum serverlist result out;
-	       let _ = Timer.register (cycle out) (interval *. 1000.) 0. in ()
-	       (* Timer.add_timer interval (cycle out); *)
-	    in
-	       cycle out ()
-
+	    let _ = Timer.register (stats_sum serverlist result out) 
+	       (interval *. 1000.) 86400000. in ()
 	 in
 	    Hooks.register_handle (Hooks.OnStart start_stats)
       end;

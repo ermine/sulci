@@ -27,12 +27,12 @@ plugin_userinfo_chat_syntax_error  "%s" is ignored
 plugin_userinfo_time_me            it's %s here
 plugin_userinfo_time_you           It's %s on your watch
 plugin_userinfo_time_somebody      I's %s on %s's watch
-plugin_roulette_suntax_error       Take a gun from father and try...
+plugin_roulette_syntax_error       Take a gun from father and try...
 plugin_roulette_kick_reason        Pops!
 plugin_roulette_bye                Adi?s!
 plugin_roulette_kick_failed        Hmmm... Probably you have an immunity....
 plugin_roulette_next_time          Try again....
-plugin_vocabulary_invalid_suntax   hm?
+plugin_vocabulary_invalid_syntax   hm?
 plugin_vocabulary_wrote            wrote.
 plugin_vocabulary_not_found        dunno
 plugin_misc_dns_invalid_syntax     what dns?
@@ -46,3 +46,10 @@ plugin_google_adv_invalid_syntax   He-he! You have not guessed the proper syntax
 plugin_calc_number_too_big         Too big number... :(
 plugin_calc_cannot_float_fact      No, I don't know how to calculate float factorial :(
 plugin_calc_negative_number        Impossible..
+plugin_weather_invalid_syntax      Hmm... whose weather?
+plugin_admin_quit_bye              Bye! I'm gone...
+plugin_admin_quit_no_access        Who should to quit?
+plugin_admin_join_no_access        Sorry, I dont want to go to there.
+plugin_dict_invalid_syntax         Invalid syntax, my dear.
+plugin_dict_db_not_found           No such db
+plugin_dict_word_not_found         Cannot found anything suitable

@@ -34,11 +34,13 @@ let msg text xml out =
 let quit text xml out =
    let jid = get_bare_jid (get_attr_s xml "from") in
       if check_access jid "admin" then begin
-	 out (make_msg xml "Пока!");
+	 out (make_msg xml 
+		 (Lang.get_msg ~xml "plugin_admin_quit_bye" []));
 	 Hooks.quit out
       end
       else
-	 out (make_msg xml "Не хочу!")
+	 out (make_msg xml 
+		 (Lang.get_msg ~xml "plugin_admin_quit_no_accesss" []))
 
 let join text xml out =
    let jid = get_bare_jid (get_attr_s xml "from") in
@@ -56,7 +58,8 @@ let join text xml out =
 	    Muc.register_room nick room;
 	    out (Muc.join_room nick room)
       else
-	 out (make_msg xml "Не хочу!")
+	 out (make_msg xml 
+		 (Lang.get_msg ~xml "plugin_admin_join_no_access" []))
    
 let lang_update text xml out =
    let jid = get_bare_jid (get_attr_s xml "from") in

@@ -81,7 +81,8 @@ let weather text xml out =
       in
 	 ignore (Thread.create proc ())
    else
-      out (make_msg xml "гы! Попробуй еще разок, сина!")
+      out (make_msg xml 
+	      (Lang.get_msg ~xml "plugin_weather_invalid_syntax" []))
 
 let _ =
    Hooks.register_handle (Hooks.Command ("wz", weather))
