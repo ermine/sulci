@@ -4,10 +4,12 @@
 
 open Common
 open Xml
+open Xmpp
 open Hooks
 
 let ext = ".htbl"
-let deflang = "ru"
+let deflang = try trim (Xml.get_attr_s Config.config 
+			   ~path:["lang"] "default") with Not_found -> "ru"
 
 module LangMap = Map.Make(Id)
 let langmsgs =  ref (LangMap.empty:(string, string) Hashtbl.t LangMap.t)
@@ -70,13 +72,19 @@ let get_lang xml =
 	       with Not_found ->
 		  deflang)
       | _ ->
-	   try get_attr_s xml "xml:lang" with Not_found -> deflang
+	   try get_attr_s xml "xml:lang" with Not_found ->
+	      let room = get_bare_jid (get_attr_s xml "from") in
+		 try let room_env = GroupchatMap.find room !groupchats in
+		    room_env.lang
+		 with Not_found -> deflang
 
 let get_msg ?xml ?(lang="") msgid args =
    let lang = 
       match xml with
-	 | Some x -> get_lang x
-	 | None -> if lang = "" then deflang else lang
+	 | Some x -> 
+	      get_lang x
+	 | None -> 
+	      if lang = "" then deflang else lang
    in
    let htbl = find_htbl lang in
    let str =  try Hashtbl.find htbl msgid with _ ->

@@ -11,7 +11,8 @@ open Hooks
 let error xml =
    try
       get_error_semantic xml
-   with _ -> Lang.get_msg ~xml "plugin_userinfo_error" []
+   with _ -> 
+      Lang.get_msg ~xml "plugin_userinfo_error" []
 
 let groupchat xml out text xmlns myself common =
    let from = get_attr_s xml "from" in
@@ -85,7 +86,6 @@ let idle text xml out =
 	   let common x asker nick =
 	      let seconds = get_attr_s x ~path:["query"] "seconds" in
 	      let idle = Lang.expand_time ~xml "idle" (int_of_string seconds) in
-print_endline idle;
 		 if asker = nick then 
 		    Lang.get_msg ~xml "plugin_userinfo_idle_you" [idle]
 		 else 

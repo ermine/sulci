@@ -8,7 +8,7 @@ muc_log_ban_reason             %s has been banned: %s
 muc_log_change_nick            %s is now known as %s
 plugin_calc_not_parsed         I dont understand. 
 plugin_cakc_empty_command      What?
-plugin_markov_filter_badwords  Filtering out badwords
+plugin_markov_kick_reason      Filtering out badwords
 plugin_markov_kick_error       Bad moderator!
 plugin_markov_phrase_is_ignore Phrase is ignored
 plugin_ping_pong_from_me       For me pong from the server is %s
@@ -21,8 +21,8 @@ plugin_userinfo_error              The information is secret
 plugin_userinfo_version_you        your client is %s %s - %s
 plugin_userinfo_version_somebody   %s's client is %s %s - %s
 plugin_userinfo_idle_me            I am not silent at all!
-plugin_userinfo_idle_you           You are silent %s seconds
-plugin_userinfo_idle_somebody      %s is silent %s seconds
+plugin_userinfo_idle_you           You are silent %s
+plugin_userinfo_idle_somebody      %s is silent %s
 plugin_userinfo_chat_syntax_error  "%s" is ignored
 plugin_userinfo_time_me            it's %s here
 plugin_userinfo_time_you           It's %s on your watch
