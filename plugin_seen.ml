@@ -29,7 +29,7 @@ let db =
       end;
       dbf
 
-let catch_greeting room event out =
+let catch_greeting room event xml out =
    match event with
       | MUC_join (nick, item) ->
 	   let jid = get_bare_jid item.jid in
@@ -80,7 +80,7 @@ let add_greet text xml out =
    end
    else ()
 
-let catch_seen room event out =
+let catch_seen room event xml out =
    match event with
       | MUC_leave (nick, reason, item)
       | MUC_kick (nick, reason, item)

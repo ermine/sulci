@@ -15,7 +15,7 @@ let regexp cg          = 0x433 | 0x413
 let regexp cd          = 0x434 | 0x414
 let regexp cie         = 0x435 | 0x415 | 'e' | 'E'
 let regexp czh         = 0x436 | 0x416
-let regexp cz          = 0x437 | 0x417 | 3
+let regexp cz          = 0x437 | 0x417 | '3'
 let regexp ci          = 0x438 | 0x418 | "|/|"
 let regexp cj          = 0x439 | 0x419
 let regexp ck          = 0x43A | 0x41A
@@ -210,7 +210,8 @@ let report word who phrase out =
    out (Xmlelement ("message", ["type", "chat";
 				"to", "ermine@jabber.ru"],
 		    [make_simple_cdata "body"
-		     (Printf.sprintf "Мат: %s\n%s\n%s" word who phrase)]))
+			(Printf.sprintf "Мат: %s\n%s %s\n%s" 
+			    word room nick phrase)]))
 
 let kill room nick out =
    if nick = "" then ()
@@ -236,62 +237,85 @@ let kill room nick out =
       in
 	 Hooks.register_handle (Hooks.Id (id, proc))
 		       
+let check text room nick out =
+   let lexbuf = Ulexing.from_utf8_string text in
+      try match analyze lexbuf with
+	 | Good -> Good
+	 | Bad word ->
+	      report word room nick text out;
+	      kill room nick out;
+	      (* out (Xmlelement ("message", ["to", room;
+		 "type", "groupchat"],
+		 [make_simple_cdata "body" nick]))
+	      *)
+	      raise Hooks.FilteredOut
+      with
+	 | Ulexing.Error ->
+	      Printf.printf
+		 "Lexing error at offset %i\n" 
+		 (Ulexing.lexeme_end lexbuf);
+	      flush Pervasives.stdout
 
-let cerberus xml out =
+let topic = ref " "
+
+let cerberus room event xml out =
+   let author = get_resource (get_attr_s xml "from") in
+   let room_env = GroupchatMap.find room !groupchats in
+      if author <> room_env.mynick then
+	 match event with
+	    | MUC_join (nick, item) ->
+		 if check nick room nick out = Good then
+		    check item.status room nick out
+	    | MUC_change_nick (nick, _, item) ->
+		 check nick room nick out
+	    | MUC_presence (nick, item) ->
+		 check item.status room nick out
+	    | MUC_topic (nick, subject) ->
+		 begin 
+		    try check subject room author out;
+		       topic := subject
+		    with Hooks.FilteredOut ->
+		       out (Muc.set_topic room !topic);
+		       raise FilteredOut
+		 end
+	    | MUC_message (nick, body) ->
+		 if body <> "" then
+		    check body room author out
+	    | MUC_history ->
+		 if get_tagname xml = "message" then begin
+		    try
+		       let subject = get_cdata xml ~path:["subject"] in
+		       let lexbuf = Ulexing.from_utf8_string subject in
+			  try match analyze lexbuf with
+			     | Good -> topic := subject
+			     | Bad word -> ()
+			  with
+			     | Ulexing.Error ->
+				  Printf.printf
+				     "Lexing error at offset %i\n" 
+			       (Ulexing.lexeme_end lexbuf);
+				  flush Pervasives.stdout;
+		    with _ -> ()
+		 end
+	    | _ -> ()
+
+let filter_cerberus xml out =
    let from = get_attr_s xml "from" in
-   let body = 
-      try get_cdata xml ~path:["body"] with _ ->
-	 try get_cdata xml ~path:["subject"] with _ -> ""
-   in
-      if body <> "" then
-	 let room = get_bare_jid from in
-	 let author = get_resource from in
-	    try
-	       let room_env = GroupchatMap.find room !groupchats in
-		  if author <> room_env.mynick then
-		     let lexbuf = Ulexing.from_utf8_string body in
-			try
-			   match analyze lexbuf with
-			      | Good -> ()
-			      | Bad word ->
-				   report word from body out;
-				   kill room author out
-				      (* out (make_msg xml word) *)
-			with
-			   | Ulexing.Error ->
-				Printf.printf
-				   "Lexing error at offset %i\n" 
-				   (Ulexing.lexeme_end lexbuf);
-				flush Pervasives.stdout
-				   
-	    with Not_found -> ()
-		     
-let process_nicks room event out =
-   match event with
-      | MUC_join (nick, item)
-      | MUC_change_nick (nick, _, item) ->
-	   begin
-	      let lexbuf = Ulexing.from_utf8_string nick in
-		 try
-		    match analyze lexbuf with
-		       | Good -> ()
-		       | Bad word ->
-			    report word room nick out;
-			    kill room nick out
-			    (* out (Xmlelement ("message", ["to", room;
-							 "type", "groupchat"],
-					     [make_simple_cdata "body" nick]))
-			    *)
-		 with
-		    | Ulexing.Error ->
-			 Printf.printf
-			    "Lexing error at offset %i\n" 
-			    (Ulexing.lexeme_end lexbuf);
-	  		 flush Pervasives.stdout	   
-	   end
-      | _ -> ()
+   let room = get_bare_jid from in
+      if GroupchatMap.mem room !groupchats then
+	 let nick = get_resource from in
+	 let event = 
+	    if get_tagname xml = "presence" then
+	       Muc.process_presence room nick xml out
+	    else
+	       if get_tagname xml = "message" then
+		  Muc.process_message room nick xml out
+	       else
+		  MUC_other
+	 in
+	    cerberus room event xml out
 
 let _ =
-   Hooks.register_handle (Hooks.Catch cerberus);
-   Muc.register_handle process_nicks
+   (* Muc.register_handle cerberus *)
+   Hooks.register_handle (Filter filter_cerberus)
       

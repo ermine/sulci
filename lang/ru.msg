@@ -6,6 +6,7 @@ muc_log_kick_reason                %s кикнули из конференции
 muc_log_ban                        %s забанён
 muc_log_ban_reason                 %s забанён: %s
 muc_log_change_nick                %s переименовался в %s
+muc_log_set_subject                %s изменил тему: %s
 plugin_calc_not_parsed             что это было?!
 plugin_calc_empty_command          ась?
 plugin_calc_divide_by_zero         Делим на нолик, да? :-/

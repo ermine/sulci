@@ -28,12 +28,12 @@ let dfn text xml out =
 		 (Lang.get_msg ~xml "plugin_vocabulary_wrote" []))
    with Not_found ->
       out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_suntax" []))
+	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" []))
 
 let wtf text xml out =
    if text = "" then
       out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_suntax" []))
+	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" []))
    else
       let query =
 	 try

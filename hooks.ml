@@ -34,6 +34,7 @@ let commands = ref CommandMap.empty
 let onstart = ref []
 let onquit = ref []
 let catchset = ref []
+let filters = ref []
 
 (* groupchat *)
 (* bad place here, but unfortunatelly... *)
@@ -99,6 +100,7 @@ type reg_handle =
    | OnStart of ((element -> unit) -> unit)
    | OnQuit of ((element -> unit) -> unit)
    | Catch of (element -> (element -> unit) -> unit)
+   | Filter of (element -> (element -> unit) -> unit)
 
 let register_handle (handler:reg_handle) =
    match handler with
@@ -116,6 +118,8 @@ let register_handle (handler:reg_handle) =
 	   onquit := proc :: !onquit;
       | Catch proc ->
 	   catchset := proc :: !catchset
+      | Filter proc ->
+	   filters := proc :: !filters
 
 let process_message xml out =
    if not (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) &&      
@@ -150,9 +154,19 @@ let process_message xml out =
 			   raise Not_found
 		     with Not_found ->
 			List.iter  (fun f -> f xml out) !catchset
+	    else
+	       List.iter  (fun f -> f xml out) !catchset
+
+exception FilteredOut
   
 let rec process_xml next_xml out =
    let xml = next_xml () in
+   let () =
+      try
+	 List.iter (fun proc -> proc xml out) !filters;
+      with FilteredOut ->
+	 process_xml next_xml out
+   in
    let () = 
       try
 	 let f = HookMap.find 

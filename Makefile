@@ -4,6 +4,10 @@ include Makefile.conf
 
 SOURCES = common.ml config.ml version.ml hooks.ml lang.ml iq.ml muc.ml
 
+ifdef MUC_LOG
+  SOURCES += muc_log.ml
+endif
+
 ifdef PLUGIN_GOOGLE
   SOURCES += plugin_google.ml
   HTTP_LIB = http_client.cmxa
