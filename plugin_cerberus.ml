@@ -206,7 +206,7 @@ and skip = lexer
    | cyrillic* ->
 	analyze lexbuf
 
-let report word who phrase out =
+let report word room nick phrase out =
    out (Xmlelement ("message", ["type", "chat";
 				"to", "ermine@jabber.ru"],
 		    [make_simple_cdata "body"
@@ -240,7 +240,7 @@ let kill room nick out =
 let check text room nick out =
    let lexbuf = Ulexing.from_utf8_string text in
       try match analyze lexbuf with
-	 | Good -> Good
+	 | Good -> ()
 	 | Bad word ->
 	      report word room nick text out;
 	      kill room nick out;
@@ -256,6 +256,7 @@ let check text room nick out =
 		 (Ulexing.lexeme_end lexbuf);
 	      flush Pervasives.stdout
 
+
 let topic = ref " "
 
 let cerberus room event xml out =
@@ -264,7 +265,7 @@ let cerberus room event xml out =
       if author <> room_env.mynick then
 	 match event with
 	    | MUC_join (nick, item) ->
-		 if check nick room nick out = Good then
+		    check nick room nick out;
 		    check item.status room nick out
 	    | MUC_change_nick (nick, _, item) ->
 		 check nick room nick out
