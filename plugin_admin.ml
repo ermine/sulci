@@ -7,8 +7,9 @@ open Xml
 open Xmpp
 open Muc
 open Hooks
+open Types
 
-let msg text xml out =
+let msg text event xml out =
    if check_access (get_attr_s xml "from") "admin" then
       let s = String.index text ' ' in
       let to_ = String.sub text 0 s in
@@ -16,16 +17,14 @@ let msg text xml out =
 	 out (Xmlelement ("message", 
 			  ["to", to_; 
 			   "type", 
-			   try
-			      let _ = GroupchatMap.find to_ !groupchats in
-				 "groupchat"
-			   with Not_found -> "chat"
+			   if GroupchatMap.mem to_ !groupchats then
+			      "groupchat" else "chat"
 			  ],
 			  [make_simple_cdata "body" msg_body]))
    else
       out (make_msg xml ":-P")
 	  
-let quit text xml out =
+let quit text event xml out =
    if check_access (get_attr_s xml "from") "admin" then begin
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_quit_bye" []));
@@ -35,7 +34,7 @@ let quit text xml out =
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_quit_no_access" []))
 
-let join text xml out =
+let join text event xml out =
    if check_access (get_attr_s xml "from") "admin" then
       let room, nick =
 	 try
@@ -53,7 +52,7 @@ let join text xml out =
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_join_no_access" []))
 	 
-let lang_update text xml out =
+let lang_update text event xml out =
    if check_access (get_attr_s xml "from") "admin" then
       if text = "" then
 	 out (make_msg xml "What language?")

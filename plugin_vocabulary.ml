@@ -10,7 +10,7 @@ let open_dbm () =
    let name = get_attr_s Config.config ~path:["plugins"; "vocabulary"] "name" in
    Dbm.opendbm "vocabulary" [Dbm_create; Dbm_rdwr] 0o644 
 
-let dfn text xml out =
+let dfn text event xml out =
    try
       let eq = String.index text '=' in
       let w1 = trim (String.sub text 0 eq) in
@@ -30,7 +30,7 @@ let dfn text xml out =
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" []))
 
-let wtf text xml out =
+let wtf text event xml out =
    if text = "" then
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" []))

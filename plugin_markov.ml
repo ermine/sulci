@@ -8,17 +8,39 @@ open Common
 open Sqlite
 open Sqlite_util
 open Hooks
+open Types
 
 type mevent = 
-   | MMessage of Xml.element * (Xml.element -> unit) 
+   | MMessage of xmpp_event * Xml.element * (Xml.element -> unit) 
    | MStop 
    | MCount of Xml.element * (Xml.element -> unit)
    | MTop of Xml.element * (Xml.element -> unit)
+
+type t = {
+   queue: mevent Queue.t;
+   mutex: Mutex.t;
+   cond: Condition.t;
+}
 
 module MarkovMap = Map.Make(Id)
 let markovrooms = ref MarkovMap.empty
 
 let _ = Random.self_init ()
+
+let add_queue (m:t) (mevent:mevent) =
+   Mutex.lock m.mutex;
+   Queue.add mevent m.queue;
+   Condition.signal m.cond;
+   Mutex.unlock m.mutex
+
+let take_queue (m:t) =
+   Mutex.lock m.mutex;
+   while Queue.is_empty m.queue do
+      Condition.wait m.cond m.mutex;
+   done;
+   let e = Queue.take m.queue in
+      Mutex.unlock m.mutex;
+      e
 
 let open_markovdb room =
    let path = 
@@ -103,43 +125,34 @@ let generate db word =
 let split_words body =
    Pcre.split ~pat:"[ \t\n]+" body
 
-let process_groupchat body db xml out =
-   let from = get_attr_s xml "from" in
-   let room = get_bare_jid from in
-   let author = get_resource from in
-   let room_env = GroupchatMap.find room !groupchats in
-      match safe_get_attr_s xml "type" with
-	 | "groupchat" ->
+let process_markov db event xml out =
+   match event with
+      | MUC_message (room, msg_type, author, nick, body) ->
+	   let room_env = GroupchatMap.find room !groupchats in
 	      if author <> room_env.mynick then
-		 let nick, text = split_nick_body room_env body in
-		 let words = split_words text in
+		 let words = split_words body in
 		    if words = [] then begin
-		       if nick = room_env.mynick then
-			  out (make_msg xml "?")
+		       if (msg_type = `Groupchat && nick = room_env.mynick) ||
+			  msg_type <> `Groupchat then
+			     out (make_msg xml "?")
 		    end
 		    else begin
 		       add db words;
-		       if nick = room_env.mynick then
-			  let chain = generate db "" in
-			     out (make_msg xml chain)
+		       if (msg_type = `Groupchat && nick = room_env.mynick) ||
+			  msg_type <> `Groupchat then
+			     let chain = generate db "" in
+				out (make_msg xml chain)
 		       else
 			  ()
 		    end
 	      else
 		 ()
-	 | _ ->
-	      let words = split_words body in
-		 add db words;
-		 let chain = generate db "" in
-		    out (make_msg xml chain)
+      | _ -> ()
 
-let rec markov_thread (db, event_channel) =
-   begin match Event.sync (Event.receive event_channel) with
-      | MMessage (xml, out) ->
-	   if not (mem_xml xml ["message"] "subject" []) then
-	      let body = try get_cdata xml ~path:["body"] with _ -> "" in
-		 if body <> "" then
-		    process_groupchat body db xml out
+let rec markov_thread (db, m) =
+   begin match take_queue m with
+      | MMessage (event, xml, out) ->
+	   process_markov db event xml out
       | MCount (xml, out) ->
 	   let result = result_integer db "SELECT COUNT(*) FROM words" in
 	      out (make_msg xml (string_of_int result))
@@ -158,39 +171,44 @@ let rec markov_thread (db, event_channel) =
 	      out (make_msg xml (cycle ()))
       | MStop -> Thread.exit ()
    end;
-   markov_thread (db, event_channel)
+   markov_thread (db, m)
 
-let get_markov_channel xml =
-   let room = get_bare_jid (get_attr_s xml "from") in
-      try
-	 MarkovMap.find room !markovrooms
-      with Not_found ->
-	 if GroupchatMap.mem room !groupchats then
-	    let event_channel = Event.new_channel () in
-	    let db = open_markovdb room in
-	       Thread.create markov_thread (db, event_channel);
-	       markovrooms := MarkovMap.add room event_channel !markovrooms;
-	       event_channel
-	 else
-	    raise Not_found
-
-let markov_chain xml out =
+let get_markov_queue room =
    try
-      let event_channel = get_markov_channel xml in
-	 Event.sync (Event.send event_channel (MMessage (xml, out)))
-   with _ -> ()
+      MarkovMap.find room !markovrooms
+   with Not_found ->
+      let db = open_markovdb room in
+      let m = {queue = Queue.create (); mutex = Mutex.create ();
+	       cond = Condition.create ()} in
+	 ignore (Thread.create markov_thread (db, m));
+	 markovrooms := MarkovMap.add room m !markovrooms;
+	 m
 
-let markov_count text xml out =
-   try
-      let event_channel = get_markov_channel xml in
-	 Event.sync (Event.send event_channel (MCount (xml, out)))
-   with _ -> ()
+let markov_chain event xml out =
+   match event with
+      | MUC_message (room, _, _, _, _) ->
+	   begin try
+	      let m = get_markov_queue room in
+		 add_queue m (MMessage (event, xml, out))
+	   with _ -> ()
+	   end
+      | _ -> ()
 
-let markov_top text xml out =
-   try
-      let event_channel = get_markov_channel xml in
-	 Event.sync (Event.send event_channel (MTop (xml, out)))
-   with _ -> ()
+let markov_count text event xml out =
+   match event with
+      | MUC_message (room, _, _, _, _) ->
+	   try
+	      let m = get_markov_queue room in
+		 add_queue m (MCount (xml, out))
+	   with _ -> ()
+
+let markov_top text event xml out =
+   match event with
+      | MUC_message (room, _, _, _, _) ->
+	   try
+	      let m = get_markov_queue room in
+		 add_queue m (MTop (xml, out))
+	   with _ -> ()
    
 let _ =
    register_handle (Catch markov_chain);

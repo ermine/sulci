@@ -7,7 +7,7 @@ open Dbm
 
 let tlds = opendbm "tlds" [Dbm_rdonly] 0o666
 
-let tld text xml out =
+let tld text event xml out =
    if text = "" then
       out (make_msg xml "какой домен?")
    else

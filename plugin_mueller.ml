@@ -66,7 +66,7 @@ let mueller_search stuff =
    in
       cycle 0
 
-let mueller text xml out =
+let mueller text event xml out =
    if text = "" then
       out (make_msg xml "гы! Что бум переводить?")
    else

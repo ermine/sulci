@@ -5,23 +5,13 @@
 open Common
 open Xml
 open Xmpp
-open Hooks
-
-type muc_event = | MUC_join of string * participant_t
-		 | MUC_leave of string * string * participant_t
-		 | MUC_change_nick of string * string * participant_t
-		 | MUC_kick of string * string * participant_t
-		 | MUC_ban of string * string * participant_t
-		 | MUC_presence of string * participant_t
-		 | MUC_topic of string * string
-		 | MUC_message of string * string
-		 | MUC_other
-		 | MUC_history
-
+open Types
+(*
 let muc_handlers = ref []
 
 let register_handle proc =
    muc_handlers := proc :: !muc_handlers
+*)
 
 let process_presence room user xml out =
    let room_env = GroupchatMap.find room !groupchats in
@@ -51,7 +41,7 @@ let process_presence room user xml out =
 		    groupchats := GroupchatMap.add room 
 		       {room_env with nicks = Nicks.add user item
 			     room_env.nicks} !groupchats;
-		 MUC_join (user, item)
+		    MUC_join (room, user, item)
 	      end
 	      else
 		 let item = Nicks.find user room_env.nicks in
@@ -60,7 +50,7 @@ let process_presence room user xml out =
 		       {room_env with 
 			   nicks = Nicks.add user newitem
 			     room_env.nicks} !groupchats;
-		    MUC_presence (user, newitem)
+		    MUC_presence (room, user, newitem)
       | "unavailable" -> 
 	   (match safe_get_attr_s x ~path:["status"] "code" with
 	       | "303" -> (* /nick *)
@@ -72,7 +62,7 @@ let process_presence room user xml out =
 				Nicks.add newnick item
 				   (Nicks.remove user room_env.nicks)} 
 			  !groupchats;
-		       MUC_change_nick (newnick, user, item)
+		       MUC_change_nick (room, newnick, user, item)
 	       | "307" -> (* /kick *)
 		    let item = Nicks.find user 
 		       (GroupchatMap.find room !groupchats).nicks in
@@ -81,7 +71,7 @@ let process_presence room user xml out =
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_kick (user, reason, item)
+		       MUC_kick (room, user, reason, item)
 	       | "301" -> (* /ban *)
 		    let item = Nicks.find user 
 		       (GroupchatMap.find room !groupchats).nicks in
@@ -90,7 +80,7 @@ let process_presence room user xml out =
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_ban (user, reason, item)
+		       MUC_ban (room, user, reason, item)
 	       | "321" (* non-member *)
 	       | _ ->
 		    let item = Nicks.find user 
@@ -100,27 +90,71 @@ let process_presence room user xml out =
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_leave (user, reason, item)
+		       MUC_leave (room, user, reason, item)
 	   )
-      | _ -> MUC_other
+      | _ -> MUC_other room
 
-let process_message room nick xml out = 
-   let from = get_attr_s xml "from" in
-   let room = get_bare_jid from in
-   let nick = get_resource from in
-      if (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) then
-	 MUC_history
+let split_nick_body room_env body =
+   let rec cycle pos =
+      try
+	 let colon = String.rindex_from body pos ':' in
+	    if String.length body > colon+1 then
+	       if body.[colon+1] = ' ' then 
+		  let nick = String.sub body 0 colon in
+		     if Nicks.mem nick room_env.nicks then
+			nick, string_after body (colon+2)
+		     else
+			cycle (colon-1)
+	       else
+		  cycle (colon-1)
+	    else
+	       let nick = String.sub body 0 colon in
+		  if Nicks.mem nick room_env.nicks then
+		     nick, ""
+		  else
+		     cycle (colon-1)
+      with Not_found ->
+	 "", body
+   in
+      if Nicks.mem body room_env.nicks then
+	 body, ""
       else
-	 try
-	    let subject = get_cdata xml ~path:["subject"] in
-	       MUC_topic (nick, subject)
-	 with Not_found ->
-	    try 
-	       let body = get_cdata xml ~path:["body"] in
-		  MUC_message (nick, body)
-	    with Not_found ->
-	       MUC_other
+	 let rn, rt = cycle (String.length body - 1) in
+	    if rn = "" then
+	       if Nicks.mem rt room_env.nicks then
+		  rt, ""
+	       else
+		  "", rt
+	    else
+	       rn, rt
 
+let process_message room author xml out = 
+   if (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) then
+      MUC_history room
+   else
+      try
+	 let subject = get_cdata xml ~path:["subject"] in
+	    MUC_topic (room, author, subject)
+      with Not_found ->
+	 try 
+	    let body = get_cdata xml ~path:["body"] in
+	    let msg_type = 
+	       try match get_attr_s xml "type" with
+		  | "groupchat" -> `Groupchat
+		  | "chat" -> `Chat
+		  | _ -> `Normal
+	       with _ -> `Normal in
+	       match msg_type with
+		  | `Groupchat ->
+		       let room_env = GroupchatMap.find room !groupchats in
+		       let nick, text = split_nick_body room_env body in
+			  MUC_message (room, msg_type, author, nick, text)
+		  | _ ->
+		       MUC_message (room, msg_type, author, "", body)
+	 with Not_found ->
+	    MUC_other room
+
+(*
 let dispatch xml out =
    let from = get_attr_s xml "from" in
    let room = get_bare_jid from in
@@ -132,9 +166,10 @@ let dispatch xml out =
 	 if get_tagname xml = "message" then
 	    process_message room nick xml out
 	 else
-	    MUC_other
+	    MUC_other room
    in
       List.iter (fun proc -> proc room event xml out) !muc_handlers
+*)
 
 let join_room nick room =
    make_presence 
@@ -157,15 +192,11 @@ let set_topic room subject =
    Xmlelement ("message", ["to", room; "type", "groupchat"],
 		[make_simple_cdata "subject" subject])
 
-let on_start out =
-   GroupchatMap.iter (fun room env ->
-			 out (join_room env.mynick room)) !groupchats
-
 let register_room nick room =
    groupchats := GroupchatMap.add room {mynick = nick;
 			      nicks = Nicks.empty;
-			      lang = "ru"} !groupchats;
-   Hooks.register_handle (Hooks.From (room, dispatch))
+			      lang = "ru"} !groupchats
+   (* Hooks.register_handle (Hooks.From (room, dispatch)) *)
 
 let _ =
    let default_mynick = 
@@ -182,7 +213,5 @@ let _ =
 		   {mynick = mynick;
 		    nicks = Nicks.empty;
 		    lang = lang} !groupchats;
-		Hooks.register_handle (Hooks.From (roomname, dispatch))
-	 ) rconf;
-      Hooks.register_handle (OnStart on_start)
+	 ) rconf
  

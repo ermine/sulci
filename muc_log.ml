@@ -5,11 +5,10 @@
 open Common
 open Unix
 open Pcre
-open Hooks
 open Muc
+open Types
 
 let _ = Scheduler.init ()
-
 
 let basedir = 
    let dir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"]) in
@@ -93,7 +92,7 @@ let html_url text =
 	 text
    with Not_found -> text
 
-let make_message nick body =
+let make_message author nick body =
    let text =
       Pcre.substitute_substrings ~pat:"\n( *)"
 	 ~subst:(fun s ->
@@ -108,56 +107,70 @@ let make_message nick body =
 		    with _ -> "<br>"
 		) body
    in
-      Printf.sprintf "&lt;%s&gt; %s" nick (html_url text)
+      Printf.sprintf "&lt;%s&gt; %s: %s" author nick  (html_url text)
 
-let process_log room event xml out =
-   let lang = (GroupchatMap.find room !groupchats).lang in
-   let text = match event with
-      | MUC_history -> ""
-      | MUC_topic (nick, subject) ->
-	   Lang.get_msg ~lang "muc_log_set_subject" [nick;  html_url subject]
-      | MUC_message (nick, body) ->
-	   if body <> "" then
-	      if pmatch ~pat:"/me" body then
-		 let action = string_after body 4 in
-		    Printf.sprintf "* %s %s" nick  (html_url action)
-	      else
-		 make_message nick body
-	   else
-	      ""
-      | MUC_join (user, item) ->
-	   "--" ^ Lang.get_msg ~lang "muc_log_join" [user]
-      | MUC_leave (user, reason, item) ->
-	   if reason = "" then
-	      Lang.get_msg ~lang "muc_log_leave" [user]
-	   else
-	      Lang.get_msg ~lang "muc_log_leave_reason" [user; reason]
-      | MUC_kick (user, reason,item) ->
-	   if reason = "" then
-	      Lang.get_msg ~lang "muc_log_kick" [user]
-	   else
-	      Lang.get_msg ~lang "muc_log_kick_reason" [user; reason]
-      | MUC_ban (user, reason, item) ->
-	   if reason = "" then
-	      Lang.get_msg ~lang "muc_log_ban" [user]
-	   else
-	      Lang.get_msg ~lang "muc_log_ban_reason" [user; reason]
-      | MUC_change_nick (newnick, user, item) ->
-	   Lang.get_msg ~lang "muc_log_change_nick" [user; newnick]
-      | MUC_presence (user, item) ->
-	   (* Lang.get_msg ~lang "muc_log_presence" 
+let write room text =
+   if text <> "" then
+      let out_log = get_logfile room in
+      let curtime = Strftime.strftime ~tm:(localtime (time ())) "%H:%M" in
+	 output_string out_log 
+	    (Printf.sprintf 
+		"[%s] %s<br>\n"
+		curtime text);
+	 flush out_log
+
+let process_log event xml =
+   let lang room = (GroupchatMap.find room !groupchats).lang in
+      match event with
+	 | MUC_history _ -> ()
+	 | MUC_topic (room, nick, subject) ->
+	      write room (Lang.get_msg ~lang:(lang room) "muc_log_set_subject" 
+			     [nick;  html_url subject])
+	 | MUC_message (room, msg_type, author, nick, body)
+	       when msg_type = `Groupchat  ->
+	      if body <> "" then
+		 write room (
+		    if pmatch ~pat:"/me" body then
+		       let action = string_after body 4 in
+			  Printf.sprintf "* %s %s" author (html_url action)
+		    else
+		       make_message author nick body)
+	 | MUC_join (room, user, item) ->
+	      write room 
+		 ("--" ^ Lang.get_msg ~lang:(lang room) "muc_log_join" [user])
+	 | MUC_leave (room, user, reason, item) ->
+	      write room 
+		 (if reason = "" then
+		     Lang.get_msg ~lang:(lang room) "muc_log_leave" [user]
+		  else
+		     Lang.get_msg ~lang:(lang room) "muc_log_leave_reason" 
+			[user; reason])
+	 | MUC_kick (room, user, reason,item) ->
+	      write room 
+		 (if reason = "" then
+		     Lang.get_msg ~lang:(lang room) "muc_log_kick" [user]
+		  else
+		     Lang.get_msg ~lang:(lang room) "muc_log_kick_reason" 
+			[user; reason])
+	 | MUC_ban (room, user, reason, item) ->
+	      write room 
+		 (if reason = "" then
+		     Lang.get_msg ~lang:(lang room) "muc_log_ban" [user]
+		  else
+		     Lang.get_msg ~lang:(lang room) 
+			"muc_log_ban_reason" [user; reason])
+	 | MUC_change_nick (room, newnick, user, item) ->
+	      write room 
+		 (Lang.get_msg ~lang:(lang room) 
+		     "muc_log_change_nick" [user; newnick])
+	 | MUC_presence (room, user, item) ->
+	   (* Lang.get_msg ~lang:(lang room) "muc_log_presence" 
 	      [user; item.show; item.status] *)
-	   Printf.sprintf "%s [%s] %s" user item.show item.status
-      | _ -> ""
-   in
-      if text <> "" then
-	 let out_log = get_logfile room in
-	 let curtime = Strftime.strftime ~tm:(localtime (time ())) "%H:%M" in
-	    output_string out_log 
-	       (Printf.sprintf 
-		   "[%s] %s<br>\n"
-		   curtime text);
-	    flush out_log
+	      write room
+		 (Printf.sprintf "%s [%s] %s" user item.show item.status)
+	 | _ -> ()
 
+(*
 let _ =
-   Muc.register_handle process_log
+   Hooks.register_handle (Filter process_log
+*)

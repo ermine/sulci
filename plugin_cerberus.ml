@@ -5,6 +5,7 @@
 open Xml
 open Xmpp
 open Common
+open Types
 open Muc
 open Hooks
 
@@ -89,6 +90,9 @@ let rec analyze = lexer
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cv cie cb (* cyrillic* *) ->
 	Good
+   | cp ci cp ci cs csoft_sign ck ->
+	Bad (Ulexing.utf8_lexeme lexbuf)
+(*   | cp ci cs cya *)
    | cyrillic* czh co cp cyrillic cyrillic ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | czh co cp cyrillic ->
@@ -103,6 +107,8 @@ let rec analyze = lexer
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cyrillic* cp ci cd cie_io cr ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
+   | cie_io cb cu cr ->
+	Good
    | prefix* cie_io ->
 	ebat (Ulexing.utf8_lexeme lexbuf) lexbuf 
   | prefix cya ->
@@ -111,6 +117,8 @@ let rec analyze = lexer
 	mudak (Ulexing.utf8_lexeme lexbuf) lexbuf
    | prefix* ch ->
 	xui (Ulexing.utf8_lexeme lexbuf) lexbuf
+   | ch cu ci cz ->
+	Good
    | cyrillic* ch cu cie_io cv (* cyrillic* *) ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cyrillic* cp ->
@@ -207,20 +215,21 @@ and skip = lexer
 	analyze lexbuf
 
 let report word room nick phrase out =
-   out (Xmlelement ("message", ["type", "chat";
-				"to", "ermine@jabber.ru"],
-		    [make_simple_cdata "body"
-			(Printf.sprintf "Мат: %s\n%s %s\n%s" 
-			    word room nick phrase)]))
+   let item = Nicks.find nick (GroupchatMap.find room !groupchats).nicks in
+      out (Xmlelement ("message", ["type", "chat";
+				   "to", "ermine@jabber.ru"],
+		       [make_simple_cdata "body"
+			   (Printf.sprintf "Мат: %s\n%s %s (%s)\n%s" 
+			       word room nick item.jid phrase)]))
 
 let kill room nick out =
    if nick = "" then ()
    else
-   let id = Hooks.new_id () in
+      let id = new_id () in
       out (Muc.kick id room nick ("plugin_markov_kick_reason", []));
-      let proc x o = 
-	 match get_attr_s x "type" with
-	    | "error" ->
+      let proc event x o = 
+	 match event with
+	    | Iq `Error ->
 		 let err_text = try
 		    get_error_semantic x
 		 with Not_found -> 
@@ -259,64 +268,49 @@ let check text room nick out =
 
 let topic = ref " "
 
-let cerberus room event xml out =
-   let author = get_resource (get_attr_s xml "from") in
-   let room_env = GroupchatMap.find room !groupchats in
-      if author <> room_env.mynick then
-	 match event with
-	    | MUC_join (nick, item) ->
-		    check nick room nick out;
-		    check item.status room nick out
-	    | MUC_change_nick (nick, _, item) ->
-		 check nick room nick out
-	    | MUC_presence (nick, item) ->
-		 check item.status room nick out
-	    | MUC_topic (nick, subject) ->
-		 begin 
-		    try check subject room author out;
-		       topic := subject
-		    with Hooks.FilteredOut ->
-		       out (Muc.set_topic room !topic);
-		       raise FilteredOut
-		 end
-	    | MUC_message (nick, body) ->
-		 if body <> "" then
-		    check body room author out
-	    | MUC_history ->
-		 if get_tagname xml = "message" then begin
-		    try
-		       let subject = get_cdata xml ~path:["subject"] in
-		       let lexbuf = Ulexing.from_utf8_string subject in
-			  try match analyze lexbuf with
-			     | Good -> topic := subject
-			     | Bad word -> ()
-			  with
-			     | Ulexing.Error ->
-				  Printf.printf
-				     "Lexing error at offset %i\n" 
+let cerberus event xml out =
+   match event with
+      | MUC_join (room, nick, item) ->
+	   if nick <> (GroupchatMap.find room !groupchats).mynick then begin
+	      check nick room nick out;
+	      check item.status room nick out;
+	   end
+      | MUC_change_nick (room, nick, _, item) ->
+	   if nick <> (GroupchatMap.find room !groupchats).mynick then
+	      check nick room nick out
+      | MUC_presence (room, nick, item) ->
+	   if nick <> (GroupchatMap.find room !groupchats).mynick then
+	      check item.status room nick out
+      | MUC_topic (room, nick, subject) ->
+	   if nick <> (GroupchatMap.find room !groupchats).mynick then begin
+	      try check subject room nick out;
+		 topic := subject
+	      with Hooks.FilteredOut ->
+		 out (Muc.set_topic room !topic);
+		 raise FilteredOut
+	   end
+      | MUC_message (room, msg_type, author, nick, body) ->
+	   if author <> (GroupchatMap.find room !groupchats).mynick &&
+	      body <> "" then
+		 check body room author out
+      | MUC_history room ->
+	   if get_tagname xml = "message" then begin
+	      try
+		 let subject = get_cdata xml ~path:["subject"] in
+		 let lexbuf = Ulexing.from_utf8_string subject in
+		    try match analyze lexbuf with
+		       | Good -> topic := subject
+		       | Bad word -> ()
+		    with
+		       | Ulexing.Error ->
+			    Printf.printf
+			       "Lexing error at offset %i\n" 
 			       (Ulexing.lexeme_end lexbuf);
-				  flush Pervasives.stdout;
-		    with _ -> ()
-		 end
-	    | _ -> ()
+			    flush Pervasives.stdout;
+	      with _ -> ()
+	      end
+      | _ -> ()
 
-let filter_cerberus xml out =
-   let from = get_attr_s xml "from" in
-   let room = get_bare_jid from in
-      if GroupchatMap.mem room !groupchats then
-	 let nick = get_resource from in
-	 let event = 
-	    if get_tagname xml = "presence" then
-	       Muc.process_presence room nick xml out
-	    else
-	       if get_tagname xml = "message" then
-		  Muc.process_message room nick xml out
-	       else
-		  MUC_other
-	 in
-	    cerberus room event xml out
-
-let _ =
-   (* Muc.register_handle cerberus *)
-   Hooks.register_handle (Filter filter_cerberus)
-      
+let _ = 
+   Hooks.register_handle (Filter cerberus)
+     

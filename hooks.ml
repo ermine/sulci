@@ -5,111 +5,49 @@
 open Xml
 open Xmpp
 open Common
+open Types
 
-let my_id = ref 0
+module IdMap = Map.Make(Id)
+let idmap = ref IdMap.empty
 
-let new_id () = 
-   incr my_id;
-   "stoat_" ^ string_of_int !my_id
+module XmlnsMap = Map.Make(Id)
+let xmlnsmap = ref XmlnsMap.empty
 
-type hook_t = HookFrom of string | HookId of string | HookXmlns of string
-     
-module XId =
-struct
-   type t = hook_t
-   let compare = compare
-end
-module HookMap = Map.Make(XId)
-let hooks = ref HookMap.empty
-
-module Id =
-struct
-   type t = string
-   let compare = compare
-end
+let presencemap = ref []
 
 module CommandMap = Map.Make(Id)
 let commands = ref CommandMap.empty
 
-let onstart = ref []
+let onstart =
+   let on_start out =
+      GroupchatMap.iter (fun room env ->
+			    out (Muc.join_room env.mynick room)) !groupchats
+   in
+      ref [on_start]
+
 let onquit = ref []
 let catchset = ref []
 let filters = ref []
 
-(* groupchat *)
-(* bad place here, but unfortunatelly... *)
-module Nicks = Map.Make(Id)
-
-type participant_t = {
-   jid: string;
-   status: string;
-   show: string;
-   role: string;
-   orig_nick: string;
-   affiliation: string
-}
-
-type groupchat_t = {
-   mynick: string;
-   lang: string;
-   nicks: participant_t Nicks.t;
-}
-
-module GroupchatMap = Map.Make(Id)
-let groupchats = ref (GroupchatMap.empty:groupchat_t GroupchatMap.t)
-
-let split_nick_body room_env body =
-   let rec cycle pos =
-      try
-	 let colon = String.rindex_from body pos ':' in
-	    if String.length body > colon+1 then
-	       if body.[colon+1] = ' ' then 
-		  let nick = String.sub body 0 colon in
-		     if Nicks.mem nick room_env.nicks then
-			nick, string_after body (colon+2)
-		     else
-			cycle (colon-1)
-	       else
-		  cycle (colon-1)
-	    else
-	       let nick = String.sub body 0 colon in
-		  if Nicks.mem nick room_env.nicks then
-		     nick, ""
-		  else
-		     cycle (colon-1)
-      with Not_found ->
-	 "", body
-   in
-      if Nicks.mem body room_env.nicks then
-	 body, ""
-      else
-	 let rn, rt = cycle (String.length body - 1) in
-	    if rn = "" then
-	       if Nicks.mem rt room_env.nicks then
-		  rt, ""
-	       else
-		  "", rt
-	    else
-	       rn, rt
-
 type reg_handle =
-   | From of string * (element -> (element -> unit) -> unit)
-   | Xmlns of string * (element -> (element -> unit) -> unit)
-   | Id of string * (element -> (element -> unit) -> unit)
-   | Command of string * (string -> element -> (element -> unit) -> unit)
+   | Xmlns of string * (xmpp_event -> element -> (element -> unit) -> unit)
+   | Id of string * (xmpp_event -> element -> (element -> unit) -> unit)
+   | Command of string * 
+	(string -> xmpp_event -> element -> (element -> unit) -> unit)
    | OnStart of ((element -> unit) -> unit)
    | OnQuit of ((element -> unit) -> unit)
-   | Catch of (element -> (element -> unit) -> unit)
-   | Filter of (element -> (element -> unit) -> unit)
+   | Catch of (xmpp_event -> element -> (element -> unit) -> unit)
+   | Filter of (xmpp_event -> element -> (element -> unit) -> unit)
+   | PresenceHandle of (xmpp_event -> element -> (element -> unit) -> unit)
 
 let register_handle (handler:reg_handle) =
    match handler with
-      | From (from, proc) ->
-	   hooks := HookMap.add (HookFrom from) proc !hooks
       | Xmlns (xmlns, proc) ->
-	   hooks := HookMap.add (HookXmlns xmlns) proc !hooks
+	   xmlnsmap := XmlnsMap.add xmlns proc !xmlnsmap
+	   (* hookmap := HookMap.add (HookXmlns xmlns) proc !hookmap *)
       | Id (id, proc) ->
-	   hooks := HookMap.add (HookId id) proc !hooks
+	   idmap := IdMap.add id proc !idmap
+	   (* hookmap := HookMap.add (HookId id) proc !hookmap *)
       | Command (command, proc) ->
 	   commands := CommandMap.add command proc !commands
       | OnStart proc ->
@@ -120,82 +58,132 @@ let register_handle (handler:reg_handle) =
 	   catchset := proc :: !catchset
       | Filter proc ->
 	   filters := proc :: !filters
+      | PresenceHandle proc ->
+	   presencemap := proc :: !presencemap
+	   (*
+	   hookmap := HookMap.add HookPresence 
+	      (try proc :: (HookMap.find HookPresence !hookmap)
+	       with Not_found -> [proc]) !hookmap
+	   *)
 
-let process_message xml out =
-   if not (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) &&      
-      not (safe_get_attr_s xml "type" = "error") then
-	 let body = try skip_ws (get_cdata xml ~path:["body"]) with _ -> "" in
-	    if body <> "" then
-	       let from = get_attr_s xml "from" in
-	       let room = get_bare_jid from in
-		  try 
-		     let room_env =GroupchatMap.find room !groupchats in
-			if safe_get_attr_s xml "type" = "groupchat" &&
-			   get_resource from <> room_env.mynick then
-			      let nick, text = split_nick_body room_env body in
-				 if nick = "" then
-				    raise Not_found
-				 else
-				    List.iter  (fun f -> f xml out) !catchset
-			else
-			   raise Not_found
-		  with Not_found ->      
-		     try let word = try
-			String.sub body 0 (String.index body ' ')
-		     with Not_found -> body in
-			if word.[String.length word - 1] <> ':' then
-			   let f = CommandMap.find word !commands in
-			   let text = try
-			      string_after body (String.index body ' ')
-			   with Not_found -> ""
-			   in
-			      f (trim text) xml out
-			else
-			   raise Not_found
-		     with Not_found ->
-			List.iter  (fun f -> f xml out) !catchset
-	    else
-	       List.iter  (fun f -> f xml out) !catchset
+let process_iq event xml out =
+   let id = safe_get_attr_s xml "id" in
+      if id <> "" then
+	 match event with
+	    | Iq `Result
+	    | Iq `Error ->
+		 begin try
+		    let f = IdMap.find id !idmap in
+		       f event xml out;
+		       idmap := IdMap.remove id !idmap
+		 with _ -> ()
+		 end
+	    | Iq `Get
+	    | Iq `Set ->
+		 begin try
+		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
+		       f event xml out;
+		 with _ -> ()
+		 end
+	    | _ -> ()
+      else 
+	 match event with
+	    | Iq `Get
+	    | Iq `Set ->
+		 begin try
+		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
+		       f event xml out;
+		 with _ -> ()
+		 end
+	    | _ -> ()
+
+let do_command text event xml out =
+   let word = 
+      try String.sub text 0 (String.index text ' ') with Not_found -> text in
+   let f = CommandMap.find word !commands in
+   let text = try string_after text (String.index text ' ') with _ -> "" in
+      f (trim text) event xml out
+
+let process_message event xml out =
+   match event with
+      | MUC_message (room, msg_type, author, nick, text) ->
+	   if msg_type <> `Error then
+	      if text <> "" then
+		 try
+		    let room_env = GroupchatMap.find room !groupchats in
+		       begin match msg_type with
+			  | `Groupchat ->
+			       if author <> room_env.mynick && nick = "" then
+				  do_command text event xml out
+			       else
+				  raise Not_found
+			  | _ ->
+			       do_command text event xml out
+		       end
+		 with Not_found ->
+		    List.iter  (fun f -> f event xml out) !catchset
+	      else
+		 List.iter  (fun f -> f event xml out) !catchset
+      | Message ->
+	   let text = try get_cdata xml ~path:["body"] with Not_found -> "" in
+	      try do_command text event xml out with Not_found ->
+		 List.iter  (fun f -> f event xml out) !catchset
 
 exception FilteredOut
+exception InvalidStanza of string
   
 let rec process_xml next_xml out =
    let xml = next_xml () in
+   let from = get_attr_s xml "from" in
+   let room = get_bare_jid from in
+   let tag = get_tagname xml in
+   let event =
+      if GroupchatMap.mem room !groupchats then
+	 let nick = get_resource from in
+	    match tag with
+	       | "presence" ->
+		    Muc.process_presence room nick xml out
+	       | "message" ->
+		    Muc.process_message room nick xml out
+	       | "iq" ->
+		    let iq_type = match safe_get_attr_s xml "type" with
+		       | "get" -> `Get
+		       | "set" -> `Set
+		       | "result" -> `Result
+		       | "error" -> `Error
+		    in
+		       Iq iq_type
+	       | _ -> raise (InvalidStanza (Xml.element_to_string xml))
+      else
+	 match tag with
+	    | "message" -> Message
+	    | "presence" -> Presence
+	    | "iq" ->
+		 let iq_type = match safe_get_attr_s xml "type" with
+		    | "get" -> `Get
+		    | "set" -> `Set
+		    | "result" -> `Result
+		    | "error" -> `Error
+		 in
+		    Iq iq_type
+	    | _ -> raise (InvalidStanza (Xml.element_to_string xml))
+   in
    let () =
+      Muc_log.process_log event xml;
       try
-	 List.iter (fun proc -> proc xml out) !filters;
+	 List.iter (fun proc -> proc event xml out) !filters;
       with FilteredOut ->
 	 process_xml next_xml out
    in
-   let () = 
-      try
-	 let f = HookMap.find 
-		    (HookFrom (get_bare_jid (get_attr_s xml "from"))) !hooks in
-            f xml out
-      with _ -> () in
-   let () = match get_tagname xml with
-      | "iq" ->
-	   if (safe_get_attr_s xml "type" = "result") ||
-	      (safe_get_attr_s xml "type" = "error") &&
-	      safe_get_attr_s xml "id" <> "" then
-		 try
-		    let f = 
-		       HookMap.find (HookId (get_attr_s xml "id")) !hooks
-		    in
-		       f xml out;
-		       hooks := HookMap.remove 
-			  (HookId (get_attr_s xml "id")) !hooks
-		 with _ -> ()
-	   else if safe_get_attr_s xml "type" = "get" then begin
-	      try
-		 let f = HookMap.find (HookXmlns (get_xmlns xml)) !hooks in
-		    f xml out;
-	      with _ -> ()
-	   end
-      | "message" ->
-	   process_message xml out
-      | _ -> ()
-   in
+      begin match event with
+	 | Iq _ ->
+	      process_iq event xml out
+	 | MUC_message _
+	 | Message ->
+	      process_message event xml out;
+	 | _ -> 
+	      List.iter (fun proc -> proc event xml out) !catchset
+      end;
       process_xml next_xml out
 
 let quit out =

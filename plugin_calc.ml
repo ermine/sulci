@@ -5,7 +5,7 @@
 open Common
 open Math
 
-let pcalc text xml out =
+let pcalc text event xml out =
    if text <> "" then
       let reply = 
 	 try
@@ -25,7 +25,7 @@ let pcalc text xml out =
    else
       out (make_msg xml (Lang.get_msg ~xml "plugin_calc_empty_command" []))
 
-let icalc text xml out =
+let icalc text event xml out =
    if text <> "" then
       let reply = 
 	 try

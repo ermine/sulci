@@ -5,6 +5,7 @@
 open Common
 open Xmpp
 open Xml
+open Types
 
 let stats_sum serverlist result out () =
    let totals = ref 0 in
@@ -12,19 +13,19 @@ let stats_sum serverlist result out () =
    let servers = ref 0 in
    let sin = open_in serverlist in
    let rec each_server server =
-      let proc x o =
-	 (match safe_get_attr_s x "type" with
-	    | "result" ->
-		 let stats = get_subels ~path:["query"] ~tag:"stat" x in
-		 let data = List.map (fun z ->
-					 get_attr_s z "name",		 
-					 try 
-					    int_of_string (get_attr_s z "value")
-					 with Not_found -> 0 ) stats in
-		    totals := !totals + List.assoc "users/total" data;
-		    onlines := !onlines + List.assoc "users/online" data;
-		    servers := !servers + 1
-	    | _ -> ());
+      let proc e x o =
+	 (match e with
+	     | Iq `Result ->
+		  let stats = get_subels ~path:["query"] ~tag:"stat" x in
+		  let data = List.map (fun z ->
+					  get_attr_s z "name",		 
+					  try 
+					     int_of_string (get_attr_s z "value")
+					  with Not_found -> 0 ) stats in
+		     totals := !totals + List.assoc "users/total" data;
+		     onlines := !onlines + List.assoc "users/online" data;
+		     servers := !servers + 1
+	     | _ -> ());
 	 try
 	    let server = input_line sin in
 	       each_server server
@@ -36,7 +37,7 @@ let stats_sum serverlist result out () =
 	       close_in sin;
 	       close_out sout
       in
-      let id = Hooks.new_id () in
+      let id = new_id () in
 	 Hooks.register_handle (Hooks.Id (id, proc));
 	 out (Xmlelement 
 		 ("iq", ["to", server; "type", "get"; "id", id],
@@ -50,11 +51,11 @@ let stats_sum serverlist result out () =
    let server = input_line sin in
       each_server server
 
-let cmd_stats text xml out =
+let cmd_stats text event xml out =
    let server = text in
-   let proc x o =
-      match safe_get_attr_s x "type" with
-	 | "result" ->
+   let proc e x o =
+      match e with
+	 | Iq `Result ->
 	      let stats = get_subels ~path:["query"] ~tag:"stat" x in
 	      let data = List.map (fun z ->
 				      get_attr_s z "name",		 
@@ -65,12 +66,12 @@ let cmd_stats text xml out =
 		       (Printf.sprintf "\nUsers Total: %s\nUsers Online: %s"
 			   (List.assoc "users/total" data)
 			   (List.assoc "users/online" data)))
-	 | "error" ->
+	 | Iq `Error ->
 	      o (make_msg xml 
 		    (Lang.get_msg ~xml "plugin_globalstats_stats_error" []))
 	 | _ -> ()
    in
-   let id = Hooks.new_id () in
+   let id = new_id () in
       Hooks.register_handle (Hooks.Id (id, proc));
       out (Xmlelement 
 	      ("iq", ["to", server; "type", "get"; "id", id],
@@ -80,27 +81,27 @@ let cmd_stats text xml out =
 			     Xmlelement ("stat", ["name", "users/total"], [])
 			    ])]))
 
-let uptime text xml out =
+let uptime text event xml out =
    if text = "" then 
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_globalstats_uptime_invalid_syntax" []))
    else
-      let proc x o =
-	 match get_attr_s x "type" with
-	    | "result" ->
+      let proc e x o =
+	 match e with
+	    | Iq `Result ->
 		 let seconds = get_attr_s x ~path:["query"] "seconds" in
 		 let last = 
 		    Lang.expand_time ~xml "uptime" (int_of_string seconds) in
 		    o (make_msg xml
 			  (Lang.get_msg ~xml "plugin_globalstats_uptime"
 			      [text; last]))
-	    | "error" ->
+	    | Iq `Error ->
 		 o (make_msg xml (try get_error_semantic x with Not_found ->
 				     Lang.get_msg ~xml 
 					"plugin_globalstats_uptime_error" []))
 	    | _ -> ()
       in
-      let id = Hooks.new_id () in
+      let id = new_id () in
 	 Hooks.register_handle (Hooks.Id (id, proc));
 	 out (iq_query ~to_:text ~id "jabber:iq:last")
 

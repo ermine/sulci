@@ -2,11 +2,11 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include Makefile.conf
 
-SOURCES = common.ml config.ml version.ml hooks.ml lang.ml iq.ml muc.ml
+SOURCES = common.ml config.ml version.ml types.ml lang.ml muc.ml muc_log.ml hooks.ml iq.ml
 
-ifdef MUC_LOG
-  SOURCES += muc_log.ml
-endif
+#ifdef MUC_LOG
+#  SOURCES += muc_log.ml
+#endif
 
 ifdef PLUGIN_GOOGLE
   SOURCES += plugin_google.ml

@@ -5,7 +5,7 @@
 open Common
 open Xml
 open Xmpp
-open Hooks
+open Types
 
 let ext = ".htbl"
 let deflang = try trim (Xml.get_attr_s Config.config 
