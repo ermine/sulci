@@ -130,7 +130,7 @@ let process_log event xml =
 	       when msg_type = `Groupchat  ->
 	      if body <> "" then
 		 write room (
-		    if pmatch ~pat:"/me" body then
+		    if nick = "" && pmatch ~pat:"/me" body then
 		       let action = string_after body 4 in
 			  Printf.sprintf "* %s %s" author (html_url action)
 		    else
