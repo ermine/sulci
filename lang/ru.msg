@@ -29,3 +29,6 @@ plugin_roulette_kick_reason        Пшиииик!
 plugin_roulette_bye                Адью.
 plugin_roulette_kick_failed        Ыыыы... у тебя наверное иммунитет....
 plugin_roulette_next_time          Как-нить в следующий раз...
+plugin_vocabulary_invalid_suntax   ну?
+plugin_vocabulary_wrote            записал.
+plugin_vocabulary_not_found        хз

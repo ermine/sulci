@@ -20,21 +20,30 @@ let dfn text xml out =
 	    Dbm.replace db w1 w2
       in
 	 close db;
-	 out (make_msg xml "Записал.")
+	 out (make_msg xml 
+		 (Lang.get_msg ~xml "plugin_vocabulary_wrote" []))
    with Not_found ->
-      out (make_msg xml "Ась?")
+      out (make_msg xml 
+	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_suntax" []))
 
 let wtf text xml out =
    if text = "" then
-      out (make_msg xml "ну?")
+      out (make_msg xml 
+	      (Lang.get_msg ~xml "plugin_vocabulary_invalid_suntax" []))
    else
+      let query =
+	 try
+	    let q = String.index text '?' in
+	       String.sub text 0 q
+	 with Not_found -> text in
       let db = open_dbm () in
       let () = 
 	 try
-	    let reply = Dbm.find db text in
+	    let reply = Dbm.find db query in
 	       out (make_msg xml reply)
 	 with Not_found ->
-	    out (make_msg xml "хз")
+	    out (make_msg xml 
+		    (Lang.get_msg ~xml "plugin_vocabulary_not_found" []))
       in
 	 close db
 
