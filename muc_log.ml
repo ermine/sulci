@@ -130,9 +130,15 @@ let process_log event xml =
 	       when msg_type = `Groupchat  ->
 	      if body <> "" then
 		 write room (
-		    if nick = "" && pmatch ~pat:"/me" body then
-		       let action = string_after body 4 in
-			  Printf.sprintf "* %s %s" author (html_url action)
+		    if nick = "" then
+		       if String.length body = 3 && body = "/me" then
+			  Printf.sprintf "* %s" author
+		       else if String.length body > 3 && 
+			  String.sub body 0 4 = "/me " then
+			     Printf.sprintf "* %s %s" author 
+				(html_url (string_after body 4))
+		       else
+			  make_message author nick body
 		    else
 		       make_message author nick body)
 	 | MUC_join (room, user, item) ->

@@ -111,7 +111,7 @@ let rec analyze = lexer
 	Good
    | prefix* cie_io ->
 	ebat (Ulexing.utf8_lexeme lexbuf) lexbuf 
-  | prefix cya ->
+   | prefix cya ->
 	ebat (Ulexing.utf8_lexeme lexbuf) lexbuf
    | prefix* cm ->
 	mudak (Ulexing.utf8_lexeme lexbuf) lexbuf
@@ -125,6 +125,8 @@ let rec analyze = lexer
 	pizda (Ulexing.utf8_lexeme lexbuf) lexbuf
    | cyrillic+ ch cu (cj | ci) cs ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
+   | prefix* cg cr cie cb cu cch ->
+	Good
    | cyrillic+ cie_io cb cu cch ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cyrillic ->
@@ -176,7 +178,7 @@ and pizda buf = lexer
    | cie cr cd cu cn (* cyrillic* *) ->
 	Bad (buf ^ (Ulexing.utf8_lexeme lexbuf))
    | (ci | cie) cd cr (ci | cie) ->
-	Bad (Ulexing.utf8_lexeme lexbuf)
+	Bad (buf ^ (Ulexing.utf8_lexeme lexbuf))
    | "" ->
 	skip lexbuf
 
@@ -196,7 +198,7 @@ and xui buf = lexer
    | cu (cya | cio) ->
 	 Bad (buf ^ (Ulexing.utf8_lexeme lexbuf))
    | cu ci ->
-	Bad (Ulexing.utf8_lexeme lexbuf)
+	Bad (buf ^ (Ulexing.utf8_lexeme lexbuf))
 (*
    | cu cl ->
 	Bad (Ulexing.utf8_lexeme lexbuf)

@@ -44,9 +44,9 @@ let talkers event xml out =
 		       let words = string_of_int 
 			  (List.length (split_words text)) in
 		       let me = 
-			  if nick <> "" && ((length text = 3 && text = "/me") ||
+			  if nick = "" && ((length text = 3 && text = "/me") ||
 			     (length text > 3 && String.sub text 0 4 = "/me ")) 
-			  then 
+			  then
 			     "1" else "0" in
 		       let jid = 
 			  get_bare_jid ((Nicks.find author room_env.nicks).jid)
