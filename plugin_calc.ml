@@ -44,7 +44,7 @@ let icalc text xml out =
 	    | MathNegNumber ->
 		 Lang.get_msg ~xml "plugin_calc_negative_number" []
 	    | Failure err ->
-		 err
+		 Lang.get_msg ~xml "plugin_calc_divide_by_zero" []
 	    | exn ->
 		 Lang.get_msg ~xml "plugin_calc_not_parsed" []
       in

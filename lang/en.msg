@@ -8,6 +8,7 @@ muc_log_ban_reason             %s has been banned: %s
 muc_log_change_nick            %s is now known as %s
 plugin_calc_not_parsed         I dont understand. 
 plugin_cakc_empty_command      What?
+plugin_calc_divide_by_zero     Please dont divide by zero!
 plugin_markov_kick_reason      Filtering out badwords
 plugin_markov_kick_error       Bad moderator!
 plugin_markov_phrase_is_ignore Phrase is ignored
@@ -66,3 +67,8 @@ plugin_seen_kicked_reason         %s has been kicked %sago: %s
 plugin_seen_banned_reason         %s has been banned %sago: %s
 plugin_seen_never_seen            I did not see %s here.
 plugin_seen_not_in_room           This command is available only in conferences
+plugin_talkers_top_header_man     Man
+plugin_talkers_top_header_words   Words
+plugin_talkers_top_header_actions Actions
+plugin_talkers_top_header_sentences Sentences
+plugin_talkers_top_header_average   Avg.

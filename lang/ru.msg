@@ -8,6 +8,10 @@ muc_log_ban_reason                 %s забанён: %s
 muc_log_change_nick                %s переименовался в %s
 plugin_calc_not_parsed             что это было?!
 plugin_calc_empty_command          ась?
+plugin_calc_divide_by_zero         Делим на нолик, да? :-/
+plugin_calc_number_too_big         Многовато... :(
+plugin_calc_cannot_float_fact Не, я не умею вычислять факториал нецелых чисел :(
+plugin_calc_negative_number        Так не бывает.
 plugin_markov_kick_reason          фильтруем базар
 plugin_markov_kick_error           Фиговый модератор!
 plugin_markov_phrase_is_ignored    Фраза игнорируется
@@ -44,9 +48,6 @@ plugin_globalstats_stats_error     Скорее всего, сервер не п
 plugin_google_invalid_syntax       ась?
 plugin_google_not_found            Не нашел :(
 plugin_google_adv_invalid_syntax   гы! Не угадал синтаксис.
-plugin_calc_number_too_big         Многовато... :(
-plugin_calc_cannot_float_fact Не, я не умею вычислять факториал нецелых чисел :(
-plugin_calc_negative_number       Так не бывает.
 plugin_weather_invalid_syntax     гы! попробуй еще разок, сына!
 plugin_admin_quit_bye             Пока! Я ушел...
 plugin_admin_quit_no_access       Это ты мне? Quit? Фиг!
@@ -66,3 +67,9 @@ plugin_seen_kicked_reason         %s был выпровожен отсюда %s
 plugin_seen_banned_reason         %s был забанён %sназад: %s: %s
 plugin_seen_never_seen            Я никогда здесь не видел %s.
 plugin_seen_not_in_room           Эта команда доступна только в конференциях
+plugin_talkers_top_header_man     Болтун
+plugin_talkers_top_header_words   Слов
+plugin_talkers_top_header_actions /me
+plugin_talkers_top_header_sentences Фраз
+plugin_talkers_top_header_average   Эфф.
+

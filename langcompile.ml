@@ -19,6 +19,23 @@ let skip_ws str =
       in
 	 cycle 0
 
+let prepare msg =
+   let tab = String.create 1 in
+      tab.[0] <- '\t';
+      let rec cycle part =
+	 try
+	    let mark = String.index part '\\' in
+	       if part.[mark+1] = 't' then
+		  (String.sub part 0 mark) ^ tab ^ 
+		     cycle (string_after part (mark+2))
+	       else
+		  String.sub part 0 (mark+2) ^
+		     (cycle (string_after part (mark+2)))
+	 with Not_found ->
+	    part
+      in
+	 cycle msg
+	 
 let import () =
    let lang = Sys.argv.(2)
    and file = Sys.argv.(3) in
@@ -28,11 +45,15 @@ let import () =
       
    let rec cycle () =
       let line = input_line fin in
-      let s = String.index line ' ' in
-      let key = String.sub line 0 s in
-      let msg = skip_ws (string_after line s) in
-	 Hashtbl.add hst key msg;
-	 cycle ()
+	 if String.length line >= 2 &&
+	    String.sub line 0 2 = "//" || skip_ws line = "" then
+	    cycle ()
+	 else
+	    let s = String.index line ' ' in
+	    let key = String.sub line 0 s in
+	    let msg = skip_ws (string_after line s) in
+	       Hashtbl.add hst key (prepare msg);
+	       cycle ()
    in
    let () =
       try 

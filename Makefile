@@ -65,9 +65,19 @@ ifdef PLUGIN_SEEN
   SQLITE_LIB = sqlite.cmxa sqlite_util.cmxa
   SQLITE_INC = ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
 endif
+ifdef PLUGIN_TALKERS
+  SOURCES += plugin_talkers.ml
+  SQLITE_LIB = sqlite.cmxa sqlite_util.cmxa
+  SQLITE_INC = ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
+endif
+ifdef PLUGIN_CERBERUS
+  SOURCES += plugin_cerberus.ml
+  USE_CAMLP4=yes
+  OCAMLDEP = ocamldep -package ulex -syntax camlp4o
+  OCAMLFLAGS = -syntax camlp4o
+endif
 
-
-LANGPACKS = lang/ru_time.ml lang/en_time.ml
+LANGPACKS = lang/ru_time.ml lang/en_time.ml lang/es_time.ml
 
 SOURCES += $(LANGPACKS) sulci.ml
 

@@ -20,8 +20,10 @@ let db =
 	 try 
 	    exec dbf 
 	       "CREATE TABLE greeting (jid varchar, room varchar, msg varchar)";
+	    exec dbf "CREATE INDEX gr_index on greeting (jid, room)";
 	    exec dbf
-	       "CREATE TABLE users (jid varchar, room varchar, nick varchar, last integer, action varchar, reason varchar)"
+	       "CREATE TABLE users (jid varchar, room varchar, nick varchar, last integer, action varchar, reason varchar)";
+	    exec dbf "CREATE INDEX users_index on users(jid, room)";
 	 with Sqlite_error s -> 
 	    raise (Failure ("error while creating table " ^ s))
       end;

@@ -41,9 +41,9 @@ expr:
    | expr MINUS expr          { $1 -. $3 }
    | expr MUL expr            { $1 *. $3 }
    | expr DIVIDE expr         { if $3 <> 0.0 then $1 /. $3
-				else failwith "Делим на нолик, да? :-/" }
+				else failwith "plugin_calc_divide_by_zero"}
    | expr MOD expr            { if $3 <> 0.0 then mod_float $1 $3
-				else failwith "Делим на нолик, да? :-/" }
+				else failwith "plugin_calc_divide_by_zero" }
    | expr CARET expr          { $1 ** $3 }
    | MINUS expr %prec NEG     { -. $2 }
    | MAX_FLOAT             { max_float }

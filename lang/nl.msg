@@ -53,3 +53,20 @@ plugin_admin_join_no_access        Sorry, ik wil zover niet gaan.
 plugin_dict_invalid_syntax         Onjuiste syntaxis, mijn beste.
 plugin_dict_db_not_found           Database werd niet gevonden
 plugin_dict_word_not_found         Kan niets bruikbaars vinden
+//plugin_seen_is_here               Peer here, %s is sitting here.
+//plugin_seen_changed_nick          %s is known as  %s
+//plugin_seen_is_not_same           %s is here right now, but he is not the same %s which is known for me
+//plugin_seen_you                   Looking for a mirror...
+//plugin_seen_left                  %s has left %sago
+//plugin_seen_kicked                %s has been kicked %sago
+//plugin_seen_banned                %s has been banned %sago
+//plugin_seen_left_reason           %s has left %sago: %s
+//plugin_seen_kicked_reason         %s has been kicked %sago: %s
+//plugin_seen_banned_reason         %s has been banned %sago: %s
+//plugin_seen_never_seen            I did not see %s here.
+//plugin_seen_not_in_room           This command is available only in conferences
+//plugin_talkers_top_header_man     Man
+//plugin_talkers_top_header_words   Words
+//plugin_talkers_top_header_actions Actions
+//plugin_talkers_top_header_sentences Sentences
+//plugin_talkers_top_header_average   Avg.

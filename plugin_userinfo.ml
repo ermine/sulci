@@ -119,7 +119,7 @@ let time text xml out =
    match safe_get_attr_s xml "type" with
       | "groupchat" ->
 	   let myself = Lang.get_msg ~xml "plugin_userinfo_time_me"
-	      [Strftime.strftime "%H:%M"] in
+	      [Strftime.strftime ~tm:(localtime (time ())) "%H:%M"] in
 	   let common x asker nick =
 	      let display = get_cdata x ~path:["query"; "display"] in
 		 if asker = nick then

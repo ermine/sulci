@@ -26,7 +26,7 @@
   </google>
   <vocabulary name="vocabulary"/>
   <mueller file="/path/to/Mueller24.koi" hashext=".hash" />
-  <markov db="markov.db"/>
+  <markov dir="./markov_db"/>
   <!--
     <globalstats>
      <store serverlist='servers.list' result='servers.res' interval='3600'/>
@@ -36,5 +36,8 @@
    <!-- <server port=2628>localhost</server> -->
    <server>dict.org</server>
   </dict>
+  <!--
+    <talkers db="talkers.db"/>
+  -->
  </plugins>
 </sulci>
