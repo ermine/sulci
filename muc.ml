@@ -302,12 +302,15 @@ let join_room nick room =
       [Xmlelement ("x", ["xmlns", "http://jabber.org/protocol/muc"], [])]
       (room ^ "/" ^ nick)
 
-let kick id room nick reason =
-   Xmlelement ("iq", ["to", room; "type", "set"; "id", id],
-	       [Xmlelement ("query", ["xmlns",
+let kick id room nick (reason, args) =
+   let msg = 
+      Lang.get_msg ~lang:(GroupchatMap.find room !groupchats).lang reason args
+   in
+      Xmlelement ("iq", ["to", room; "type", "set"; "id", id],
+		  [Xmlelement ("query", ["xmlns",
 				      "http://jabber.org/protocol/muc#admin"],
 			    [Xmlelement ("item", ["nick", nick; "role", "none"],
-					 [make_simple_cdata "reason" reason]
+					 [make_simple_cdata "reason" msg]
 					)])])
 
 let on_start out =

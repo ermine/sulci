@@ -38,10 +38,6 @@ let open_markovdb room =
 	 end;
 	 db
 
-let bad_words = ["бля"; "бляд"; "блять"; "пизд"; "хуй"; "нахуй"; "нехуй";
-		"хуево"; "нехуево"; "мудак"; "сука"; "нохуй"; "похуй"; 
-		"нахуя"; "нехуя"; "нохуя"]
-
 let add db words =
    let rec cycle w1 lst =
       match lst with
@@ -104,9 +100,6 @@ let generate db word =
 	    w2 ^ " " ^ cycle w2 (i+1)
    in cycle word 0
 
-let bad_words_here words =
-   List.exists (function word -> List.mem word bad_words ) words
-
 let split_words body =
    Pcre.split ~pat:"[ \t\n]+" body
 
@@ -125,26 +118,7 @@ let process_groupchat body db xml out =
 			  out (make_msg xml "?")
 		    end
 		    else begin
-		       if bad_words_here words then	       
-			  let id = Hooks.new_id () in
-			     out (Muc.kick id room author 
-				     (Lang.get_msg ~xml
-					 "plugin_markov_kick_reason" []));
-			     let proc x o = 
-				match get_attr_s x "type" with
-				   | "error" ->
-					let err_text = try
-					   get_error_semantic x
-					with Not_found -> 
-					   Lang.get_msg ~xml 
-					      "plugin_markov_kick_error" []
-					in
-					   out (make_msg xml (err_text))
-				   | _ -> ()
-			     in
-				Hooks.register_handle (Hooks.Id (id, proc))
-		       else
-			  add db words;
+		       add db words;
 		       if nick = room_env.mynick then
 			  let chain = generate db "" in
 			     out (make_msg xml chain)
@@ -155,29 +129,9 @@ let process_groupchat body db xml out =
 		 ()
 	 | _ ->
 	      let words = split_words body in
-		 if bad_words_here words then	       
-		    let id = Hooks.new_id () in
-		       out (Muc.kick id room author 
-			       (Lang.get_msg ~xml 
-				   "plugin_markov_kick_reason" []));
-		       let proc x o = 
-			  match get_attr_s x "type" with
-			     | "error" ->
-				  let err_text = try
-				     get_error_semantic x
-				  with Not_found -> 
-				     Lang.get_msg ~xml
-					"plugin_markov_kick_error" []
-				  in
-				     out (make_msg xml err_text)
-			     | _ -> ()
-		       in
-			  Hooks.register_handle (Hooks.Id (id, proc))
-		 else begin
-		    add db words;
-		    let chain = generate db "" in
-		       out (make_msg xml chain)
-		 end
+		 add db words;
+		 let chain = generate db "" in
+		    out (make_msg xml chain)
 
 let rec markov_thread (db, event_channel) =
    begin match Event.sync (Event.receive event_channel) with

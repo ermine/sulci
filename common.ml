@@ -45,7 +45,9 @@ let make_msg xml response =
 			      (if Pcre.pmatch ~pat:"/me" response then
 				  response
 			       else
-				  (nick ^ ": " ^ response))])
+				  if nick = "" then response
+				  else (nick ^ ": " ^ response)
+			      )])
 	 | other ->
 	      Xmlelement ("message", 
 		       (match other with

@@ -19,8 +19,7 @@ let roulette text xml out =
 	    let nick = get_resource from in
 	    let conf = get_bare_jid from in
 	    let id = Hooks.new_id () in
-	       out (Muc.kick id conf nick 
-		       (Lang.get_msg ~xml "plugin_roulette_kick_reason" []));
+	       out (Muc.kick id conf nick ("plugin_roulette_kick_reason", []));
 	       let proc x o = 
 		  let reply = match get_attr_s x "type" with
 		     | "result" ->
