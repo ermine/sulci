@@ -116,7 +116,8 @@ let _ =
 	 let start_stats out =
 	    let rec cycle out () =
 	       stats_sum serverlist result out;
-	       Timer.add_timer interval (cycle out);
+	       let _ = Timer.register (cycle out) (interval *. 1000.) 0. in ()
+	       (* Timer.add_timer interval (cycle out); *)
 	    in
 	       cycle out ()
 

@@ -57,11 +57,13 @@ let get_next_update () =
 
 let rec update_curr () =
    load_curr ();
-   Timer.add_timer (get_next_update ()) update_curr
+   let _ = Timer.register update_curr ((get_next_update ()) *. 1000.) 0. in ()
+   (* Timer.add_timer (get_next_update ()) update_curr *)
 
 let _ = 
    load_curr ();
-   Timer.add_timer (get_next_update ()) update_curr
+   Timer.register update_curr ((get_next_update ()) *. 1000.) 0.
+   (* Timer.add_timer (get_next_update ()) update_curr *)
 
 let list_curr =
    let sorted = List.sort (fun (v1, _) (v2, _) ->

@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
+(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>             *)
 (*                                                                          *)
 
 open Common
@@ -29,8 +29,13 @@ let icalc text xml out =
    if text <> "" then
       let reply = 
 	 try
+	    let lexbuf = Ulexing.from_utf8_string text in
+	       Icalc.line (fun _ -> Icalc_ulex.token lexbuf) 
+		  (Lexing.from_string "dummy")
+	(*
             let lexbuf = Lexing.from_string text in
                Icalc.line Icalc_lexer.token lexbuf
+	*)
 	 with 
 	    | MathNumberTooBig ->
 		 Lang.get_msg ~xml "plugin_calc_number_too_big" []

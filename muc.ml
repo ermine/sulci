@@ -9,6 +9,8 @@ open Hooks
 open Unix
 open Pcre
 
+let () = Timer.init ()
+
 type muc_event = | MUC_join of string 
 		 | MUC_leave of string * string
 		 | MUC_change_nick of string * string * string
@@ -18,6 +20,11 @@ type muc_event = | MUC_join of string
 		 | MUC_topic of string
 		 | MUC_message
 		 | MUC_ignore
+
+let muc_handlers = ref []
+
+let register_handle proc =
+   muc_handlers := proc :: !muc_handlers
 
 let basedir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"])
 
@@ -67,9 +74,11 @@ print_endline "rotating logs";
 			     close_out lf;
 			     open_log room) !logmap;
    
-   Timer.add_timer (get_next_noun ()) rotate_logs
+   let _ = Timer.register rotate_logs ((get_next_noun ()) *. 1000.) 0. in ()
+   (* Timer.add_timer (get_next_noun ()) rotate_logs *)
 
-let () = Timer.add_timer (get_next_noun ()) rotate_logs
+(* let () = Timer.add_timer (get_next_noun ()) rotate_logs *)
+let _ = Timer.register rotate_logs ((get_next_noun ()) *. 1000.) 0.
 
 let get_logfile room =
    try 
@@ -255,7 +264,8 @@ let process_presence xml out =
 	   )
       | _ -> MUC_ignore
    in 
-      log_presence room event room_env.lang
+      log_presence room event room_env.lang;
+      List.iter (fun proc -> proc room event out) !muc_handlers
 
 let process_message xml out = 
    ()

@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                    *)
+(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
 (*                                                                          *)
 
 open Xml
@@ -167,7 +167,6 @@ let markov_chain xml out =
    if not (mem_xml xml ["message"] "subject" []) then
       let body = try skip_ws (get_cdata xml ~path:["body"]) with _ -> "" in
 	 if body <> "" then
-	    (* reset idle *)
 	    let from = get_attr_s xml "from" in
 	    if GroupchatMap.mem (get_bare_jid from) !groupchats then
 	       process_groupchat body xml out

@@ -1,8 +1,11 @@
+(*                                                                          *)
+(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>             *)
+(*                                                                          *)
+
 open Common
 open Config
 open Hooks
 open Xmpp
-
 
 let _ = 
    let server = trim (Xml.get_cdata config ~path:["jabber"; "server"]) in
