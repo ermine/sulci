@@ -12,14 +12,14 @@ let var_table = Hashtbl.create 16
 
 %token <float> NUM
 %token LPAREN RPAREN EQ FACT
-%token PLUS MINUS MUL DIVIDE CARET NEG
+%token PLUS MINUS MUL DIVIDE MOD CARET NEG
 %token MAX_FLOAT PI
 %token EOL
 %token <string> VAR
 %token <float -> float> FUNC
 
 %left PLUS MINUS
-%left MUL DIVIDE
+%left MUL DIVIDE MOD
 %left NEG
 %right CARET
 
@@ -41,7 +41,9 @@ expr:
    | expr MINUS expr          { $1 -. $3 }
    | expr MUL expr            { $1 *. $3 }
    | expr DIVIDE expr         { if $3 <> 0.0 then $1 /. $3
-				else failwith "Делим на нолик, да? :/" }
+				else failwith "Делим на нолик, да? :-/" }
+   | expr MOD expr            { if $3 <> 0.0 then mod_float $1 $3
+				else failwith "Делим на нолик, да? :-/" }
    | expr CARET expr          { $1 ** $3 }
    | MINUS expr %prec NEG     { -. $2 }
    | MAX_FLOAT             { max_float }

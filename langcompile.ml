@@ -39,7 +39,7 @@ let import () =
 	 cycle ()
       with End_of_file -> 
 	 Marshal.to_channel mout hst [];
-	 flush mout
+	 flush mout 
    in
       close_in fin;
       close_out mout
@@ -56,8 +56,24 @@ let export () =
       close_out fout;
       close_in min
 
+let usage () =
+   print_endline "Usage:
+langcompile import <lang> <file>
+langcompile export <lang> <file>
+
+Examples:
+           # import ru.msg to ru.htbl
+	   langcompile import ru ru.msg
+           # export from fr.htbl to text file
+	   langcompile export fr fr.text"
+
+
 let _ =
-   match Sys.argv.(1) with
-      | "import" -> import ()
-      | "export" -> export ()
-      | _ -> ()
+   if Array.length Sys.argv = 1 then
+      usage ()
+   else
+      match Sys.argv.(1) with
+	 | "import" -> import ()
+	 | "export" -> export ()
+	 | _ -> usage ()
+

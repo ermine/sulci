@@ -187,3 +187,20 @@ let rec process_xml next_xml out =
 let quit out =
    List.iter (fun proc -> proc out) !onquit;
    Pervasives.exit 0
+
+let check_access jid classname =
+   let who =
+      let room = get_bare_jid jid in
+	 try 
+	    let env = GroupchatMap.find room !groupchats in
+	    let nick = get_resource jid in
+	    let item = Nicks.find nick env.nicks in
+	       get_bare_jid (item.jid)
+	 with Not_found -> get_bare_jid jid 
+   in
+   let acls = get_subels Config.config ~tag:"acl" in
+      if List.exists (fun a -> 
+			 if get_attr_s a "jid" = who &&
+			    get_attr_s a "class" = classname then
+			       true else false) acls 
+      then true else false

@@ -7,7 +7,7 @@
 %}
 
 %token <float> NUM
-%token PLUS MINUS MUL DIVIDE CARET UMINUS
+%token PLUS MINUS MUL DIVIDE MOD CARET UMINUS
 %token COS SIN ACOS ASIN COSH SINH TAN ATAN TANH ATAN2 CEIL FLOOR
 %token LOG LOG10 EXP SQRT FACT FIB
 %token MAX_FLOAT PI
@@ -26,6 +26,7 @@ expr:
    | expr expr MINUS  { $1 -. $2 }
    | expr expr MUL    { $1 *. $2 }
    | expr expr DIVIDE { $1 /. $2 }
+   | expr expr MOD    { mod_float $1 $2 }
    | expr expr CARET  { $1 ** $2 }
    | expr UMINUS     { -. $1 }
    | expr SQRT       { sqrt $1 }

@@ -11,9 +11,9 @@ plugin_calc_empty_command          ась?
 plugin_markov_kick_reason          фильтруем базар
 plugin_markov_kick_error           Фиговый модератор!
 plugin_markov_phrase_is_ignored    Фраза игнорируется
-plugin_ping_pong_from_me           Скорость отклика сервера для меня составляет %s секунд
-plugin_ping_pong_from_you          Понг от тебя %s секунд
-plugin_ping_pong_from_somebody     Понг от %s: %s секунд
+plugin_ping_pong_from_me           Скорость отклика сервера для меня составляет %s
+plugin_ping_pong_from_you          Понг от тебя %s
+plugin_ping_pong_from_somebody     Понг от %s: %s
 plugin_ping_error                  Информация у %s засекречена
 plugin_ping_cannot_ping            Не могу пинговать %s
 plugin_ping_you_error              Информация о тебе засекречена
@@ -37,6 +37,7 @@ plugin_vocabulary_wrote            записал.
 plugin_vocabulary_not_found        хз
 plugin_misc_dns_invalid_syntax     ась?
 plugin_misc_dns_not_resolved       не резолвится
+plugin_globalstats_uptime          Сервер %s работает без остановок %s
 plugin_globalstats_uptime_invalid_syntax Имя сервера, сестричка!
 plugin_globalstats_uptime_error    Информация засекречена
 plugin_globalstats_stats_error     Скорее всего, сервер не поддерживает stats
@@ -53,3 +54,15 @@ plugin_admin_join_no_access       Не, с тобой я не пойду туд�
 plugin_dict_invalid_syntax        гы! Инвалид синтаксис.
 plugin_dict_db_not_found          Нет такой базы данных
 plugin_dict_word_not_found        Не найдено ничего подходящего
+plugin_seen_is_here               Вглядись в комнату. %s здесь сидит.
+plugin_seen_changed_nick          %s скрывается под ником %s
+plugin_seen_is_not_same           %s сидит здесь, но это не тот самый %s, который мне известен.
+plugin_seen_you                   Посмотри на себя в зеркало!
+plugin_seen_left                  %s был здесь %sназад
+plugin_seen_kicked                %s был выпровожен отсюда %sназад
+plugin_seen_banned                %s был забанён %sназад: %s
+plugin_seen_left_reason           %s был здесь %sназад: %s
+plugin_seen_kicked_reason         %s был выпровожен отсюда %sназад: %s
+plugin_seen_banned_reason         %s был забанён %sназад: %s: %s
+plugin_seen_never_seen            Я никогда здесь не видел %s.
+plugin_seen_not_in_room           Эта команда доступна только в конференциях

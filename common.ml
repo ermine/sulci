@@ -60,11 +60,3 @@ let get_error_semantic xml =
 	 get_cdata ~path:["error"; "text"] xml
       with _ -> raise Not_found
    in err_text
-
-let seconds_to_text seconds =
-   let days, hours, mins, secs = 
-      Strftime.seconds_to_string (int_of_string seconds) in
-      (if days = 0 then "" else (string_of_int days) ^ " д. ") ^
-      (if hours = 0 then "" else (string_of_int hours) ^ " ч. ") ^
-	 (if mins = 0 then "" else (string_of_int mins) ^ " мин. ") ^
-	 (string_of_int secs) ^ " сек."

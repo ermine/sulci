@@ -8,23 +8,6 @@ open Xmpp
 open Muc
 open Hooks
 
-let check_access jid classname =
-   let who =
-      let room = get_bare_jid jid in
-	 try 
-	    let env = GroupchatMap.find room !groupchats in
-	    let nick = get_resource jid in
-	    let item = Nicks.find nick env.nicks in
-	       get_bare_jid (item.jid)
-	 with Not_found -> get_bare_jid jid 
-   in
-   let acls = get_subels Config.config ~tag:"acl" in
-      if List.exists (fun a -> 
-			 if get_attr_s a "jid" = who &&
-			    get_attr_s a "class" = classname then
-			       true else false) acls 
-      then true else false
-
 let msg text xml out =
    if check_access (get_attr_s xml "from") "admin" then
       let s = String.index text ' ' in
@@ -81,4 +64,4 @@ let _ =
    register_handle (Command ("msg", msg));
    register_handle (Command ("quit", quit));
    register_handle (Command ("join", join));
-   register_handle (Command ("lang_update", lang_update))
+   register_handle (Command ("lang_update", lang_update));

@@ -7,7 +7,7 @@
   <password>secret</password>
  </jabber>
 
- <lang dir="./lang"/>
+ <lang dir="./lang" default="ru"/>
 
  <acl jid='ermine@jabber.ru' class='admin'/>
  
@@ -33,6 +33,7 @@
     </globalstats>
   -->
   <dict>
+   <!-- <server port=2628>localhost</server> -->
    <server>dict.org</server>
   </dict>
  </plugins>

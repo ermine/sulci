@@ -84,7 +84,8 @@ let idle text xml out =
 	   let myself = Lang.get_msg ~xml "plugin_userinfo_idle_me" [] in
 	   let common x asker nick =
 	      let seconds = get_attr_s x ~path:["query"] "seconds" in
-	      let idle = seconds_to_text seconds in
+	      let idle = Lang.expand_time ~xml "idle" (int_of_string seconds) in
+print_endline idle;
 		 if asker = nick then 
 		    Lang.get_msg ~xml "plugin_userinfo_idle_you" [idle]
 		 else 
@@ -101,7 +102,8 @@ let idle text xml out =
 	      match get_attr_s x "type" with
 		 | "result" ->
 		      let seconds = get_attr_s x ~path:["query"] "seconds" in
-		      let idle = seconds_to_text seconds in
+		      let idle = 
+			 Lang.expand_time ~xml "idle" (int_of_string seconds) in
 			 o (make_msg xml 
 			       (Lang.get_msg ~xml "plugin_userinfo_idle_you"
 				   [idle]))
@@ -167,66 +169,8 @@ let status text xml out =
 	 with _ ->
 	    out (make_msg xml "Whose status?")
 
-(*
-open Sqlite
-open Sqlite_util
-open Muc
-
-let db =
-   let dbf = Sqlite.db_open "./sulci_users.db" in
-      if not (result_bool dbf
-	"SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='users'")
-      then
-	 (try exec dbf 
-	     "CREATE TABLE users (room varchar, nick varchar, jid varchar,\
-last integer, greeting varchar, event varchar, reason varchar)"
-	  with Sqlite_error s -> 
-	     raise (Failure "error while creating table"));
-      dbf
-
-let process_seen room event out =
-   match event with
-      | MUC_join nick ->
-	   let item = 
-	      Nicks.find nick (GroupchatMap.find room !groupchats).nicks in
-(*	      
-	      out (Xmlelement ("message", ["type", "groupchat";
-					   "to", room], 
-			       [make_simple_cdata "body"
-				   (Printf.sprintf "%s (%s) appears" nick item.jid)]))
-*)
-	      ()
-      | MUC_leave (nick, reason) ->
-	   let item =
-	      Nicks.find nick (GroupchatMap.find room !groupchats).nicks in
-	   let jid = tiem.jid in
-	   let vm = exec db ("UPDATE ysers SET event= reason") 
-	      
-      | _ -> ()
-
-let seen text xml out =
-   if text = "" then
-      out (make_msg xml "who?")
-   else
-      let reply =
-	 let vm = compile_simple db ("SELECT last FROM users WHERE nick=" ^
-					escape text) in
-	    try 
-	       let data = step_simple vm in
-		  finalize vm;
-		  data.(0)
-	    with Sqlite_done -> 
-	       "этого еще не встречал"
-      in
-	 out (make_msg xml reply)
-*)
-
 let _ =
    Hooks.register_handle (Command ("version", version));
    Hooks.register_handle (Command ("idle", idle));
    Hooks.register_handle (Command ("time", time));
    Hooks.register_handle (Command ("status", status));
-(*
-   Hooks.register_handle (Command ("seen", seen));
-   Muc.register_handle process_seen
-*)

@@ -47,6 +47,8 @@ let rec token = lexer
         MUL
    | '/' ->
         DIVIDE
+   | '%' ->
+	MOD
    | '^'  ->
         CARET
    | "max_float" ->

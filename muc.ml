@@ -12,12 +12,12 @@ open Pcre
 (* let () = Timer.init ~tck_unit:1000. () *)
 let _ = Scheduler.init ()
 
-type muc_event = | MUC_join of string 
-		 | MUC_leave of string * string
-		 | MUC_change_nick of string * string * string
-		 | MUC_kick of string * string
-		 | MUC_ban of string * string
-		 | MUC_presence
+type muc_event = | MUC_join of string * participant_t
+		 | MUC_leave of string * string * participant_t
+		 | MUC_change_nick of string * string * participant_t
+		 | MUC_kick of string * string * participant_t
+		 | MUC_ban of string * string * participant_t
+		 | MUC_presence of string * participant_t
 		 | MUC_topic of string
 		 | MUC_message
 		 | MUC_ignore
@@ -27,7 +27,10 @@ let muc_handlers = ref []
 let register_handle proc =
    muc_handlers := proc :: !muc_handlers
 
-let basedir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"])
+let basedir = 
+   let dir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"]) in
+      if not (Sys.file_exists dir) then mkdir dir 0o755;
+      dir
 
 module LogMap = Map.Make(Id)
 let logmap = ref LogMap.empty
@@ -159,25 +162,29 @@ let log_message xml =
 
 let log_presence room event lang =
    let text = match event with
-      | MUC_join user ->
+      | MUC_join (user, item) ->
 	   Lang.get_msg ~lang "muc_log_join" [user]
-      | MUC_leave (user, reason) ->
+      | MUC_leave (user, reason, item) ->
 	   if reason = "" then
 	      Lang.get_msg ~lang "muc_log_leave" [user]
 	   else
 	      Lang.get_msg ~lang "muc_log_leave_reason" [user; reason]
-      | MUC_kick (user, reason) ->
+      | MUC_kick (user, reason,item) ->
 	   if reason = "" then
 	      Lang.get_msg ~lang "muc_log_kick" [user]
 	   else
 	      Lang.get_msg ~lang "muc_log_kick_reason" [user; reason]
-      | MUC_ban (user, reason) ->
+      | MUC_ban (user, reason, item) ->
 	   if reason = "" then
 	      Lang.get_msg ~lang "muc_log_ban" [user]
 	   else
 	      Lang.get_msg ~lang "muc_log_ban_reason" [user; reason]
-      | MUC_change_nick (newnick, user, orignick) ->
+      | MUC_change_nick (newnick, user, item) ->
 	   Lang.get_msg ~lang "muc_log_change_nick" [user; newnick]
+      | MUC_presence (user, item) ->
+	   (* Lang.get_msg ~lang "muc_log_presence" 
+	      [user; item.show; item.status] *)
+	   Printf.sprintf "%s [%s] %s" user item.show item.status
       | _ -> ""
    in
       if text <> "" then
@@ -215,16 +222,16 @@ let process_presence xml out =
 		    groupchats := GroupchatMap.add room 
 		       {room_env with nicks = Nicks.add user item
 			     room_env.nicks} !groupchats;
-		 MUC_join user
+		 MUC_join (user, item)
 	      end
 	      else
 		 let item = Nicks.find user room_env.nicks in
+		 let newitem = {item with status = status; show = show } in
 		    groupchats := GroupchatMap.add room 
 		       {room_env with 
-			   nicks = Nicks.add user 
-			     {item with status = status; show = show;} 
+			   nicks = Nicks.add user newitem
 			     room_env.nicks} !groupchats;
-		    MUC_ignore
+		    MUC_presence (user, newitem)
       | "unavailable" -> 
 	   (match safe_get_attr_s x ~path:["status"] "code" with
 	       | "303" -> (* /nick *)
@@ -236,29 +243,35 @@ let process_presence xml out =
 				Nicks.add newnick item
 				   (Nicks.remove user room_env.nicks)} 
 			  !groupchats;
-		       MUC_change_nick (newnick, user, item.orig_nick)
+		       MUC_change_nick (newnick, user, item)
 	       | "307" -> (* /kick *)
-		    let reason = 
+		    let item = Nicks.find user 
+		       (GroupchatMap.find room !groupchats).nicks in
+		    let reason =
 		       try get_cdata ~path:["reason"] x with _ -> "" in
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_kick (user, reason)
+		       MUC_kick (user, reason, item)
 	       | "301" -> (* /ban *)
+		    let item = Nicks.find user 
+		       (GroupchatMap.find room !groupchats).nicks in
 		    let reason = 
 		       try get_cdata ~path:["reason"] x with _ -> "" in
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_ban (user, reason)
+		       MUC_ban (user, reason, item)
 	       | "321" (* non-member *)
 	       | _ ->
+		    let item = Nicks.find user 
+		       (GroupchatMap.find room !groupchats).nicks in
 		    let reason = 
 		       try get_cdata ~path:["status"] xml with _ -> "" in
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_leave (user, reason)
+		       MUC_leave (user, reason, item)
 	   )
       | _ -> MUC_ignore
    in 
@@ -270,8 +283,12 @@ let process_message xml out =
 
 let dispatch xml out =
    if get_tagname xml = "presence" then
-      process_presence xml out
-   else 
+      try
+	 process_presence xml out
+      with exn -> print_endline 
+	 (Printexc.to_string exn); 
+	 flush Pervasives.stdout
+   else
       if get_tagname xml = "message" &&
 	 not (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) then
 	    begin

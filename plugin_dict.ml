@@ -35,7 +35,7 @@ let connect server port =
 		       Printf.printf "again: %s:%d\n" server port;
 		       pair
 		 with 
-		    | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect", _) ->
+		    | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect",_) ->
 			 cycle ()
 		    | _ ->
 			 raise (DictError "unable to connect")

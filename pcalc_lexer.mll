@@ -19,6 +19,7 @@ rule token = parse
    | '-'                       { MINUS }
    | '*'                       { MUL }
    | '/'                       { DIVIDE }
+   | '%'                       { MOD }
    | '^'                       { CARET }
    | 'n'                       { UMINUS }
    | "sqrt"                    { SQRT }

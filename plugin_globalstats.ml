@@ -89,9 +89,11 @@ let uptime text xml out =
 	 match get_attr_s x "type" with
 	    | "result" ->
 		 let seconds = get_attr_s x ~path:["query"] "seconds" in
-		 let last = seconds_to_text seconds in
-		    o (make_msg xml 
-			  (Printf.sprintf "%s uptime is %s" text last))
+		 let last = 
+		    Lang.expand_time ~xml "uptime" (int_of_string seconds) in
+		    o (make_msg xml
+			  (Lang.get_msg ~xml "plugin_globalstats_uptime"
+			      [text; last]))
 	    | "error" ->
 		 o (make_msg xml (try get_error_semantic x with Not_found ->
 				     Lang.get_msg ~xml 

@@ -60,8 +60,16 @@ endif
 ifdef PLUGIN_ROULETTE
   SOURCES += plugin_roulette.ml
 endif
+ifdef PLUGIN_SEEN
+  SOURCES += plugin_seen.ml
+  SQLITE_LIB = sqlite.cmxa sqlite_util.cmxa
+  SQLITE_INC = ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
+endif
 
-SOURCES += sulci.ml
+
+LANGPACKS = lang/ru_time.ml lang/en_time.ml
+
+SOURCES += $(LANGPACKS) sulci.ml
 
 THREADS = yes
 PACKS = ulex unix str netstring $(DBM_LIB)

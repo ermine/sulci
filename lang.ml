@@ -12,6 +12,14 @@ let deflang = "ru"
 module LangMap = Map.Make(Id)
 let langmsgs =  ref (LangMap.empty:(string, string) Hashtbl.t LangMap.t)
 
+type langtime_t = {
+   expand_time: string -> int -> int -> int -> int -> int -> int -> string;
+   float_seconds: string -> float -> string
+}
+
+module LangTime = Map.Make(Id)
+let langtime = ref LangTime.empty
+
 let _ =
    let dir = 
       try trim (get_attr_s Config.config ~path:["lang"] "dir")
@@ -93,3 +101,24 @@ let update lang =
 	 "Updated"
    with exn ->
       Printexc.to_string exn
+
+let expand_time ~xml cause seconds =
+   let lang = get_lang xml in
+   let year, month, day, hour, min, sec = Strftime.seconds_to_string seconds in
+   let f =
+      try
+	 (LangTime.find lang !langtime).expand_time	    
+      with Not_found ->
+	 (LangTime.find deflang !langtime).expand_time
+   in
+      f cause year month day hour min sec
+
+let float_seconds ~xml cause seconds =
+   let lang = get_lang xml in
+   let f =
+      try
+	 (LangTime.find lang !langtime).float_seconds
+      with Not_found ->
+	 (LangTime.find deflang !langtime).float_seconds
+   in
+      f cause seconds
