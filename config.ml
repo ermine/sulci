@@ -1,11 +1,11 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
 (*                                                                          *)
 
 open Xml
 open Xmlstring
 
-let conf = 
+let config = 
    let filename = "sulci.conf" in
    let fin = open_in filename in
    let rec cycle () =

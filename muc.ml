@@ -1,113 +1,247 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
 (*                                                                          *)
 
+open Common
 open Xml
 open Xmpp
-open Types
+open Hooks
+open Unix
+open Pcre
 
-module Id =
-struct
-   type t = string
-   let compare = compare
-end
+type muc_event = | MUC_join of string 
+		 | MUC_leave of string 
+		 | MUC_change_nick of string * string * string
+		 | MUC_kick of string
+		 | MUC_ban of string
+		 | MUC_presence
+		 | MUC_topic of string
+		 | MUC_message
+		 | MUC_ignore
 
-module PMap = Map.Make(Id)  (* мап мапов для конфы *)
-module Nicks = Map.Make(Id) (* мап ников для одной конфы *)
-let participants = ref PMap.empty
+let basedir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"])
 
-module Help = Map.Make(Id)  (* мап хелпов *)
-let hmap = ref Help.empty
+module LogMap = Map.Make(Id)
+let logmap = ref LogMap.empty
 
-module CmdMap = Map.Make(Id) (* плагины *)
-let cmdmap = ref CmdMap.empty
+let open_log room =
+   let tm = localtime (time ()) in
+   let year = tm.tm_year + 1900 in
+   let month = tm.tm_mon + 1 in
+   let day = tm.tm_mday in
 
-let catchlist = ref [] 
+   let p1 = Filename.concat basedir room in
+   let () = if not (Sys.file_exists p1) then mkdir p1 0o755 in
+   let p2 = Printf.sprintf "%s/%i" p1 year in
+   let () = if not (Sys.file_exists p2) then mkdir p2 0o755 in
+   let p3 = Printf.sprintf "%s/%0.2i" p2 month in
+   let () = if not (Sys.file_exists p3) then mkdir p3 0o755 in
+   let file = Printf.sprintf "%s/%0.2i.html" p3 day in
+      if not (Sys.file_exists file) then
+	 let out_log = open_out_gen [Open_creat; Open_append] 0o644 file in
+	    output_string out_log 
+	       (Printf.sprintf 
+		   "<html><head>
+<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />
+<title>%s</title></head><body><h1>%s</h1><h2>%s</h2>\n"
+		   room room room);
+	    flush out_log;
+	    out_log
+      else
+	 open_out_gen [Open_append] 0o644 file
 
-(*
-module Hooks = Map.Make(Id)
-let phooks = ref PMap.empty
-let mhooks = ref ...
-*)
+let get_next_noun () =
+   let curr_time = gettimeofday () in
+   let curr_tm = localtime curr_time in
+   let noun, _ = mktime {curr_tm with 
+			    tm_sec = 0; tm_min = 0; tm_hour = 0;
+			    tm_mday = curr_tm.tm_mday + 1} in
+      noun -. curr_time
 
-type muc_cmd = | MUC_Join of string | MUC_Leave of string 
-	       | MUC_ChangeNick of string * string * string
-	       | MUC_Ignore
+let rec rotate_logs () =
+print_endline "rotating logs";
+   logmap := LogMap.mapi (fun room lf ->
+			     output_string lf "</body>\n</html>";
+			     flush lf;
+			     close_out lf;
+			     open_log room) !logmap;
+   
+   Timer.add_timer (get_next_noun ()) rotate_logs
 
-let process_presence mynick bot xml out lang =
+let () = Timer.add_timer (get_next_noun ()) rotate_logs
+
+let get_logfile room =
+   try 
+      LogMap.find room !logmap 
+   with Not_found -> 
+      let out_log = open_log room in
+	 logmap := LogMap.add room out_log !logmap;
+	 out_log
+
+let rex = regexp "((https?|ftp)://[^ ]+|(www|ftp)[a-z0-9.-]*\\.[a-z]{2,4}[^ ]*)"
+
+let html_url text =
+   try
+      substitute ~rex 
+	 ~subst:(fun url ->
+		    if pmatch ~pat:".+//:" url then
+		       Printf.sprintf "<a href='%s'>%s</a>" url url
+		    else if pmatch ~pat:"^www" url then
+		       Printf.sprintf "<a href='http://%s'>%s</a>" url url
+		    else if pmatch ~pat:"^ftp" url then
+		       Printf.sprintf "<a href='ftp://%s'>%s</a>" url url
+		    else 
+		       Printf.sprintf "<a href='%s'>%s</a>" url url
+		)
+	 text
+   with Not_found -> text
+
+let to_log room text =
+   let out_log = get_logfile room in
+   let curtime = Strftime.strftime ~tm:(localtime (time ())) "%H:%M" in
+      output_string out_log 
+	 (Printf.sprintf 
+	     "[%s] %s<br>\n"
+	     curtime text);
+      flush out_log
+
+let make_message nick body =
+   let text =
+      Pcre.substitute_substrings ~pat:"\n( *)"
+	 ~subst:(fun s ->
+		    try
+		       let sub = Pcre.get_substring s 1 in
+		       let len = String.length sub in
+		       let buf = Buffer.create (len * 6) in
+			  for i = 1 to len do
+			     Buffer.add_string buf "&nbsp;"
+			  done;
+			  "<br>\n" ^ Buffer.contents buf
+		    with _ -> "<br>"
+		) body
+   in
+      Printf.sprintf "&lt;%s&gt; %s" nick (html_url text)
+
+let make_subject subject =
+   html_url subject
+
+let make_me nick body =
+   let action = string_after body 4 in
+      Printf.sprintf "* %s %s" nick  (html_url action)
+	 
+let log_message xml =
+   if safe_get_attr_s xml "type" = "groupchat" then
+      let from = get_attr_s xml "from" in
+      let room = get_bare_jid from in
+	 if mem_xml xml ["message"] "subject" [] then
+	    let subject = try get_cdata xml ~path:["body"] with _ -> 
+	       get_cdata xml ~path:["subject"] in
+	       to_log room (make_subject subject)
+	 else
+	    let body = try get_cdata xml ~path:["body"] with _ -> "" in
+	       if body <> "" then
+		  let text = 
+		     let nick = get_resource from in
+			if pmatch ~pat:"/me" body then
+			   make_me nick body
+			else
+			   make_message nick body
+		  in
+		     to_log room text
+
+let log_presence room event lang =
+   let text = match event with
+      | MUC_join user ->
+	   Lang.get_msg ~lang "muc_log_join" [user]
+	   (* user ^ " появился в конференции" *)
+      | MUC_leave user ->
+	   Lang.get_msg ~lang "muc_log_leave" [user]
+	   (* user ^ " исчез из конференции" *)
+      | MUC_kick user ->
+	   Lang.get_msg ~lang "muc_log_kick" [user]
+	   (* user ^ " был выкинут из конференции" *)
+      | MUC_ban user ->
+	   Lang.get_msg ~lang "muc_log_ban" [user]
+	   (* user ^ "был забанен" *)
+      | MUC_change_nick (newnick, user, orignick) ->
+	   Lang.get_msg ~lang "muc_log_change_nick" [user; newnick]
+	   (* user ^ "переименовался в " ^ newnick *)
+      | _ -> ""
+   in
+      if text <> "" then
+	 to_log room ("-- " ^ text)
+
+
+let process_presence xml out =
    let from = get_attr_s xml "from" in
    let user = get_resource from in
    let room = get_bare_jid from in
-   let nmap = PMap.find room !participants in
-   let cmd = match safe_get_attr_s xml "type"  with
+   let room_env = GroupchatMap.find room !groupchats in
+   let event = match safe_get_attr_s xml "type"  with
       | "" -> 
-	   if user <> mynick && not (Nicks.mem user nmap) then
-	      let newnmap = Nicks.add user user nmap in
-		 participants := PMap.add room newnmap !participants;
-		 MUC_Join user
+	   if not (Nicks.mem user room_env.nicks) then begin
+	      groupchats := GroupchatMap.add room 
+		 {room_env with nicks = Nicks.add user user room_env.nicks}
+			  !groupchats;
+	      MUC_join user
+	   end
 	   else
-	      MUC_Ignore
+	      MUC_ignore
       | "unavailable" -> 
 	   let x = 
-	      List.find (function 
-			    | Xmlelement ("x", attrs, _) ->
-				 if
-				    (try List.assoc "xmlns" attrs with _ -> "")=
-				    "http://jabber.org/protocol/muc#user" 
-				 then true else false
-			    | _ -> false
-			) (Xml.get_subels xml) in
-	      (match safe_get_attr_s xml ~path:["status"] "code" with
+	      List.find 
+		 (function 
+		     | Xmlelement ("x", attrs, _) ->
+			  if (try List.assoc "xmlns" attrs with _ -> "")=
+			     "http://jabber.org/protocol/muc#user" 
+			  then true else false
+		     | _ -> false
+		 ) (Xml.get_subels xml) in
+	      (match safe_get_attr_s x ~path:["status"] "code" with
 		  | "303" -> (* /nick *)
-		      let newnick = get_attr_s xml ~path:["x"; "item"] "nick" in
-		      let orignick = Nicks.find user nmap in
-			 participants := PMap.add room
-			   (Nicks.add newnick orignick (Nicks.remove user nmap))
-					    !participants;
-			 MUC_ChangeNick (newnick, user, orignick)
-		 | "307" (* /kick *)
-		 | "301" (* /ban *)
-		 | "321" (* non-member *)
-		 | _ -> 
-		      participants := PMap.add room (Nicks.remove user nmap) 
-			  !participants;
-		      MUC_Leave user
+		       let newnick = 
+			  get_attr_s xml ~path:["x"; "item"] "nick" in
+		       let orignick = Nicks.find user room_env.nicks in
+			  groupchats := GroupchatMap.add room
+			     {room_env with nicks = 
+				   Nicks.add newnick orignick 
+				      (Nicks.remove user room_env.nicks)} 
+			     !groupchats;
+			  MUC_change_nick (newnick, user, orignick)
+		  | "307" -> (* /kick *)
+		       groupchats := GroupchatMap.add room
+			  {room_env with nicks =
+				Nicks.remove user room_env.nicks} !groupchats;
+		       MUC_kick user
+		  | "301" -> (* /ban *)
+		       groupchats := GroupchatMap.add room
+			  {room_env with nicks =
+				Nicks.remove user room_env.nicks} !groupchats;
+		       MUC_ban user
+		  | "321" (* non-member *)
+		  | _ ->
+		       groupchats := GroupchatMap.add room
+			  {room_env with nicks =
+				Nicks.remove user room_env.nicks} !groupchats;
+		       MUC_leave user
 	      )
-      | _ -> MUC_Ignore
-   in ()
+      | _ -> MUC_ignore
+   in 
+      log_presence room event room_env.lang
 
-let cmd_rex = Str.regexp "\\([^: \r\n\t]+\\)\\([ \n\r\t]\\|$\\)"
+let process_message xml out = 
+   ()
 
-let process_message mynick bot xml out lang =
-   let from = get_attr_s xml "from" in
-   let user = get_resource from in
-
-      if user <> mynick then
-	 let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-	 if Str.string_match cmd_rex body 0 then
-	    let word = Str.matched_group 1 body in
-	       try
-		  let proc = CmdMap.find word !cmdmap in
-		     proc xml out bot mynick lang
-	       with Not_found ->	
-		  List.iter (function proc ->
-				proc xml out bot mynick lang
-			    ) !catchlist
-	 else
-	    List.iter (function proc ->
-			  proc xml out bot mynick lang
-		      ) !catchlist
-      else
-	 ()
-
-let dispatch nick xml out bot lang =
+let dispatch xml out =
    if get_tagname xml = "presence" then
-      process_presence nick bot xml out lang
+      process_presence xml out
    else 
-      if get_tagname xml = "message" then
-	 if not (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) &&
-	    not (mem_xml xml ["message"] "subject" []) then
-	    process_message nick bot xml out lang
+      if get_tagname xml = "message" &&
+	 not (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) then
+	    begin
+	       log_message xml;
+	       process_message xml out
+	    end
 
 let join_room nick room =
    make_presence 
@@ -115,46 +249,6 @@ let join_room nick room =
       [Xmlelement ("x", ["xmlns", "http://jabber.org/protocol/muc"], [])]
       (room ^ "/" ^ nick)
 
-let register_cmd cmd proc =
-   cmdmap := CmdMap.add cmd proc !cmdmap
-let register_help key descr =
-   hmap := Help.add key decr !hmap
-let register_catch proc =
-   catchlist := proc :: !catchlist
-(*
-let unregister_catc key proc =
-   catchlist := List.remove_assoc key !catchlist
-*)
-   
-let start bot out =
-   let user = trim (Xml.get_cdata Config.conf ~path:["jabber"; "user"]) in
-   let rooms = Xml.get_subels ~path:["muc"] ~tag:"room" Config.conf in
-   let muc_ev = Event.new_channel () in
-
-   let rec session_loop () =
-      let (nick, lang, xml) = Event.sync (Event.receive muc_ev) in
-	 dispatch nick xml out bot lang;
-	 session_loop ()
-   in
-
-   let proc nick lang xml =
-      Event.sync (Event.send muc_ev (nick, lang, xml))
-   in
-      ignore (Thread.create session_loop ());
-      List.iter (fun r ->
-		    let mynick = try Xml.get_attr_s r "nick" with _ -> user
-		    and roomname = Xml.get_attr_s r "jid"
-		    and lang = try Xml.get_attr_s r "lang" with _ -> "ru" in
-
-		       participants := PMap.add roomname Nicks.empty 
-			  !participants;
-		       Event.sync (Event.send bot
-				      (RegisterHandle 
-					  (From (roomname, proc mynick lang))));
-		       out (join_room mynick roomname);
-		) rooms
-
-(* **** *)
 let kick id room nick reason =
    Xmlelement ("iq", ["to", room; "type", "set"; "id", id],
 	       [Xmlelement ("query", ["xmlns",
@@ -162,3 +256,33 @@ let kick id room nick reason =
 			    [Xmlelement ("item", ["nick", nick; "role", "none"],
 					 [make_simple_cdata "reason" reason]
 					)])])
+
+let on_start out =
+   GroupchatMap.iter (fun room env ->
+			 out (join_room env.mynick room)) !groupchats
+
+let register_room nick room =
+   groupchats := GroupchatMap.add room {mynick = nick;
+			      nicks = Nicks.empty;
+			      lang = "ru"} !groupchats;
+   Hooks.register_handle (Hooks.From (room, dispatch))
+
+let _ =
+   let default_mynick = 
+      trim (Xml.get_cdata Config.config ~path:["jabber"; "user"]) in
+   let rconf = 
+      try Xml.get_subels ~path:["muc"] ~tag:"room" Config.config with _ -> [] in
+
+      List.iter 
+	 (fun r ->
+	     let mynick = try Xml.get_attr_s r "nick" with _ -> default_mynick
+	     and roomname = Xml.get_attr_s r "jid"
+	     and lang = try Xml.get_attr_s r "lang" with _ -> "ru" in
+		groupchats:= GroupchatMap.add roomname 
+		   {mynick = mynick;
+		    nicks = Nicks.empty;
+		    lang = lang} !groupchats;
+		Hooks.register_handle (Hooks.From (roomname, dispatch))
+	 ) rconf;
+      Hooks.register_handle (OnStart on_start)
+ 

@@ -1,20 +1,36 @@
-<crinkle>
+<sulci>
  <jabber>
   <server>jabber.ru</server>
   <port>5222</port>
-  <user>xxxx</user>
-  <resource>xxxx</resource>
-  <password>xxxxxxxxxx</password>
+  <user>sxxxx</user>
+  <resource>Ocaml</resource>
+  <password>secret</password>
  </jabber>
 
+ <lang dir="./lang"/>
+
+ <acl jid='ermine@jabber.ru' class='admin'/>
+ 
  <muc>
-  <room nick="sulci" jid="devel@conference.jabber.ru" lang="ru"/>
-<!--  <room nick="sulci" jid="ejabberd@conference.jabber.ru lang="en"/> -->
+  <!--  <room nick="sulci-test" jid="z@conference.jabber.ru" lang="ru"/> -->
+  <room nick="sulci" jid="ejabberd@conference.jabber.ru" lang="en"/>
+
+  <chatlogs>./chatlogs</chatlogs>
  </muc>
  <debug>
   <logfile>log.log</logfile>
  </debug>
  <google>
-  <key>xxxxxxxxxxxxxxxxxxxxxxxxxx</key>
+  <key>00000000000000000000000000000</key>
  </google>
-</crinkle>
+ <plugins>
+  <vocabulary name="vocabulary"/>
+  <mueller file="/path/to/Mueller24.koi" hashext=".hash" />
+  <markov db="markov.db"/>
+  <!--
+    <globalstats>
+     <store serverlist='servers.list' result='servers.res' interval='3600'/>
+    </globalstats>
+  -->
+ </plugins>
+</sulci>

@@ -1,10 +1,11 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
 (*                                                                          *)
 
 open Xml
-open Types
+open Common
 open Http_client
+open Pcre
 
 (* http://weather.noaa.gov/pub/data/observations/metar/decoded/ULLI.TXT *)
 
@@ -68,22 +69,19 @@ let get_weather code =
 	 "%s - %s / %s, %sC/%sF, humidity %s wind: %s visibility: %s"
 	 place time weather c f hum wind vis
 
-let rex = Str.regexp "wz \\([a-zA-Z][a-zA-Z][a-zA-Z][a-zA-Z]\\)"
+let r = Pcre.regexp "[a-zA-Z]{4}"
 
-let weather xml out bot mynick lang =
-   let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-      if Str.string_match rex body 0 then 
-	 let code = Str.matched_group 1 body in
-	 let proc (xml, out) =
-	    let response = 
-	       try get_weather (String.uppercase code) with _ -> 
-		  "Undefined error" in
-	       out (make_msg xml response)
-	 in
-	    ignore (Thread.create proc (xml, out))
+let weather text xml out =
+   if pmatch ~rex:r text then
+      let proc () =
+	 let response = 
+	    try get_weather (String.uppercase text) with _ -> 
+	       "Undefined error" in
+	    out (make_msg xml response)
+      in
+	 ignore (Thread.create proc ())
+   else
+      out (make_msg xml "гы! Попробуй еще разок, сина!")
 
 let _ =
-   Muc.register_cmd "wz" weather;
-   Muc.register_help "wz"
-"wz code
-   Вывод погоды по коду NOAA"
+   Hooks.register_handle (Hooks.Command ("wz", weather))

@@ -1,11 +1,11 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                    *)
 (*                                                                          *)
 
 open Xml
 open Xmpp
 open Http_client
-open Types
+open Common
 
 (* 
    doGoogleSearch method
@@ -21,7 +21,7 @@ open Types
    "oe"         (output encoding). 
 *)
 
-let google_key = trim (Xml.get_cdata Config.conf ~path:["google"; "key"])
+let google_key = trim (Xml.get_cdata Config.config ~path:["google"; "key"])
 
 let make_query start maxResults query =
    let filter = "true" in
@@ -66,24 +66,22 @@ let make_query start maxResults query =
 				      [Xmlcdata "latin1"])
 			 ])])])
 
-let html_ent = Str.regexp "&amp;#\\([0-9]+\\);"
-let html = Str.regexp "&lt;/?\\(b\\|i\\|p\\|br\\)&gt;"
+let html_ent = Pcre.regexp "&amp;#([0-9]+);"
+let html = Pcre.regexp "&lt;/?(b|i|p|br)&gt;"
+let amp = Pcre.regexp "&amp;(lt|gt|quot|apos|amp);"
 
 let strip_html text =
-   let r1 = Str.global_replace html "" text in
+   let r1 = Pcre.qreplace ~rex:html ~templ:"" text in
    let r2 = 
-      Str.global_substitute html_ent
-	 (function x ->
-	     let p = Str.matched_group 1 r1 in
-	     let newstr = String.create 1 in
-		newstr.[0] <- Char.chr (int_of_string p);
-		newstr) r1 in
-   let r3 = Str.global_replace (Str.regexp "&amp;lt;") "&lt;" r2 in
-   let r4 = Str.global_replace (Str.regexp "&amp;gt;") "&gt;" r3 in
-   let r5 = Str.global_replace (Str.regexp "&amp;quot;") "&quot;" r4 in
-   let r6 = Str.global_replace (Str.regexp "&amp;apos;") "&apos;" r5 in
-   let r7 = Str.global_replace (Str.regexp "&amp;amp;") "&amp;" r6 in
-      r7
+      Pcre.substitute_substrings ~rex:html_ent
+	 ~subst:(fun x ->
+		    let p = Pcre.get_substring x 1 in
+		    let newstr = String.create 1 in
+		       newstr.[0] <- Char.chr (int_of_string p);
+		       newstr) r1 in
+   let r3 = Pcre.substitute_substrings ~rex:amp
+	       ~subst:(fun x -> "&" ^ (Pcre.get_substring x 1) ^ ";") r2
+   in r3
 
 let message result =
    let text item tag = strip_html (get_cdata item ~path:[tag]) in
@@ -93,12 +91,15 @@ let message result =
 	 let item = List.hd lst in
 	 let chunked = match item with
 	    | Xmlelement (_, _, _) ->
-		 Printf.sprintf "%s\n%s\n%s\n%s - %s"
-		     (text item "title")
-		     (text item "summary")
-		     (text item "snippet")
-		     (get_cdata item ~path:["URL"])
-		     (text item "cachedSize");
+		 Printf.sprintf "%s%s%s%s - %s"
+		    (let t = text item "title" in
+			if t = "" then "" else t ^ "\n")
+		    (let t = text item "summary" in
+			if t = "" then "" else t ^ "\n")
+		    (let t = text item "snippet" in
+			if t = "" then "" else t ^ "\n")
+		    (get_cdata item ~path:["URL"])
+		    (text item "cachedSize");
 	    | _ -> ""
 	 in
 	    cycle (List.tl lst) (acc ^ chunked)
@@ -161,52 +162,48 @@ let google_spell request =
       with HttpClientError err  -> err
 	 | _ -> "Error getting data"
 
-let rex = Str.regexp "google +\\(.+\\)"
-let rex_adv = Str.regexp "google_adv +\\([0-9]\\) +\\([0-9]+\\) +\\([^\n]+\\)"
-let rex_gspell = Str.regexp "gspell +\\([^\n]+\\)"
+let google text xml out =
+   if text = "" then
+      out (make_msg xml "Гм?")
+   else
+      let proc () =
+	 let response = 
+	    let r = google_search "0" "1" text in
+	       if r = "" then "Не нашёл :(" else r 
+	 in
+	    out (make_msg xml response)
+      in
+	 ignore (Thread.create proc ())
 
-let google xml out bot mynick lang =
-   let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-      if Str.string_match rex body 0 then 
-	 let request = Str.matched_group 1 body in
-	 let proc (xml, out) =
-	    let response = 
-	       let r = google_search "0" "1"  request in
-		  if r = "" then "Не нашёл :(" else r 
-	    in
-	       out (make_msg xml response)
+let rx = Pcre.regexp "([0-9]+) ([1-9]{1}) (.+)"
+let google_adv text xml out =
+   try
+      let r = Pcre.exec ~rex:rx text in
+      let start = Pcre.get_substring r 1 in
+      let limit = Pcre.get_substring r 2 in
+      let request = Pcre.get_substring r 3 in
+      let proc () =
+	 let response = 
+	    let r = google_search start limit request in
+	       if r = "" then "Не нашёл :(" else r
 	 in
-	    ignore (Thread.create proc (xml, out))
+	    out (make_msg xml response)
+      in
+	 ignore (Thread.create proc ())
+   with Not_found ->
+      out (make_msg xml "гы! Не угадал синтаксис.")
 
-      else if Str.string_match rex_adv body 0 then
-	 let start = Str.matched_group 1 body in
-	 let items = 
-	    let z = Str.matched_group 2 body in
-	       if int_of_string z > 10 then "10" else z in
-	 let request = Str.matched_group 3 body in
-	 let proc (xml, out) =
-	    let response = 
-	       let r = google_search start items request in
-		  if r = "" then "Не нашёл :(" else r
-	    in
-	       out (make_msg xml response)
-	 in
-	    ignore (Thread.create proc (xml, out))
-      else if Str.string_match rex_gspell body 0 then
-	 let request = Str.matched_group 1 body in
-	 let proc (xml, out) =
-	    let response = google_spell request in
-	       out (make_msg xml response)
-	 in
-	    ignore (Thread.create proc (xml, out))
+let gspell text xml out =
+   if text = "" then
+      out (make_msg xml "Ась?")
+   else
+      let proc () =
+	 let response = google_spell text in
+	    out (make_msg xml response)
+      in
+	 ignore (Thread.create proc ())
 
 let _ =
-   Muc.register_cmd "google" google;
-   Muc.register_help "google" 
-"google поисковое выражение
-   Поиск в Google";
-   Muc.register_cmd "gspell" google;
-   Muc.register_help "gspell"
-"gspell проверяемое выражение
-   Проверка орфорграфии с помощью Google Spelling";
-
+   Hooks.register_handle (Hooks.Command ("google", google));
+   Hooks.register_handle (Hooks.Command ("google_adv", google_adv));
+   Hooks.register_handle (Hooks.Command ("gspell", gspell))

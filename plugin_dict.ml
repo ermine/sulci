@@ -1,8 +1,9 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
 (*                                                                          *)
 
-open Types
+open Pcre
+open Common
 
 exception DictError of string
 
@@ -15,14 +16,15 @@ let connect server port =
 
 exception NoStatus
 
-let status = Str.regexp "\\([0-9][0-9][0-9]\\) \\(.*\\)"
+let status = regexp "([0-9][0-9][0-9]) (.*)"
 
 let get_status in_dict =
    let line = input_line in_dict in
-      if Str.string_match status line 0 then
-	 Str.matched_group 1 line, Str.matched_group 2 line
-      else
-	 raise (DictError "Unable to connect")
+   try
+      let r = Pcre.exec ~rex:status line in
+	 Pcre.get_substring r 1, Pcre.get_substring r 2
+   with Not_found ->
+      raise (DictError "Unable to connect")
 
 let read_text in_dict =
    let rec cycle acc =
@@ -34,14 +36,16 @@ let read_text in_dict =
    in
       cycle ""
 
+let cmdlist = ["-list"]
+
 let process_cmd_dict cmd =
-   if List.mem cmd ["list"] then
+   if List.mem cmd cmdlist then
       let in_dict, out_dict = connect "localhost" 2628 in
       let reply = 
 	 (match get_status in_dict with
 	     | "220", _ ->
 		  (match cmd with
-		      | "list" ->
+		      | "-list" ->
 			   output_string out_dict "SHOW DB\r\n";
 		  );
 		  flush out_dict;
@@ -100,62 +104,49 @@ let process_dict db word =
       close_in in_dict;
       reply
 
-let rex_cmd = Str.regexp "dict +-\\([a-z]+\\)[\n\r ]*$"
-let rex1 = Str.regexp "dict +\\([^ \n\t\r]+\\)[\n\r ]*$"
-let rex2 = Str.regexp "dict +\\(!\\|\\*\\|[a-z]+\\) +\\([a-z]+\\)"
+let rex1 = Pcre.regexp "([^\\s]+)[\\s]*$"
+let rex2 = regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
 
-let dict xml out bot mynick lang =
-   let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-      if Str.string_match rex_cmd body 0 then
-	 let cmd = Str.matched_group 1 body in
-	 let proc x =
+let dict text xml out =
+   if text = "" then
+      out (make_msg xml "гы! Инвалид синтаксис.")
+   else
+      if String.get text 0 = '-' then
+	 let proc () =
 	    let response = try
-	       process_cmd_dict cmd
+	       process_cmd_dict text
 	    with DictError error -> error
 	    in 
 	       out (make_msg xml (Xml.crypt response))
 	 in
-	    ignore (Thread.create proc xml)
-      else if Str.string_match rex2 body 0 then
-	 let db = Str.matched_group 1 body in
-	 let word = Str.matched_group 2 body in
-	 let proc x =
-	    let response = try
-	       process_dict db word
-	    with (DictError error) -> error
+	    ignore (Thread.create proc ())
+      else 
+	 try 
+	    let r = Pcre.exec ~rex:rex2 text in
+	    let db = Pcre.get_substring r 1 in
+	    let word = Pcre.get_substring r 2 in
+	    let proc () =
+	       let response = try
+		  process_dict db word
+	       with (DictError error) -> error
+	       in
+		  out (make_msg xml (Xml.crypt response))
 	    in
-	       out (make_msg xml (Xml.crypt response))
-	 in
-	    ignore (Thread.create proc xml)
-      else if Str.string_match rex1 body 0 then
-	 (* let db = Str.matched_group 1 body in *)
-	 let word = Str.matched_group 1 body in
-	 let proc x =
-	    let response = try	    
-	       process_dict "*" word
-	    with (DictError error) -> error
-	    in
-	       out (make_msg xml (Xml.crypt response))
-	 in
-	    ignore (Thread.create proc xml)
-(*
-let start () =
-   let in_dictd, out_dictd = connect "localhost" 2628 in
-   let line = input_line in_dictd in
-      if get_status line = ("220", _) then
-	 ignore (Thread.create loop ())
-*)
+	       ignore (Thread.create proc ())
+	 with Not_found ->
+	    try
+	       let r = Pcre.exec ~rex:rex1 text in
+	       let word = Pcre.get_substring r 1 in
+	       let proc () =
+		  let response = try	    
+		     process_dict "*" word
+		  with (DictError error) -> error
+		  in
+		     out (make_msg xml (Xml.crypt response))
+	       in
+		  ignore (Thread.create proc ())
+	    with Not_found ->
+	       out (make_msg xml "гы, сина, ЛОЛ!")
 
 let _ =
-   Muc.register_cmd "dict" dict;
-   Muc.register_help "dict"
-"dict слово
-   Поиск определений слова в словарях
-dict -list
-   Список словарей
-dict имя_базы слово
-dict имя_базы \"словосочетание\"
-вшсе ! слово
-   Поиск слова в словарях и вывод только первого найденного определения
-dict * слово
-   Поиск слова в словарях и вывод всех найденных определений"
+   Hooks.register_handle (Hooks.Command ("dict", dict))

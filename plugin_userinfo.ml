@@ -1,107 +1,152 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
 (*                                                                          *)
 
 open Xml
 open Xmpp
-open Types
+open Common
 open Unix
+open Hooks
 
-let rex = Str.regexp "\\([a-z]+\\) +\\(.+\\)"
+let error xml =
+   try
+      get_error_semantic xml
+   with _ -> Lang.get_msg ~xml "plugin_userinfo_error" []
 
-let reply_version xml asker nick mynick =
-   let client = get_cdata xml ~path:["query"; "name"] in
-   let version = get_cdata xml ~path:["query"; "version"] in
-   let os = get_cdata xml ~path:["query"; "os"] in
+let groupchat xml out text xmlns myself common =
+   let from = get_attr_s xml "from" in
+   let asker = get_resource from in
+   let nick = if text = "" then asker else text in
+   let mynick = 
+      let r = GroupchatMap.find (get_bare_jid from) !groupchats in r.mynick in
       if nick = mynick then
-	 Printf.sprintf "%s: %s %s - %s" asker client version os
+	 out (make_msg xml myself)
       else
-	 Printf.sprintf "%s: у %s клиент %s %s - %s"
-	    asker
-	    (if asker = nick then "тебя" else nick)
-	    client version os
+	 let to_ = 
+	    if text = "" then from 
+	    else get_bare_jid from ^ "/" ^ text in
+	 let proc x o =
+	    match get_attr_s x "type" with
+	       | "result" ->
+		    o (make_msg xml (common x asker nick))
+	       | "error" ->	
+		    o (make_msg xml (error x))
+	       | _ -> ()
+	 in
+	 let id = Hooks.new_id () in
+	    Hooks.register_handle (Hooks.Id (id, proc));
+	    out (Iq.iq_query xmlns to_ id)
 
-let reply_idle xml asker nick mynick =
-   let seconds = get_attr_s xml ~path:["query"] "seconds" in
-      if nick = mynick then
-	 "я вообще не молчу!"
-      else
-	 let idle = 
-	    let hours, mins, secs = 
-	       Strftime.seconds_to_string (int_of_string seconds) in
-	       (if hours = 0 then "" else (string_of_int hours) ^ " ч. ") ^
-	       (if mins = 0 then "" else (string_of_int mins) ^ " мин. ") ^
-	       (string_of_int secs) ^ " сек." in
-	    Printf.sprintf "%s: %s молчит %s"
-	       asker nick idle
-	    
-let reply_time xml asker nick mynick =
-   let utc = get_cdata xml ~path:["query"; "utc"] in
-   let tz = get_cdata xml ~path:["query"; "tz"] in
-   let display = get_cdata xml ~path:["query"; "display"] in
-      if mynick = nick then
-	 Printf.sprintf "у меня в компьютере часы показывают %s" display
-      else 
-	 Printf.sprintf "%s: На часах у %s показывается %s" 
-	    asker (if asker = nick then "тебя" else nick) display
-				   
-let req = ["version", "jabber:iq:version", reply_version;
-	   "idle", "jabber:iq:last", reply_idle;
-	   "time", "jabber:iq:time", reply_time]
+let version text xml out =
+   match safe_get_attr_s xml "type" with
+      | "groupchat" ->
+	   let myself = 
+	      Printf.sprintf "Sulci %s - %s" Version.version Iq.os in
+	   let common x asker nick =
+	      let client = get_cdata x ~path:["query"; "name"] in
+	      let version = get_cdata x ~path:["query"; "version"] in
+	      let os = get_cdata x ~path:["query"; "os"] in
+		 if asker = nick then
+		    Lang.get_msg ~xml "plugin_userinfo_version_you"
+		       [client; version; os]
+		 else
+		    Lang.get_msg ~xml "plugin_userinfo_version_somebody"
+		       [nick; client; version; os]
+	   in
+	      groupchat xml out text "jabber:iq:version" myself common
+      | _ ->
+	   if text <> "" then 
+	      out (make_msg xml (Lang.get_msg ~xml 
+				    "plugin_userinfo_chat_syntax_error" 
+				    [text]));
+	   let proc x o =
+	      match get_attr_s x "type" with
+		 | "result" ->
+		      let client = get_cdata x ~path:["query"; "name"] in
+		      let version = get_cdata x ~path:["query"; "version"] in
+		      let os = get_cdata x ~path:["query"; "os"] in
+			 o (make_msg xml
+			       (Lang.get_msg ~xml 
+				   "plugin_userinfo_version_you"
+				   [client; version; os]))
+		 | "error" ->
+		      o (make_msg xml (error x))
+		 | _ -> ()
+	   in
+	   let id = Hooks.new_id () in
+	      Hooks.register_handle (Hooks.Id (id, proc));
+	      out (Iq.iq_query "jabber:iq:version" (get_attr_s xml "from") id)
 
-let userinfo xml out bot mynick lang =
-   let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-   let from = Xml.get_attr_s xml "from" in
-      if safe_get_attr_s xml "type" = "groupchat" && 
-	 Str.string_match rex body 0 then
-	 let request = Str.matched_group 1 body in
-	    try (
-	       let (_, xmlns, reply_proc) =
-		  List.find (function (key, xmlns, proc) -> key = request) req 
-	       in
-	       let to_ = (try 
-			     let n = Str.matched_group 2 body in
-				get_bare_jid from ^ "/" ^ n
-			  with _ -> from) in
-	       let proc x =
-		  let asker = get_resource from in
-		  let nick = get_resource (to_) in
-		  let reply = match get_attr_s x "type" with
-		     | "result" ->
-			  reply_proc x asker nick mynick
-		     | "error" ->
-			  let err_text =  
-			     try 
-				get_cdata ~path:["error"; "text"] x 
-			     with _ -> "not found" 
-			  in
-			     asker ^ ": " ^ err_text ^ " [" ^ nick ^ "]"
-		  in
-		     out (Xmlelement ("message", ["to", get_bare_jid to_; 
-						  "type", "groupchat"],
-				      [make_simple_cdata "body" reply]))	
-	       in
-	       let id = new_id () in
-		  Event.sync (Event.send bot (RegisterHandle (Id (id, proc))));
-		  out (Iq.iq_query xmlns to_ id)
-	    ) with _ -> ()
-   
-(*
-let greeting xml out bot mynick lang =
-   let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-   let from = Xml.get_attr_s xml "from" in
-      if safe_get_attr_s xml "type" = "groupchat" && 
-*)  
+let idle text xml out =
+   match safe_get_attr_s xml "type" with
+      | "groupchat" ->
+	   let myself = Lang.get_msg ~xml "plugin_userinfo_idle_me" [] in
+	   let common x asker nick =
+	      let seconds = get_attr_s x ~path:["query"] "seconds" in
+	      let idle = seconds_to_text seconds in
+		 if asker = nick then 
+		    Lang.get_msg ~xml "plugin_userinfo_idle_you" [idle]
+		 else 
+		    Lang.get_msg ~xml "plugin_userinfo_idle_somebody"
+		       [nick; idle]
+	   in
+	      groupchat xml out text "jabber:iq:last" myself common
+      | _ ->
+	   if text <> "" then 
+	      out (make_msg xml (Lang.get_msg ~xml 
+				    "plugin_userinfo_chat_syntax_error"
+				    [text]));
+	   let proc x o =
+	      match get_attr_s x "type" with
+		 | "result" ->
+		      let seconds = get_attr_s x ~path:["query"] "seconds" in
+		      let idle = seconds_to_text seconds in
+			 o (make_msg xml 
+			       (Lang.get_msg ~xml "plugin_userinfo_idle_you"
+				   [idle]))
+		 | "error" ->
+		      o (make_msg xml (error x))
+		 | _ -> ()
+	   in
+	   let id = Hooks.new_id () in
+	      Hooks.register_handle (Hooks.Id (id, proc));
+	      out (Iq.iq_query "jabber:iq:last" (get_attr_s xml "from") id)
+		 
+let time text xml out =
+   match safe_get_attr_s xml "type" with
+      | "groupchat" ->
+	   let myself = Lang.get_msg ~xml "plugin_userinfo_time_me"
+	      [Strftime.strftime "%H:%M"] in
+	   let common x asker nick =
+	      let display = get_cdata x ~path:["query"; "display"] in
+		 if asker = nick then
+		    Lang.get_msg ~xml "plugin_userinfo_time_you" [display]
+		 else
+		    Lang.get_msg ~xml "plugin_userinfo_time_somebody"
+		       [nick; display]
+	   in
+	      groupchat xml out text "jabber:iq:time" myself common
+      | _ ->
+	   if text <> "" then 
+	      out (make_msg xml (Lang.get_msg ~xml 
+				    "plugin_userinfo_chat_syntax_error"
+				    [text]));
+	   let proc x o =
+	      match get_attr_s x "type" with
+		 | "result" ->
+		      let display = get_cdata x ~path:["query"; "display"] in
+			 o (make_msg xml
+			       (Lang.get_msg ~xml "plugin_userinfo_time_you"
+				   [display]))
+		 | "error" ->
+		      o (make_msg xml (error x))
+		 | _ -> ()
+	   in
+	   let id = Hooks.new_id () in
+	      Hooks.register_handle (Hooks.Id (id, proc));
+	      out (Iq.iq_query "jabber:iq:time" (get_attr_s xml "from") id)
 
 let _ =
-   Muc.register_cmd "version" userinfo;
-   Muc.register_help "version"
-"version nick
-   Вывод информации о клиенте юзера";
-   Muc.register_cmd "idle" userinfo;
-   Muc.register_help "idle"
-"idle nick";
-   Muc.register_cmd "time" userinfo;
-   Muc.register_help "time"
-"time nick
-   Вывод информации о текущих показаниях часов на компьютере юзера"
+   register_handle (Command ("version", version));
+   register_handle (Command ("idle", idle));
+   register_handle (Command ("time", time));

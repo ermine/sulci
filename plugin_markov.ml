@@ -1,14 +1,13 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru                    *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                    *)
 (*                                                                          *)
 
 open Xml
 open Xmpp
-open Types
+open Common
 open Sqlite
 open Sqlite_util
-open Muc
-open Netstring_str
+open Hooks
 
 let _ = Random.self_init ()
 
@@ -33,25 +32,27 @@ let add words =
 	 | [] ->
 	      let cond = ("word1=" ^ escape w1 ^ " AND word2=''") in 
 		 if result_bool db
-		    ("SELECT counter FROM words WHERE " ^ cond) then begin
-		       Unix.sleep 1;
-		       exec db 
-			  ("UPDATE words SET counter=counter+1 WHERE " ^ cond)
-		    end
-		 else
-		    exec db ("INSERT INTO words VALUES(" ^ 
-			     escape w1 ^ ",'',1)");
-	 | w2 :: tail ->
-	      let cond = ("word1=" ^ escape w1 ^ " AND word2=" ^ 
-			  escape w2) in
-		 if result_bool db
 		    ("SELECT counter FROM words WHERE " ^ cond) then
 		       exec db 
 			  ("UPDATE words SET counter=counter+1 WHERE " ^ cond)
 		 else
 		    exec db ("INSERT INTO words VALUES(" ^ 
-			     escape w1 ^ "," ^ escape w2 ^ ",1)");
+			     escape w1 ^ ",'',1)");
+	 | w2 :: tail ->
+	      if w1 = w2 then
 		 cycle w2 tail
+	      else begin
+		 let cond = ("word1=" ^ escape w1 ^ " AND word2=" ^ 
+				escape w2) in
+		    if result_bool db
+		       ("SELECT counter FROM words WHERE " ^ cond) then
+			  exec db 
+			    ("UPDATE words SET counter=counter+1 WHERE " ^ cond)
+		    else
+		       exec db ("INSERT INTO words VALUES(" ^ 
+				   escape w1 ^ "," ^ escape w2 ^ ",1)");
+		    cycle w2 tail
+	      end
    in
       cycle "" words
 
@@ -74,98 +75,151 @@ let seek (w1:string) =
 		  end
 		  else
 		     cycle (lsum - int_of_string data.(2))
-	    with Sqlite_done -> w1, ""
+	    with Sqlite_done -> 
+	       w1, ""
 	 in
-	    cycle  (Random.int sum)
+	    cycle (Random.int sum + 1)
 
 let generate word =
-   let rec cycle w =
+   let rec cycle w i =
       let w1, w2 = seek w in
 	 if w2 = "" then ""
 	 else
-	    w2 ^ " " ^ cycle w2
-   in cycle word
+	    w2 ^ " " ^ cycle w2 (i+1)
+   in cycle word 0
 
-let nick_rex = regexp "\\([^:]+\\)\\(:[ \r\n\t]*\\)"
+let bad_words_here words =
+   List.exists (function word -> List.mem word bad_words ) words
 
-(* let r = regexp "[ \n\r]*\\([^\\.\\?\\!!]+[\\.\\!\\?]\п\)" *)
-let me = regexp "/me"
-(* "\\([.?!][]\"')}]*\\($\\|\t\\)[ \t\r\n]*" *)
-(* "[.?!][]\"')}]*\\($\\|\t\\| \\)[ \t\n]*" *)
-
-let markov_chain xml out bot mynick lang =
-   let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-   let from = get_attr_s xml "from" in
-   let nick, text =
-      match string_match ~groups:2 nick_rex body 0 with
-	 | None ->
-	      "", body
-	 | Some r ->
-	      let nick = matched_group r 1 body in
-		 if nick = mynick then
-		    nick, string_after body (group_end r 2)
-		 else
-		    let room = get_bare_jid from in
-		    let nmap = PMap.find room !participants in
-		       if Nicks.mem nick nmap then
-			  nick, 
-			  string_after body (group_end r 2)
-		       else
-			  "", body
-   in
-      if text <> "" then
-	 let words = split (regexp "[ \t\n]+") text in
-Printf.printf "Orig: %s\n" text;
-List.iter (function w -> Printf.printf "%s " w) words;
-print_newline();
-
-	    if List.exists (function word ->
-			       List.mem word bad_words
-			   ) words then
-	       let author = get_resource from in
-	       let room = get_bare_jid from in
-	       let id = new_id () in
-		  out (Muc.kick id room author "фильтруем базар");
-		  let proc x = 
-		     match get_attr_s x "type" with
-			| "error" ->
-			     let err_text =  
-				try 
-				   get_cdata ~path:["error"; "text"] x 
-				with _ -> "Хм... наверное модератор?"
-			     in
-				out (make_msg xml (author ^ ": " ^ err_text))
-			| _ -> ()
-
-		  in
-		     Event.sync 
-			(Event.send bot (RegisterHandle (Id (id, proc))))
-	    else begin
-	       add words;
-
-	       if safe_get_attr_s xml "type" = "groupchat" then
-		  if nick = mynick then
-		     let room = get_bare_jid from in
-		     let asker = get_resource from in
-		     let g = generate "" in
-		     let reply =
-			match string_match me g 0 with
-			   | Some r -> g
-			   | None ->
-				asker ^ ": " ^ g
-		     in
-			out (outmsg room reply)
-		  else
-		     ()
+let split_nick_body room_env body =
+   let rec cycle pos =
+      try
+	 let colon = String.rindex_from body pos ':' in
+	    if String.length body > colon+1 then
+	       if body.[colon+1] = ' ' then 
+		  let nick = String.sub body 0 colon in
+		     if Nicks.mem nick room_env.nicks then
+			nick, string_after body (colon+2)
+		     else
+			cycle (colon-1)
 	       else
-		  out (make_msg xml (generate ""))
-	    end
+		  cycle (colon-1)
+	    else
+	       let nick = String.sub body 0 colon in
+		  if Nicks.mem nick room_env.nicks then
+		     nick, ""
+		  else
+		     cycle (colon-1)
+      with Not_found ->
+	 "", body
+   in
+      if Nicks.mem body room_env.nicks then
+	 body, ""
+      else
+	 let rn, rt = cycle (String.length body - 1) in
+	    if rn = "" then
+	       if Nicks.mem rt room_env.nicks then
+		  rt, ""
+	       else
+		  "", rt
+	    else
+	       rn, rt
 
-let markov_count xml out bot mynick lang =
+let split_words body =
+   Pcre.split ~pat:"[ \t\n]+" body
+
+let process_groupchat body xml out =
+   let from = get_attr_s xml "from" in
+   let room = get_bare_jid from in
+   let author = get_resource from in
+   let room_env = GroupchatMap.find room !groupchats in
+      match safe_get_attr_s xml "type" with
+	 | "groupchat" ->
+	      if author <> room_env.mynick then
+		 let nick, text = split_nick_body room_env body in
+		 let words = split_words text in
+		    if words = [] then
+		       out (make_msg xml "?")
+		    else begin
+		       if bad_words_here words then	       
+			  let id = Hooks.new_id () in
+			     out (Muc.kick id room author 
+				     (Lang.get_msg ~xml
+					 "plugin_markov_kick_reason" []));
+			     let proc x o = 
+				match get_attr_s x "type" with
+				   | "error" ->
+					let err_text = try
+					   get_error_semantic x
+					with Not_found -> 
+					   Lang.get_msg ~xml 
+					      "plugin_markov_kick_error" []
+					in
+					   out (make_msg xml (err_text))
+				   | _ -> ()
+			     in
+				Hooks.register_handle (Hooks.Id (id, proc))
+		       else
+			  add words;
+		       if nick = room_env.mynick then
+			  let chain = generate "" in
+			     out (make_msg xml chain)
+		       else
+			  ()
+		    end
+	      else
+		 ()
+	 | _ ->
+	      let words = split_words body in
+		 if bad_words_here words then	       
+		    let id = Hooks.new_id () in
+		       out (Muc.kick id room author 
+			       (Lang.get_msg ~xml 
+				   "plugin_markov_kick_reason" []));
+		       let proc x o = 
+			  match get_attr_s x "type" with
+			     | "error" ->
+				  let err_text = try
+				     get_error_semantic x
+				  with Not_found -> 
+				     Lang.get_msg ~xml
+					"plugin_markov_kick_error" []
+				  in
+				     out (make_msg xml err_text)
+			     | _ -> ()
+		       in
+			  Hooks.register_handle (Hooks.Id (id, proc))
+		 else begin
+		    add words;
+		    let chain = generate "" in
+		       out (make_msg xml chain)
+		 end
+
+let markov_chain xml out =
+   if not (mem_xml xml ["message"] "subject" []) then
+      let body = try skip_ws (get_cdata xml ~path:["body"]) with _ -> "" in
+	 if body <> "" then
+	    (* reset idle *)
+	    let from = get_attr_s xml "from" in
+	    if GroupchatMap.mem (get_bare_jid from) !groupchats then
+	       process_groupchat body xml out
+	    else
+	       let words = split_words body in
+		  if bad_words_here words then
+		     out (make_msg xml 
+			     (Lang.get_msg ~xml 
+				 "plugin_markov_phrase_is_ignored" []))
+		  else begin
+		     add words;
+		     let chain = generate "" in
+			out (make_msg xml chain)
+		  end
+
+let markov_count text xml out =
    let result = result_integer db "SELECT COUNT(*) FROM words" in
       out (make_msg xml (string_of_int result))
 
-let markov_top xml out bot mynick lang =
+let markov_top text xml out =
    let vm = compile_simple db 
 	       "SELECT word1, word2, counter FROM words WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10"
    in
@@ -180,7 +234,7 @@ let markov_top xml out bot mynick lang =
    let top = cycle () in
       out (make_msg xml top)
 (*
-let markov_turn_off xml out bot mynick lang =
+let markov_turn_off xml out =
    let from = get_attr_s xml "from" in
    let nick = get_resourse from in
       if nick = "ermine" then begin
@@ -190,7 +244,7 @@ let markov_turn_off xml out bot mynick lang =
       else
 	 out (make_msg xml ":-P")
 
-let markov_turn_on xml out bot mynick lang =
+let markov_turn_on xml out bot =
    let from = get_attr_s xml "from" in
    let nick = get_resourse from in
       if nick = "ermine" then begin
@@ -201,19 +255,19 @@ let markov_turn_on xml out bot mynick lang =
 (*
 let sql_rex = "!!!sql +\\(.+\\)$"
 
-let markov_sql xml oyt bot mynick lang =
-   let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
-      if string_match sql_rex body 0 then
-	 let sql = matched_group 1 body in
-	 let vm = compile_simple db sql in
-	 let rec cycle () in
-	 let data = step_simple vm in
+let markov_sql xml oyt =
+  let body = try Xml.get_cdata xml ~path:["body"] with _ -> "" in
+  if string_match sql_rex body 0 then
+  let sql = matched_group 1 body in
+  let vm = compile_simple db sql in
+  let rec cycle () in
+  let data = step_simple vm in
 *)	    
-	 
+
 let _ =
-   Muc.register_catch markov_chain;
-   Muc.register_cmd "!!!count" markov_count;
-   Muc.register_cmd "!!!top" markov_top;
+   register_handle (Catch markov_chain);
+   register_handle (Command ("!!!count", markov_count));
+   register_handle (Command ("!!!top", markov_top))
 (*
    Muc.register_cmd "замолчи" makrov_turn_off;
    Muc.register_cmd "говори" makrov_turn_on
