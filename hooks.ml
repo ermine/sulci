@@ -124,6 +124,8 @@ let process_message xml out =
 				    raise Not_found
 				 else
 				    List.iter  (fun f -> f xml out) !catchset
+			else
+			   raise Not_found
 		  with Not_found ->      
 		     try let word = try
 			String.sub body 0 (String.index body ' ')

@@ -79,7 +79,7 @@ let ping text xml (out:element -> unit) =
 		 in
 		 let id = Hooks.new_id () in
 		    Hooks.register_handle (Hooks.Id (id, proc));
-		    out (iq_query ~id ~from "jabber:iq:version")
+		    out (iq_query ~id ~to_:from "jabber:iq:version")
 		  
 let _ =
    register_handle (Command ("ping", ping))
