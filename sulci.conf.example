@@ -1,0 +1,20 @@
+<crinkle>
+ <jabber>
+  <server>jabber.ru</server>
+  <port>5222</port>
+  <user>xxxx</user>
+  <resource>xxxx</resource>
+  <password>xxxxxxxxxx</password>
+ </jabber>
+
+ <muc>
+  <room nick="sulci" jid="devel@conference.jabber.ru" lang="ru"/>
+<!--  <room nick="sulci" jid="ejabberd@conference.jabber.ru lang="en"/> -->
+ </muc>
+ <debug>
+  <logfile>log.log</logfile>
+ </debug>
+ <google>
+  <key>xxxxxxxxxxxxxxxxxxxxxxxxxx</key>
+ </google>
+</crinkle>
