@@ -31,3 +31,8 @@ plugin_roulette_next_time          Try again....
 plugin_vocabulary_invalid_suntax   hm?
 plugin_vocabulary_wrote            wrote.
 plugin_vocabulary_not_found        dunno
+plugin_misc_dns_invalid_syntax     what dns?
+plugin_misc_dns_not_resolved       cannot resolve
+plugin_globalstats_uptime_invalid_syntax Servername, dear sister!
+plugin_globalstats_uptime_error    Information is secret
+plugin_globalstats_stats_error     It seems that server does not support stats

@@ -32,3 +32,8 @@ plugin_roulette_next_time          Как-нить в следующий раз.
 plugin_vocabulary_invalid_suntax   ну?
 plugin_vocabulary_wrote            записал.
 plugin_vocabulary_not_found        хз
+plugin_misc_dns_invalid_syntax     ась?
+plugin_misc_dns_not_resolved       не резолвится
+plugin_globalstats_uptime_invalid_syntax Имя сервера, сестричка!
+plugin_globalstats_uptime_error    Информация засекречена
+plugin_globalstats_stats_error     Скорее всего, сервер не поддерживает stats

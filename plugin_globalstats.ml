@@ -62,7 +62,8 @@ let cmd_stats text xml out =
 			   (List.assoc "users/total" data)
 			   (List.assoc "users/online" data)))
 	 | "error" ->
-	      o (make_msg xml "sorry, there were problems, cannot fetch data")
+	      o (make_msg xml 
+		    (Lang.get_msg ~xml "plugin_globalstats_stats_error" []))
 	 | _ -> ()
    in
    let id = Hooks.new_id () in
@@ -77,7 +78,8 @@ let cmd_stats text xml out =
 
 let uptime text xml out =
    if text = "" then 
-      out (make_msg xml "Имя сервера, сестричка!")
+      out (make_msg xml 
+	      (Lang.get_msg ~xml "plugin_globalstats_uptime_invalid_syntax" []))
    else
       let proc x o =
 	 match get_attr_s x "type" with
@@ -88,7 +90,8 @@ let uptime text xml out =
 			  (Printf.sprintf "%s uptime is %s" text last))
 	    | "error" ->
 		 o (make_msg xml (try get_error_semantic x with Not_found ->
-				 "Информация засекречена"))
+				     Lang.get_msg ~xml 
+					"plugin_globalstats_uptime_error" []))
 	    | _ -> ()
       in
       let id = Hooks.new_id () in
