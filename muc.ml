@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
+(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
 (*                                                                          *)
 
 open Common
@@ -43,8 +43,9 @@ let open_log room =
 	       (Printf.sprintf 
 		   "<html><head>
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />
-<title>%s</title></head><body><h1>%s</h1><h2>%s</h2>\n"
-		   room room room);
+<title>%s - %0.2d/%0.2d/%d</title></head>\n
+<body><h1>%s - %0.2d/%0.2d/%d</h1>\n"
+		   room day month year room day month year);
 	    flush out_log;
 	    out_log
       else

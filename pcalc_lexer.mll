@@ -1,4 +1,8 @@
 {
+(*                                                                          *)
+(* (c) 2004-2005, Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(*                                                                          *)
+
    open Pcalc
 }
 
@@ -33,6 +37,7 @@ rule token = parse
    | "tanh"                    { TANH }
    | "ceil"                    { CEIL }
    | "floor"                   { FLOOR }
+   | "fact"                    { FACT }
    | "fib"                     { FIB }
    | "max_float"               { MAX_FLOAT }
    | ['p' 'P'] ['i' 'I']       { PI }
