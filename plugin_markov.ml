@@ -138,8 +138,10 @@ let process_groupchat body xml out =
 	      if author <> room_env.mynick then
 		 let nick, text = split_nick_body room_env body in
 		 let words = split_words text in
-		    if words = [] then
-		       out (make_msg xml "?")
+		    if words = [] then begin
+		       if nick = room_env.mynick then
+			  out (make_msg xml "?")
+		    end
 		    else begin
 		       if bad_words_here words then	       
 			  let id = Hooks.new_id () in
