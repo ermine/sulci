@@ -1,6 +1,6 @@
 muc_log_join                   %s has become available
 muc_log_leave                  %s has left
-muv_log_leave_reason           %s has left: %s
+muc_log_leave_reason           %s has left: %s
 muc_log_kick                   %s has been kicked
 muc_log_kick_reason            %s has been kicked: %s
 muc_log_ban                    %s has been banned
@@ -26,7 +26,7 @@ plugin_userinfo_idle_somebody      %s is silent %s seconds
 plugin_userinfo_chat_syntax_error  "%s" is ignored
 plugin_userinfo_time_me            it's %s here
 plugin_userinfo_time_you           It's %s on your watch
-plugin_userinfo_time_somebody      I's %s on %s's watch
+plugin_userinfo_time_somebody      It's %s on %s's watch
 plugin_roulette_syntax_error       Take a gun from father and try...
 plugin_roulette_kick_reason        Pops!
 plugin_roulette_bye                Adi?s!
