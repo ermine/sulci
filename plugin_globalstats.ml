@@ -1,6 +1,10 @@
-open Common
-open Xml
+(*                                                                          *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
+(*                                                                          *)
 
+open Common
+open Xmpp
+open Xml
 
 let stats_sum serverlist result out =
    let totals = ref 0 in
@@ -96,7 +100,7 @@ let uptime text xml out =
       in
       let id = Hooks.new_id () in
 	 Hooks.register_handle (Hooks.Id (id, proc));
-	 out (Iq.iq_query "jabber:iq:last" text id)
+	 out (iq_query ~to_:text ~id "jabber:iq:last")
 
 let _ =
    if Xml.mem_xml Config.config ["sulci"; "plugins"; "globalstats"] "store" [] 

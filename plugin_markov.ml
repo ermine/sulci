@@ -91,40 +91,6 @@ let generate word =
 let bad_words_here words =
    List.exists (function word -> List.mem word bad_words ) words
 
-let split_nick_body room_env body =
-   let rec cycle pos =
-      try
-	 let colon = String.rindex_from body pos ':' in
-	    if String.length body > colon+1 then
-	       if body.[colon+1] = ' ' then 
-		  let nick = String.sub body 0 colon in
-		     if Nicks.mem nick room_env.nicks then
-			nick, string_after body (colon+2)
-		     else
-			cycle (colon-1)
-	       else
-		  cycle (colon-1)
-	    else
-	       let nick = String.sub body 0 colon in
-		  if Nicks.mem nick room_env.nicks then
-		     nick, ""
-		  else
-		     cycle (colon-1)
-      with Not_found ->
-	 "", body
-   in
-      if Nicks.mem body room_env.nicks then
-	 body, ""
-      else
-	 let rn, rt = cycle (String.length body - 1) in
-	    if rn = "" then
-	       if Nicks.mem rt room_env.nicks then
-		  rt, ""
-	       else
-		  "", rt
-	    else
-	       rn, rt
-
 let split_words body =
    Pcre.split ~pat:"[ \t\n]+" body
 

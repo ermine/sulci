@@ -9,7 +9,7 @@ let skip_ws str =
       let rec cycle i =
 	 if i = String.length str then ""
 	 else
-	    if List.mem str.[i] [' '; '\n'; '\r'; '\t'] then cycle (i+1)
+	    if List.mem str.[i] [' '; '\n'; '\r'; '\t'] then cycle (succ i)
 	    else if i > 0 then string_after str i
 	    else str
       in
@@ -21,10 +21,10 @@ let rskip_ws str =
       let rec cycle i =
 	 if i = -1 then ""
 	 else
-	    if List.mem str.[i] [' '; '\n'; '\t'; '\r'] then cycle (i-1)
+	    if List.mem str.[i] [' '; '\n'; '\t'; '\r'] then cycle (pred i)
 	    else str
       in
-	 cycle (String.length str - 1)
+	 cycle (pred (String.length str))
 
 let trim str =
    let r1 = skip_ws str in

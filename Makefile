@@ -4,3 +4,5 @@ all:
 	${MAKE} -C ../misc
 	${MAKE} -f Makefile.sulci
 
+clean:
+	${MAKE} -f Makefile.sulci clean

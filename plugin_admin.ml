@@ -57,7 +57,10 @@ let join text xml out =
 let lang_update text xml out =
    let jid = get_bare_jid (get_attr_s xml "from") in
       if check_access jid "admin" then
-	 out (make_msg xml (Lang.update text))
+	 if text = "" then
+	    out (make_msg xml "What language?")
+	 else
+	    out (make_msg xml (Lang.update text))
 
 let _ =
    register_handle (Command ("msg", msg));

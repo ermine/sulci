@@ -7,6 +7,8 @@ open Xmpp
 open Common
 open Hooks
 
+let seconds_of_float f = Printf.sprintf "%.3g" f
+
 let ping text xml (out:element -> unit) =
    let from = Xml.get_attr_s xml "from" in
    let now = Unix.gettimeofday () in
@@ -26,16 +28,16 @@ let ping text xml (out:element -> unit) =
 				  if nick = roomenv.mynick then
 				     Lang.get_msg ~xml
 					"plugin_ping_pong_from_me" 
-					[string_of_float diff]
+					[seconds_of_float diff]
 				  else
 				     if asker = nick then
 					Lang.get_msg ~xml
 					   "plugin_ping_pong_from_you" 
-					   [string_of_float diff]
+					   [seconds_of_float diff]
 				     else
 					Lang.get_msg ~xml
 					   "plugin_ping_pong_from_somebody"
-					   [nick; string_of_float diff]
+					   [nick; seconds_of_float diff]
 			    in
 			       out (make_msg xml reply)
 		    | "error" ->
@@ -51,7 +53,7 @@ let ping text xml (out:element -> unit) =
 	      in
 	      let id = Hooks.new_id () in
 		 Hooks.register_handle (Hooks.Id (id, proc));
-		 out (Iq.iq_query "jabber:iq:version" victim id)
+		 out (iq_query ~to_:victim ~id "jabber:iq:version")
 	 | other ->
 	      if text <> "" then
 		 out (make_msg xml (Lang.get_msg ~xml
@@ -63,8 +65,8 @@ let ping text xml (out:element -> unit) =
 			    let diff = Unix.gettimeofday () -. now in
 			       out (make_msg xml
 				       (Lang.get_msg ~xml 
-					   "plugin_ping_pong_from_uou"
-					   [string_of_float diff]))
+					   "plugin_ping_pong_from_you"
+					   [seconds_of_float diff]))
 		       | "error" ->
 			    let err_text =  
 			       try 
@@ -77,7 +79,7 @@ let ping text xml (out:element -> unit) =
 		 in
 		 let id = Hooks.new_id () in
 		    Hooks.register_handle (Hooks.Id (id, proc));
-		    out (Iq.iq_query "jabber:iq:version" from id)
+		    out (iq_query ~id ~from "jabber:iq:version")
 		  
 let _ =
    register_handle (Command ("ping", ping))

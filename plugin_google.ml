@@ -170,7 +170,7 @@ let google text xml out =
    else
       let proc () =
 	 let response = 
-	    let r = google_search "0" "1" text in
+	    let r = google_search "1" "1" text in
 	       if r = "" then 
 		  Lang.get_msg ~xml "plugin_google_not_found" []
 	       else r 

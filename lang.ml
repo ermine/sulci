@@ -89,7 +89,7 @@ let update lang =
 	 with Not_found -> "" in
       let htbl = Marshal.from_channel 
 	 (open_in_bin (Filename.concat dir (lang ^ ext))) in
-	 langmsgs := LangMap.add deflang htbl !langmsgs;
+	 langmsgs := LangMap.add lang htbl !langmsgs;
 	 "Updated"
    with exn ->
       Printexc.to_string exn

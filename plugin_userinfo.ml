@@ -35,13 +35,13 @@ let groupchat xml out text xmlns myself common =
 	 in
 	 let id = Hooks.new_id () in
 	    Hooks.register_handle (Hooks.Id (id, proc));
-	    out (Iq.iq_query xmlns to_ id)
+	    out (iq_query ~to_ ~id xmlns)
 
 let version text xml out =
    match safe_get_attr_s xml "type" with
       | "groupchat" ->
 	   let myself = 
-	      Printf.sprintf "Sulci %s - %s" Version.version Iq.os in
+	      Printf.sprintf "Sulci %s - %s" Version.version Jeps.os in
 	   let common x asker nick =
 	      let client = get_cdata x ~path:["query"; "name"] in
 	      let version = get_cdata x ~path:["query"; "version"] in
@@ -75,7 +75,8 @@ let version text xml out =
 	   in
 	   let id = Hooks.new_id () in
 	      Hooks.register_handle (Hooks.Id (id, proc));
-	      out (Iq.iq_query "jabber:iq:version" (get_attr_s xml "from") id)
+	      out 
+		 (iq_query ~to_:(get_attr_s xml "from") ~id "jabber:iq:version")
 
 let idle text xml out =
    match safe_get_attr_s xml "type" with
@@ -110,7 +111,7 @@ let idle text xml out =
 	   in
 	   let id = Hooks.new_id () in
 	      Hooks.register_handle (Hooks.Id (id, proc));
-	      out (Iq.iq_query "jabber:iq:last" (get_attr_s xml "from") id)
+	      out (iq_query ~to_:(get_attr_s xml "from") ~id "jabber:iq:last")
 		 
 let time text xml out =
    match safe_get_attr_s xml "type" with
@@ -144,7 +145,7 @@ let time text xml out =
 	   in
 	   let id = Hooks.new_id () in
 	      Hooks.register_handle (Hooks.Id (id, proc));
-	      out (Iq.iq_query "jabber:iq:time" (get_attr_s xml "from") id)
+	      out (iq_query ~id ~to_:(get_attr_s xml "from") "jabber:iq:time")
 
 let _ =
    register_handle (Command ("version", version));

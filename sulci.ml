@@ -8,17 +8,17 @@ let _ =
    let server = trim (Xml.get_cdata config ~path:["jabber"; "server"]) in
    let port = int_of_string (trim (Xml.get_cdata config 
 				      ~path:["jabber"; "port"])) in
-   let user = trim (Xml.get_cdata config ~path:["jabber"; "user"]) in
+   let username = trim (Xml.get_cdata config ~path:["jabber"; "user"]) in
    let password = trim (Xml.get_cdata config
 			   ~path:["jabber"; "password"]) in
    let resource = trim (Xml.get_cdata config
 			   ~path:["jabber"; "resource"]) in
-   let debuglog = 
-      try trim (Xml.get_cdata config ~path:["debug"; "logfile"]) 
-      with Not_found -> "" in
+   let logfile = 
+      try Some (trim (Xml.get_cdata config ~path:["debug"; "logfile"]))
+      with Not_found -> None in
 
    let jid, out, next_xml = 
-      Xmpp.client user password resource ~logfile:debuglog server in
+      Xmpp.client ~username ~password ~resource ?logfile ~server () in
 
       Sys.set_signal Sys.sigint
 	 (Sys.Signal_handle (function x -> Hooks.quit out));

@@ -36,6 +36,7 @@ let onquit = ref []
 let catchset = ref []
 
 (* groupchat *)
+(* bad place here, but unfortunatelly... *)
 module Nicks = Map.Make(Id)
 
 type groupchat_t = {
@@ -47,7 +48,39 @@ type groupchat_t = {
 module GroupchatMap = Map.Make(Id)
 let groupchats = ref (GroupchatMap.empty:groupchat_t GroupchatMap.t)
 
-
+let split_nick_body room_env body =
+   let rec cycle pos =
+      try
+	 let colon = String.rindex_from body pos ':' in
+	    if String.length body > colon+1 then
+	       if body.[colon+1] = ' ' then 
+		  let nick = String.sub body 0 colon in
+		     if Nicks.mem nick room_env.nicks then
+			nick, string_after body (colon+2)
+		     else
+			cycle (colon-1)
+	       else
+		  cycle (colon-1)
+	    else
+	       let nick = String.sub body 0 colon in
+		  if Nicks.mem nick room_env.nicks then
+		     nick, ""
+		  else
+		     cycle (colon-1)
+      with Not_found ->
+	 "", body
+   in
+      if Nicks.mem body room_env.nicks then
+	 body, ""
+      else
+	 let rn, rt = cycle (String.length body - 1) in
+	    if rn = "" then
+	       if Nicks.mem rt room_env.nicks then
+		  rt, ""
+	       else
+		  "", rt
+	    else
+	       rn, rt
 
 type reg_handle =
    | From of string * (element -> (element -> unit) -> unit)
@@ -75,6 +108,38 @@ let register_handle (handler:reg_handle) =
       | Catch proc ->
 	   catchset := proc :: !catchset
 
+let process_message xml out =
+   if not (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) &&      
+      not (safe_get_attr_s xml "type" = "error") then
+	 let body = try skip_ws (get_cdata xml ~path:["body"]) with _ -> "" in
+	    if body <> "" then
+	       let from = get_attr_s xml "from" in
+	       let room = get_bare_jid from in
+		  try 
+		     let room_env =GroupchatMap.find room !groupchats in
+			if safe_get_attr_s xml "type" = "groupchat" &&
+			   get_resource from <> room_env.mynick then
+			      let nick, text = split_nick_body room_env body in
+				 if nick = "" then
+				    raise Not_found
+				 else
+				    List.iter  (fun f -> f xml out) !catchset
+		  with Not_found ->      
+		     try let word = try
+			String.sub body 0 (String.index body ' ')
+		     with Not_found -> body in
+			if word.[String.length word - 1] <> ':' then
+			   let f = CommandMap.find word !commands in
+			   let text = try
+			      string_after body (String.index body ' ')
+			   with Not_found -> ""
+			   in
+			      f (trim text) xml out
+			else
+			   raise Not_found
+		     with Not_found ->
+			List.iter  (fun f -> f xml out) !catchset
+  
 let rec process_xml next_xml out =
    let xml = next_xml () in
    let () = 
@@ -103,30 +168,7 @@ let rec process_xml next_xml out =
 	      with _ -> ()
 	   end
       | "message" ->
-	   if not (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) &&
-	      not (safe_get_attr_s xml "type" = "error") then
-		 let body = 
-		    try skip_ws (get_cdata xml ~path:["body"]) 
-		    with _ -> "" in
-		    if body <> "" then
-		       (try
-			   let word = 
-			      try
-				 String.sub body 0 (String.index body ' ')
-			      with Not_found -> body
-			   in
-			      if word.[String.length word - 1] <> ':' then
-				 let f = CommandMap.find word !commands in
-				 let text =
-				    try 
-				       string_after body (String.index body ' ')
-				    with Not_found -> ""
-				 in
-				    f (trim text) xml out
-			      else
-				 raise Not_found
-			with Not_found ->
-			   List.iter  (fun f -> f xml out) !catchset)
+	   process_message xml out
       | _ -> ()
    in
       process_xml next_xml out
