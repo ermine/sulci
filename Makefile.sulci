@@ -6,7 +6,7 @@ SOURCES := common.ml config.ml version.ml hooks.ml lang.ml \
 	   plugin_weather.ml plugin_google.ml plugin_userinfo.ml \
 	   plugin_roulette.ml plugin_currency.ml \
 	   plugin_admin.ml plugin_vocabulary.ml \
-	   pcalc.mly pcalc_lexer.mll \
+	   math.ml pcalc.mly pcalc_lexer.mll \
            icalc.mly icalc_lexer.ml plugin_calc.ml \
 	   plugin_markov.ml plugin_misc.ml \
 	   plugin_globalstats.ml plugin_tld.ml \

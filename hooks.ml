@@ -39,10 +39,19 @@ let catchset = ref []
 (* bad place here, but unfortunatelly... *)
 module Nicks = Map.Make(Id)
 
+type participant_t = {
+   jid: string;
+   status: string;
+   show: string;
+   role: string;
+   orig_nick: string;
+   affiliation: string
+}
+
 type groupchat_t = {
    mynick: string;
    lang: string;
-   nicks: string Nicks.t;
+   nicks: participant_t Nicks.t;
 }
 
 module GroupchatMap = Map.Make(Id)

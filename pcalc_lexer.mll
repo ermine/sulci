@@ -33,6 +33,7 @@ rule token = parse
    | "tanh"                    { TANH }
    | "ceil"                    { CEIL }
    | "floor"                   { FLOOR }
+   | "fib"                     { FIB }
    | "max_float"               { MAX_FLOAT }
    | ['p' 'P'] ['i' 'I']       { PI }
    | _                         { token lexbuf }

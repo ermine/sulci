@@ -1,7 +1,10 @@
 muc_log_join                   %s has become available
 muc_log_leave                  %s has left
+muv_log_leave_reason           %s has left: %s
 muc_log_kick                   %s has been kicked
+muc_log_kick_reason            %s has been kicked: %s
 muc_log_ban                    %s has been banned
+muc_log_ban_reason             %s has been banned: %s
 muc_log_change_nick            %s is now known as %s
 plugin_calc_not_parsed         I dont understand. 
 plugin_cakc_empty_command      What?
@@ -40,3 +43,6 @@ plugin_globalstats_stats_error     It seems that server does not support stats
 plugin_google_invalid_syntax       hm?
 plugin_google_not_found            Not found :(
 plugin_google_adv_invalid_syntax   He-he! You have not guessed the proper syntax
+plugin_calc_number_too_big         Too big number... :(
+plugin_calc_cannot_float_fact      No, I don't know how to calculate float factorial :(
+plugin_calc_negative_number        Impossible..

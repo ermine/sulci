@@ -5,7 +5,7 @@
 %token <float> NUM
 %token PLUS MINUS MUL DIVIDE CARET UMINUS
 %token COS SIN ACOS ASIN COSH SINH TAN ATAN TANH ATAN2 CEIL FLOOR
-%token LOG LOG10 EXP SQRT
+%token LOG LOG10 EXP SQRT FIB
 %token MAX_FLOAT PI
 %token EOL
 
@@ -40,6 +40,7 @@ expr:
    | expr TANH       { tanh $1 }
    | expr CEIL       { ceil $1 }
    | expr FLOOR      { floor $1 }
+   | expr FIB        { Math.fib $1 }
    | MAX_FLOAT       { max_float }
    | PI              { 4. *. (atan (1./.2.) +. atan (1./.3.)) }
 ;

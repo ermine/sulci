@@ -147,7 +147,28 @@ let time text xml out =
 	      Hooks.register_handle (Hooks.Id (id, proc));
 	      out (iq_query ~id ~to_:(get_attr_s xml "from") "jabber:iq:time")
 
+let status text xml out =
+   if safe_get_attr_s xml "type" = "groupchat" then
+      let from = get_attr_s xml "from" in
+      let room = get_bare_jid from in
+      let nick = 
+	 if text = "" then
+	    get_resource from
+	 else
+	    text
+      in
+	 try
+	    let item = 
+	       Nicks.find nick (GroupchatMap.find room !groupchats).nicks in
+	       if item.status = "" then
+		  out (make_msg xml ("[" ^ item.show ^ "]"))
+	       else
+		  out (make_msg xml (item.status ^ " [" ^ item.show ^ "]"))
+	 with _ ->
+	    out (make_msg xml "Whose status?")
+
 let _ =
    register_handle (Command ("version", version));
    register_handle (Command ("idle", idle));
    register_handle (Command ("time", time));
+   register_handle (Command ("status", status))

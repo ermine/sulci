@@ -20,6 +20,7 @@
 	 ("log10", log10);
 	 ("exp", exp);
 	 ("sqrt", sqrt);
+	 ("fib", Math.fib)
       ]
 }
 

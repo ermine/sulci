@@ -189,7 +189,8 @@ let markov_count text xml out =
 
 let markov_top text xml out =
    let vm = compile_simple db 
-	       "SELECT word1, word2, counter FROM words WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10"
+      "SELECT word1, word2, counter FROM words WHERE word1!='' AND word2!='' \
+       ORDER BY counter DESC LIMIT 10"
    in
    let rec cycle () =
       try 

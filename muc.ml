@@ -10,10 +10,10 @@ open Unix
 open Pcre
 
 type muc_event = | MUC_join of string 
-		 | MUC_leave of string 
+		 | MUC_leave of string * string
 		 | MUC_change_nick of string * string * string
-		 | MUC_kick of string
-		 | MUC_ban of string
+		 | MUC_kick of string * string
+		 | MUC_ban of string * string
 		 | MUC_presence
 		 | MUC_topic of string
 		 | MUC_message
@@ -153,19 +153,23 @@ let log_presence room event lang =
    let text = match event with
       | MUC_join user ->
 	   Lang.get_msg ~lang "muc_log_join" [user]
-	   (* user ^ " появился в конференции" *)
-      | MUC_leave user ->
-	   Lang.get_msg ~lang "muc_log_leave" [user]
-	   (* user ^ " исчез из конференции" *)
-      | MUC_kick user ->
-	   Lang.get_msg ~lang "muc_log_kick" [user]
-	   (* user ^ " был выкинут из конференции" *)
-      | MUC_ban user ->
-	   Lang.get_msg ~lang "muc_log_ban" [user]
-	   (* user ^ "был забанен" *)
+      | MUC_leave (user, reason) ->
+	   if reason = "" then
+	      Lang.get_msg ~lang "muc_log_leave" [user]
+	   else
+	      Lang.get_msg ~lang "muc_log_leave_reason" [user; reason]
+      | MUC_kick (user, reason) ->
+	   if reason = "" then
+	      Lang.get_msg ~lang "muc_log_kick" [user]
+	   else
+	      Lang.get_msg ~lang "muc_log_kick_reason" [user; reason]
+      | MUC_ban (user, reason) ->
+	   if reason = "" then
+	      Lang.get_msg ~lang "muc_log_ban" [user]
+	   else
+	      Lang.get_msg ~lang "muc_log_ban_reason" [user; reason]
       | MUC_change_nick (newnick, user, orignick) ->
 	   Lang.get_msg ~lang "muc_log_change_nick" [user; newnick]
-	   (* user ^ "переименовался в " ^ newnick *)
       | _ -> ""
    in
       if text <> "" then
@@ -177,54 +181,77 @@ let process_presence xml out =
    let user = get_resource from in
    let room = get_bare_jid from in
    let room_env = GroupchatMap.find room !groupchats in
+   let x = List.find (function 
+			 | Xmlelement ("x", attrs, _) ->
+			      if (try List.assoc "xmlns" attrs with _ -> "")=
+				 "http://jabber.org/protocol/muc#user" 
+			      then true else false
+			 | _ -> false
+		     ) (Xml.get_subels xml) in
    let event = match safe_get_attr_s xml "type"  with
       | "" -> 
-	   if not (Nicks.mem user room_env.nicks) then begin
-	      groupchats := GroupchatMap.add room 
-		 {room_env with nicks = Nicks.add user user room_env.nicks}
-			  !groupchats;
-	      MUC_join user
-	   end
-	   else
-	      MUC_ignore
+	   let status = try get_cdata xml ~path:["status"] with _ -> "" in
+	   let show = try get_cdata xml ~path:["show"] with _ -> "available" in
+	      if not (Nicks.mem user room_env.nicks) then begin
+		 let item = { jid = (try get_attr_s x ~path:["item"] "jid"
+				     with _ -> "");
+			      role = (try get_attr_s x ~path:["item"] "role" 
+				      with _ -> "");
+			      affiliation = (try get_attr_s x 
+						~path:["item"] "affiliation"
+					     with _ -> "");
+			      status = status;
+			      show = show;
+			      orig_nick = user
+			    } in
+		    groupchats := GroupchatMap.add room 
+		       {room_env with nicks = Nicks.add user item
+			     room_env.nicks} !groupchats;
+		 MUC_join user
+	      end
+	      else
+		 let item = Nicks.find user room_env.nicks in
+		    groupchats := GroupchatMap.add room 
+		       {room_env with 
+			   nicks = Nicks.add user 
+			     {item with status = status; show = show;} 
+			     room_env.nicks} !groupchats;
+		    MUC_ignore
       | "unavailable" -> 
-	   let x = 
-	      List.find 
-		 (function 
-		     | Xmlelement ("x", attrs, _) ->
-			  if (try List.assoc "xmlns" attrs with _ -> "")=
-			     "http://jabber.org/protocol/muc#user" 
-			  then true else false
-		     | _ -> false
-		 ) (Xml.get_subels xml) in
-	      (match safe_get_attr_s x ~path:["status"] "code" with
-		  | "303" -> (* /nick *)
-		       let newnick = 
-			  get_attr_s xml ~path:["x"; "item"] "nick" in
-		       let orignick = Nicks.find user room_env.nicks in
-			  groupchats := GroupchatMap.add room
-			     {room_env with nicks = 
-				   Nicks.add newnick orignick 
-				      (Nicks.remove user room_env.nicks)} 
-			     !groupchats;
-			  MUC_change_nick (newnick, user, orignick)
-		  | "307" -> (* /kick *)
+	   (match safe_get_attr_s x ~path:["status"] "code" with
+	       | "303" -> (* /nick *)
+		    let newnick = 
+		       get_attr_s xml ~path:["x"; "item"] "nick" in
+		    let item = Nicks.find user room_env.nicks in
+		       groupchats := GroupchatMap.add room
+			  {room_env with nicks = 
+				Nicks.add newnick item
+				   (Nicks.remove user room_env.nicks)} 
+			  !groupchats;
+		       MUC_change_nick (newnick, user, item.orig_nick)
+	       | "307" -> (* /kick *)
+		    let reason = 
+		       try get_cdata ~path:["reason"] x with _ -> "" in
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_kick user
-		  | "301" -> (* /ban *)
+		       MUC_kick (user, reason)
+	       | "301" -> (* /ban *)
+		    let reason = 
+		       try get_cdata ~path:["reason"] x with _ -> "" in
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_ban user
-		  | "321" (* non-member *)
-		  | _ ->
+		       MUC_ban (user, reason)
+	       | "321" (* non-member *)
+	       | _ ->
+		    let reason = 
+		       try get_cdata ~path:["status"] xml with _ -> "" in
 		       groupchats := GroupchatMap.add room
 			  {room_env with nicks =
 				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_leave user
-	      )
+		       MUC_leave (user, reason)
+	   )
       | _ -> MUC_ignore
    in 
       log_presence room event room_env.lang

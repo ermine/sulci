@@ -1,7 +1,10 @@
 muc_log_join                       %s появился в конференции
-muc_log_leave                      %s удалился из конференции
+muc_log_leave                      %s покинул конференцию
+muc_log_leave_reason               %s покинул конференцию: %s
 muc_log_kick                       %s кикнули из конференции
+muc_log_kick_reason                %s кикнули из конференции: %s
 muc_log_ban                        %s забанён
+muc_log_ban_reason                 %s забанён: %s
 muc_log_change_nick                %s переименовался в %s
 plugin_calc_not_parsed             что это было?!
 plugin_calc_empty_command          ась?
@@ -40,3 +43,6 @@ plugin_globalstats_stats_error     Скорее всего, сервер не п
 plugin_google_invalid_syntax       ась?
 plugin_google_not_found            Не нашел :(
 plugin_google_adv_invalid_syntax   гы! Не угадал синтаксис.
+plugin_calc_number_too_big         Многовато... :(
+plugin_calc_cannot_float_fact Не, я не умею вычислять факториал нецелых чисел :(
+plugin_calc_negative_number       Так не бывает.

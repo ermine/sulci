@@ -1,18 +1,12 @@
 %{
+(*                                                                          *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
+(*                                                                          *)
+
 open Printf
+open Math
 
 let var_table = Hashtbl.create 16
-
-let fact x =
-   if x > 174.0 then failwith "Многовато... :("
-   else if x -. floor x <> 0.0 then 
-      failwith "Не, я не умею вычислять факториал нецелых чисел :("
-   else
-      let rec f y acc =
-	 if y <= 0.0 then acc
-	 else f (y-. 1.) (y *. acc)
-      in
-	 f x 1.
 
 %}
 

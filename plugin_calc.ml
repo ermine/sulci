@@ -1,4 +1,9 @@
+(*                                                                          *)
+(* (c) 2004, Anastasia Gornostaeva. <ermine@ermine.pp.ru>                   *)
+(*                                                                          *)
+
 open Common
+open Math
 
 let pcalc text xml out =
    if text <> "" then
@@ -6,8 +11,15 @@ let pcalc text xml out =
 	 try
             let lexbuf = Lexing.from_string text in
                Pcalc.line Pcalc_lexer.token lexbuf
-	 with exn ->
-	    Lang.get_msg ~xml "plugin_calc_not_parsed" []
+	 with 
+	    | MathNumberTooBig ->
+		 Lang.get_msg ~xml "plugin_calc_number_too_big" []
+	    | MathCannotFloatFact ->
+		 Lang.get_msg ~xml "plugin_calc_cannot_float_fact" []
+	    | MathNegNumber ->
+		 Lang.get_msg ~xml "plugin_calc_negative_number" []
+	    | _ ->
+		 Lang.get_msg ~xml "plugin_calc_not_parsed" []
       in
 	 out (make_msg xml reply)
    else
@@ -20,6 +32,12 @@ let icalc text xml out =
             let lexbuf = Lexing.from_string text in
                Icalc.line Icalc_lexer.token lexbuf
 	 with 
+	    | MathNumberTooBig ->
+		 Lang.get_msg ~xml "plugin_calc_number_too_big" []
+	    | MathCannotFloatFact ->
+		 Lang.get_msg ~xml "plugin_calc_cannot_float_fact" []
+	    | MathNegNumber ->
+		 Lang.get_msg ~xml "plugin_calc_negative_number" []
 	    | Failure err ->
 		 err
 	    | exn ->
