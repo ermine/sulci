@@ -54,7 +54,7 @@ let ping text event xml (out:element -> unit) =
 		      if text <> "" then
 			 out (make_msg xml 
 				 (Lang.get_msg ~xml
-				     "plugin_ping_cannot_pind" [text]))
+				     "plugin_ping_cannot_ping" [text]))
 		      else
 			 let proc e x out =
 			    match e with

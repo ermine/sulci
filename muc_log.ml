@@ -53,7 +53,6 @@ let get_next_noun () =
    let noun, _ = mktime {curr_tm with 
 			    tm_sec = 0; tm_min = 0; tm_hour = 0;
 			    tm_mday = curr_tm.tm_mday + 1} in
-     (* noun -. curr_time *)
       noun
 
 let rec rotate_logs () =
@@ -63,7 +62,6 @@ let rec rotate_logs () =
 			     close_out lf;
 			     open_log room) !logmap
    
-(* let _ = Timer.register rotate_logs ((get_next_noun ()) *. 1000.) 86400000. *)
 let _ = Scheduler.add_task rotate_logs (get_next_noun ()) 86400000.
 
 let get_logfile room =
@@ -107,7 +105,10 @@ let make_message author nick body =
 		    with _ -> "<br>"
 		) body
    in
-      Printf.sprintf "&lt;%s&gt; %s: %s" author nick  (html_url text)
+      if nick <> "" then
+	 Printf.sprintf "&lt;%s&gt; %s: %s" author nick  (html_url text)
+      else
+	 Printf.sprintf "&lt;%s&gt; %s" author (html_url text)
 
 let write room text =
    if text <> "" then
@@ -124,8 +125,13 @@ let process_log event xml =
       match event with
 	 | MUC_history _ -> ()
 	 | MUC_topic (room, nick, subject) ->
-	      write room (Lang.get_msg ~lang:(lang room) "muc_log_set_subject" 
-			     [nick;  html_url subject])
+	      if nick <> "" then
+		 write room (Lang.get_msg ~lang:(lang room) 
+				"muc_log_set_subject" 
+				[nick;  html_url subject])
+	      else
+		 write room (Lang.get_msg ~lang:(lang room)
+				"muc_log_subject" [html_url subject])
 	 | MUC_message (room, msg_type, author, nick, body)
 	       when msg_type = `Groupchat  ->
 	      if body <> "" then
@@ -143,37 +149,43 @@ let process_log event xml =
 		       make_message author nick body)
 	 | MUC_join (room, user, item) ->
 	      write room 
-		 ("--" ^ Lang.get_msg ~lang:(lang room) "muc_log_join" [user])
+		 ("-- " ^ Lang.get_msg ~lang:(lang room) "muc_log_join" [user])
 	 | MUC_leave (room, user, reason, item) ->
 	      write room 
-		 (if reason = "" then
-		     Lang.get_msg ~lang:(lang room) "muc_log_leave" [user]
-		  else
-		     Lang.get_msg ~lang:(lang room) "muc_log_leave_reason" 
-			[user; reason])
+		 ("-- " ^
+		     (if reason = "" then
+			 Lang.get_msg ~lang:(lang room) "muc_log_leave" [user]
+		      else
+			 Lang.get_msg ~lang:(lang room) "muc_log_leave_reason" 
+			    [user; reason]))
 	 | MUC_kick (room, user, reason,item) ->
 	      write room 
-		 (if reason = "" then
-		     Lang.get_msg ~lang:(lang room) "muc_log_kick" [user]
-		  else
-		     Lang.get_msg ~lang:(lang room) "muc_log_kick_reason" 
-			[user; reason])
+		 ("-- " ^
+		     (if reason = "" then
+			 Lang.get_msg ~lang:(lang room) "muc_log_kick" [user]
+		      else
+			 Lang.get_msg ~lang:(lang room) "muc_log_kick_reason" 
+			    [user; reason]))
 	 | MUC_ban (room, user, reason, item) ->
 	      write room 
-		 (if reason = "" then
-		     Lang.get_msg ~lang:(lang room) "muc_log_ban" [user]
-		  else
-		     Lang.get_msg ~lang:(lang room) 
-			"muc_log_ban_reason" [user; reason])
+		 ("-- " ^
+		     (if reason = "" then
+			 Lang.get_msg ~lang:(lang room) "muc_log_ban" [user]
+		      else
+			 Lang.get_msg ~lang:(lang room) 
+			    "muc_log_ban_reason" [user; reason]))
 	 | MUC_change_nick (room, newnick, user, item) ->
 	      write room 
-		 (Lang.get_msg ~lang:(lang room) 
-		     "muc_log_change_nick" [user; newnick])
+		 ("-- " ^
+		     (Lang.get_msg ~lang:(lang room) 
+			 "muc_log_change_nick" [user; newnick]))
+(*
 	 | MUC_presence (room, user, item) ->
 	   (* Lang.get_msg ~lang:(lang room) "muc_log_presence" 
 	      [user; item.show; item.status] *)
 	      write room
-		 (Printf.sprintf "%s [%s] %s" user item.show item.status)
+		 (Printf.sprintf "-- %s [%s] %s" user item.show item.status)
+*)
 	 | _ -> ()
 
 (*
