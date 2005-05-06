@@ -18,10 +18,10 @@ let regexp cie         = 0x435 | 0x415 | 'e' | 'E'
 let regexp czh         = 0x436 | 0x416
 let regexp cz          = 0x437 | 0x417 | '3'
 let regexp ci          = 0x438 | 0x418 | "|/|"
-let regexp cj          = 0x439 | 0x419
+let regexp cj          = 0x439 | 0x419 | 'K'
 let regexp ck          = 0x43A | 0x41A
 let regexp cl          = 0x43B | 0x41B
-let regexp cm          = 0x43C | 0x41C
+let regexp cm          = 0x43C | 0x41C | 'M'
 let regexp cn          = 0x43D | 0x41D | 'H'
 let regexp co          = 0x43E | 0x41E | 'o' | 'O' | '0'
 let regexp cp          = 0x43F | 0x41F
@@ -111,15 +111,19 @@ let rec analyze = lexer
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cie_io cb cu cr ->
 	Good
-   | prefix* cie_io ->
+   | prefix? cie_io ->
 	ebat (Ulexing.utf8_lexeme lexbuf) lexbuf 
    | prefix cya ->
 	ebat (Ulexing.utf8_lexeme lexbuf) lexbuf
-   | prefix* cm ->
+   | prefix? cm ->
 	mudak (Ulexing.utf8_lexeme lexbuf) lexbuf
-   | prefix* ch ->
+   | prefix? ch ->
 	xui (Ulexing.utf8_lexeme lexbuf) lexbuf
-   | ch cu ci cz ->
+   | prefix? cs ct cr ca ch cu cj (cs cya)? ->
+	Good
+   | prefix? csh ct cr ci ch cu cj (cs cya)? ->
+	Good
+   | cv? ch cu ci cz ->
 	Good
    | cyrillic* ch cu cie_io cv (* cyrillic* *) ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
@@ -218,13 +222,22 @@ and skip = lexer
    | cyrillic* ->
 	analyze lexbuf
 
+let notify_jids =
+   let jids = try 
+      Xml.get_subels ~path:["plugins"; "cerberus"] ~tag:"notify" Config.config 
+   with _ -> [] in
+      List.map (fun j -> Xml.get_attr_s j "jid") jids
+
 let report word room nick phrase out =
    let item = Nicks.find nick (GroupchatMap.find room !groupchats).nicks in
-      out (Xmlelement ("message", ["type", "chat";
-				   "to", "ermine@jabber.ru"],
-		       [make_simple_cdata "body"
-			   (Printf.sprintf "Мат: %s\n%s %s (%s)\n%s" 
-			       word room nick item.jid phrase)]))
+      List.iter (fun jid ->
+		    out (Xmlelement ("message", ["type", "chat";
+						 "to", jid],
+				     [make_simple_cdata "body"
+					 (Printf.sprintf 
+					     "Мат: %s\n%s %s (%s)\n%s" 
+					     word room nick item.jid phrase)]))
+		) notify_jids
 
 let kill room nick out =
    if nick = "" then ()

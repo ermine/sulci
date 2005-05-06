@@ -7,6 +7,8 @@ open Xmpp
 open Common
 open Types
 
+let _ = Scheduler.init ()
+
 module IdMap = Map.Make(Id)
 let idmap = ref IdMap.empty
 

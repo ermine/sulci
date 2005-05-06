@@ -7,6 +7,7 @@ muc_log_ban                        %s забанён
 muc_log_ban_reason                 %s забанён: %s
 muc_log_change_nick                %s переименовался в %s
 muc_log_set_subject                %s изменил тему: %s
+muc_log_subject                    Тема: %s
 plugin_calc_not_parsed             что это было?!
 plugin_calc_empty_command          ась?
 plugin_calc_divide_by_zero         Делим на нолик, да? :-/
@@ -25,6 +26,7 @@ plugin_ping_you_error              Информация о тебе засекр
 plugin_userinfo_error              Информация засекречена
 plugin_userinfo_version_you        у тебя клиент %s %s - %s
 plugin_userinfo_version_somebody   у %s клиент %s %s - %s
+plugin_userinfo_version_server     на %s запущен %s %s (%s)
 plugin_userinfo_idle_me            я вообще не молчу!
 plugin_userinfo_idle_you           Молчишь %s
 plugin_userinfo_idle_somebody      %s молчит %s

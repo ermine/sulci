@@ -7,6 +7,7 @@ muc_log_ban                    %s has been banned
 muc_log_ban_reason             %s has been banned: %s
 muc_log_change_nick            %s is now known as %s
 muc_log_set_subject            %s has set the subject to: %s
+muc_log_subject                Theme: %s
 plugin_calc_not_parsed         I dont understand. 
 plugin_cakc_empty_command      What?
 plugin_calc_divide_by_zero     Please dont divide by zero!

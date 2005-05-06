@@ -6,6 +6,8 @@ muc_log_kick_reason            %s werd gekicked: %s
 muc_log_ban                    %s werd verbannen
 muc_log_ban_reason             %s werd verbannen: %s
 muc_log_change_nick            %s is nu gekend onder de naam %s
+//muc_log_set_subject
+//muc_log_subject
 plugin_calc_not_parsed         Ik versta dat niet. 
 plugin_cakc_empty_command      Wat?
 plugin_markov_filter_badwords  Woorden uit de zwarte lijst werden weggefilterd

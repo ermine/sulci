@@ -6,6 +6,8 @@ muc_log_kick_reason            %s ha sido expulsado: %s
 muc_log_kick                   %s ha sido expulsado
 muc_log_leave_reason           %s se ha ido: %s
 muc_log_leave                  %s se ha ido
+//muc_log_set_subject
+//muc_log_subject
 plugin_admin_join_no_access    Lo siento, pero no quiero ir ahí.
 plugin_admin_quit_bye          Me voy, ¡Hasta luego!
 plugin_admin_quit_no_access    ¿Quién quiere salir?

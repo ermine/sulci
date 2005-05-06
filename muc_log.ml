@@ -8,8 +8,6 @@ open Pcre
 open Muc
 open Types
 
-let _ = Scheduler.init ()
-
 let basedir = 
    let dir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"]) in
       if not (Sys.file_exists dir) then mkdir dir 0o755;
@@ -17,7 +15,6 @@ let basedir =
 
 module LogMap = Map.Make(Id)
 let logmap = ref LogMap.empty
-
 
 let open_log room =
    let tm = localtime (time ()) in
@@ -55,7 +52,8 @@ let get_next_noun () =
 			    tm_mday = curr_tm.tm_mday + 1} in
       noun
 
-let rec rotate_logs () =
+let rotate_logs () =
+   print_endline "Rotating chatlogs"; flush Pervasives.stdout;
    logmap := LogMap.mapi (fun room lf ->
 			     output_string lf "</body>\n</html>";
 			     flush lf;

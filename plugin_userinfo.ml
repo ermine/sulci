@@ -81,6 +81,32 @@ let version text event xml out =
 	      out 
 		 (iq_query ~to_:(get_attr_s xml "from") ~id "jabber:iq:version")
 
+let version_server text event xml out =
+   try
+      let user, server, resource = jid_of_string text in
+	 if user = "" && resource = "" then
+	    out (make_msg xml "invalid server name")
+	 else
+	    let proc event x o =
+	       match event with
+		  | Iq `Result ->
+		       let client = get_cdata x ~path:["query"; "name"] in
+		       let version = get_cdata x ~path:["query"; "version"] in
+		       let os = get_cdata x ~path:["query"; "os"] in
+			  o (make_msg xml 
+				(Lang.get_msg ~xml 
+				    "plugin_userinfo_version_server"
+				    [server; client; version; os]))
+		  | Iq `Error ->
+		       o (make_msg xml (error x))
+		  | _ -> ()
+	    in
+	    let id = new_id () in
+	       Hooks.register_handle (Hooks.Id (id, proc));
+	       out (iq_query ~to_:server ~id "jabber:iq:version")
+   with _ ->
+      out (make_msg xml "invalid server name")
+
 let idle text event xml out =
    match event with
       | MUC_message (room, msg_type, author, _, _) ->
@@ -169,6 +195,7 @@ let status text event xml out =
 
 let _ =
    Hooks.register_handle (Command ("version", version));
+   Hooks.register_handle (Command ("version_server", version_server));
    Hooks.register_handle (Command ("idle", idle));
    Hooks.register_handle (Command ("time", time));
    Hooks.register_handle (Command ("status", status));

@@ -48,7 +48,7 @@ let open_markovdb room =
 		   ~path:["plugins"; "markov"] "dir")
       with Not_found -> "./markov_db/" in
       if not (Sys.file_exists path) then Unix.mkdir path 0o755;
-      let db = Sqlite.db_open ("./markov_db/" ^ room) in
+      let db = Sqlite.db_open (path ^ room) in
 	 if not (result_bool db
 	   "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='words'")
 	 then begin try

@@ -170,7 +170,7 @@ let google text event xml out =
    else
       let proc () =
 	 let response = 
-	    let r = google_search "1" "1" text in
+	    let r = google_search "0" "1" text in
 	       if r = "" then 
 		  Lang.get_msg ~xml "plugin_google_not_found" []
 	       else r 
@@ -203,7 +203,7 @@ let google_adv text event xml out =
 let gspell text event xml out =
    if text = "" then
       out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_google_invalid_suntax" []))
+	      (Lang.get_msg ~xml "plugin_google_invalid_syntax" []))
    else
       let proc () =
 	 let response = google_spell text in
