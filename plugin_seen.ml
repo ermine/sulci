@@ -29,29 +29,32 @@ let db =
       end;
       dbf
 
-let add_greet text event xml out =
-   if check_access (get_attr_s xml "from") "admin" then begin
+let add_greet text event from xml out =
+   if check_access from "admin" then begin
       if text <> "" then
 	 try
 	    let s1 = String.index text ' ' in
-	    let jid = String.sub text 0 s1 in
+	    let jid = jid_of_string (String.sub text 0 s1) in
+	    let jid_s = jid.luser ^ "@" ^ jid.lserver in
 	    let s2 = String.index_from text (s1+1) ' ' in
-	    let room = String.sub text (s1+1) (s2-s1-1) in
+	    let room = jid_of_string (String.sub text (s1+1) (s2-s1-1)) in
+	    let room_s = room.luser ^ "@" ^ room.lserver in
 	    let greet = Common.string_after text (s2+1) in
 	       if result_bool db ("SELECT msg FROM greeting where jid=" ^
-				     escape jid ^ " AND room=" ^ escape room) 
+				     escape jid_s ^
+				     " AND room=" ^ escape room_s)
 	       then
 		  begin
 		     exec db ("UPDATE greeting SET msg=" ^ escape greet ^ 
-				 " WHERE jid=" ^ escape jid ^ 
-				 " AND room=" ^ escape room);
+				 " WHERE jid=" ^ escape jid_s ^
+				 " AND room=" ^ escape room_s);
 		     out (make_msg xml "Updated")
 		  end
 	       else
 		  begin
 		     exec db ("INSERT INTO greeting (jid, room, msg) " ^
-				 values [escape jid; 
-					 escape room; 
+				 values [escape jid_s; 
+					 escape room_s; 
 					 escape greet]);
 		     out (make_msg xml "Added")
 		  end
@@ -60,54 +63,58 @@ let add_greet text event xml out =
    end
    else ()
 
-let catch_seen event xml out =
-   match event with
-      | MUC_join (room, nick, item) ->
-	   let jid = get_bare_jid item.jid in
-	   let vm = compile_simple db 
-	      ("SELECT msg FROM greeting WHERE jid=" ^ escape jid ^
-		  " AND room=" ^ escape room) in
-	      begin try
-		 let result = step_simple vm in
-		    finalize vm;
-		    let msg = result.(0) in
-		       out (Xmlelement ("message", ["to", room;
-						    "type", "groupchat"],
-					[make_simple_cdata "body"
-					    (Printf.sprintf "[%s] %s"nick msg)]
+let catch_seen event from xml out =
+   let room_s = from.luser ^ "@" ^ from.lserver in
+      match event with
+	 | MUC_join item ->
+	      let jid_s = item.jid.luser ^ "@" ^ item.jid.lserver in
+	      let vm = compile_simple db 
+		 ("SELECT msg FROM greeting WHERE jid=" ^ escape jid_s ^
+		     " AND room=" ^ escape room_s) in
+		 begin try
+		    let result = step_simple vm in
+		       finalize vm;
+		       let msg = result.(0) in
+			  out (Xmlelement ("message", ["to", room_s;
+						       "type", "groupchat"],
+					   [make_simple_cdata "body"
+					       (Printf.sprintf "[%s] %s"
+						   from.resource msg)]
 				       ))
-	      with _ -> ()
-	      end
-      | MUC_leave (room, nick, reason, item)
-      | MUC_kick (room, nick, reason, item)
-      | MUC_ban (room, nick, reason, item) as action ->
-	   let jid = get_bare_jid item.jid in
-	   let last = Int32.to_string (Int32.of_float (Unix.time ())) in
-	   let action = match action with
-	      | MUC_leave _ -> "left"
-	      | MUC_kick _ -> "kick"
-	      | MUC_ban _ -> "ban"
-	   in
-	      if result_bool db 
-		 ("SELECT last FROM users where jid=" ^ escape jid ^
-		     " AND room=" ^ escape room) then
-		    exec db ("UPDATE users SET last=" ^ last ^
-				", action=" ^ escape action ^
-				", reason=" ^ escape reason ^
-				" WHERE jid=" ^ escape jid ^ 
-				" AND room=" ^ escape room)
-	      else
-		 exec db 
+		 with _ -> ()
+		 end
+	 | MUC_leave (reason, item)
+	 | MUC_kick (reason, item)
+	 | MUC_ban (reason, item) as action ->
+	      let jid_s = item.jid.luser ^ "@" ^ item.jid.lserver  in
+	      let room_s = from.luser ^ "@" ^ from.lserver in
+	      let last = Int32.to_string (Int32.of_float (Unix.time ())) in
+	      let action = match action with
+		 | MUC_leave _ -> "left"
+		 | MUC_kick _ -> "kick"
+		 | MUC_ban _ -> "ban"
+	      in
+		 if result_bool db 
+		    ("SELECT last FROM users where jid=" ^ escape jid_s ^
+			" AND room=" ^ escape room_s) then
+		       exec db ("UPDATE users SET last=" ^ last ^
+				   ", action=" ^ escape action ^
+				   ", reason=" ^ escape reason ^
+				   " WHERE jid=" ^ escape jid_s ^ 
+				   " AND room=" ^ escape room_s)
+		 else
+		    exec db 
 		   ("INSERT INTO users (jid, room, nick, last, action, reason) "
-		    ^ values [escape jid; escape room; escape nick;
+		    ^ values [escape jid_s; escape room_s; 
+			      escape from.resource;
 			      last; escape action; escape reason])
-      | _ -> ()
+	 | _ -> ()
 
 
 let find_nick (jid:string) nicks =
    let result = ref [] in
       Nicks.iter (fun nick item ->
-		     if get_bare_jid item.jid = jid then
+		     if jid = item.jid.luser ^ "@" ^ item.jid.lserver then
 			result := nick :: !result
 		 ) nicks;
       if !result = [] then raise Not_found else !result
@@ -115,7 +122,7 @@ let find_nick (jid:string) nicks =
 let verify_nick nick jid nicks xml =
    try
       let item = Nicks.find nick nicks in
-	 if jid = get_bare_jid item.jid then
+	 if jid = item.jid.luser ^ "@" ^ item.jid.lserver then
 	    Lang.get_msg ~xml "plugin_seen_is_here" [nick]
 	 else
 	    try let changed = find_nick jid nicks in
@@ -128,16 +135,18 @@ let verify_nick nick jid nicks xml =
 	 Lang.get_msg ~xml "plugin_seen_changed_nick" 
 	    [nick; (String.concat ", " changed)]
 
-let seen text event xml out =
+let seen text event from xml out =
    if text = "" then
       out (make_msg xml "Whom?")
    else
       match event with
-	 | MUC_message (room, msg_type, author, _, _) ->
+	 | MUC_message (msg_type, _, _) ->
+	      let room  = from.luser, from.lserver in
 	      let nicks = (GroupchatMap.find room !groupchats).nicks in
 	      let vm = compile_simple db 
 		 ("SELECT jid, last, action, reason FROM users WHERE nick=" ^
-		     escape text ^ " AND room=" ^ escape room) in
+		     escape text ^ " AND room=" ^ escape 
+		     (from.luser ^ "@" ^ from.lserver)) in
 	      let reply = try
 		 let result = step_simple vm in
 		    finalize vm;

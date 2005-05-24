@@ -39,5 +39,8 @@
   <!--
     <talkers db="talkers.db"/>
   -->
+  <cerberus kick="true">
+   <notify jid="ermine@jabber.ru"/>
+  </cerberus>
  </plugins>
 </sulci>

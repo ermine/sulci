@@ -34,46 +34,55 @@ let db =
       end;
       db
 
-let talkers event xml out =
+let talkers event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, nick, text) ->
+      | MUC_message (msg_type, nick, text) ->
 	   if msg_type = `Groupchat then
-	      if text <> "" then
-		 let room_env = GroupchatMap.find room !groupchats in
-		    if author <> room_env.mynick then
-		       let words = string_of_int 
-			  (List.length (split_words text)) in
-		       let me = 
-			  if nick = "" && ((length text = 3 && text = "/me") ||
-			     (length text > 3 && String.sub text 0 4 = "/me ")) 
-			  then
-			     "1" else "0" in
-		       let jid = 
-			  get_bare_jid ((Nicks.find author room_env.nicks).jid)
-		       in
-			  if result_bool db
-			     ("SELECT words FROM talkers WHERE jid=" ^ 
-				 escape jid ^ " AND room=" ^ escape room) then
-				exec db 
-				   ("UPDATE talkers SET words=words+" ^ words ^
-				       ", sentences=sentences+1, me=me+" ^ me ^
-				       " WHERE jid=" ^ escape jid ^ 
-				       " AND room=" ^ escape room)
-			  else
-			     exec db ("INSERT INTO talkers " ^ values 
-				    [escape jid; escape author; escape room; 
-				     words; me; "1"])
+	      let room = from.luser, from.lserver in
+	      let room_s = from.luser ^ "@" ^ from.lserver in
+		 if text <> "" then
+		    let room_env = GroupchatMap.find room !groupchats in
+		       if from.lresource <> room_env.mynick then
+			  let words = string_of_int 
+			     (List.length (split_words text)) in
+			  let me = 
+			     if nick = "" && 
+				((length text = 3 && text = "/me") ||
+				    (length text > 3 && 
+					String.sub text 0 4 = "/me ")) 
+			     then
+				"1" else "0" in
+			  let jid = (Nicks.find from.lresource 
+					room_env.nicks).jid in
+			  let jid_s = jid.luser ^ "@" ^ jid.lserver in
+			     if result_bool db
+				("SELECT words FROM talkers WHERE jid=" ^
+				    escape jid_s ^
+				    " AND room=" ^ escape room_s) then
+				   exec db 
+				      ("UPDATE talkers SET words=words+" ^ 
+					  words ^
+					", sentences=sentences+1, me=me+" ^ me ^
+					  " WHERE jid=" ^ escape jid_s ^
+					  " AND room=" ^ escape room_s)
+			     else
+				exec db ("INSERT INTO talkers " ^ values 
+				    [escape jid_s; escape from.resource; 
+				     escape room_s; words; me; "1"])
       | _ -> ()
 
-let cmd_talkers text event xml out =
+let cmd_talkers text event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, _, _) ->
+      | MUC_message (msg_type, _, _) ->
+	   let room = from.luser, from.lserver in
+	   let room_s = from.luser ^ "@" ^ from.lserver in
+	   let nick = Stringprep.resourceprep text in
 	   let vm = compile_simple db
 	      ("SELECT nick, words, me, sentences FROM talkers WHERE room=" ^
-		  escape room ^ 
+		  escape room_s ^ 
 		  (if text = "" then 
 		      " ORDER BY words DESC, sentences ASC  LIMIT 10" 
-		   else " AND nick like " ^ escape text ^ 
+		   else " AND nick like " ^ escape nick ^ 
 		      " ORDER BY words DESC, sentences ASC")) in
 	   let rec cycle () =
 	      try
@@ -102,24 +111,29 @@ let cmd_talkers text event xml out =
 		 cycle (length header.(0) / 8) data in
 	   let tabs = max_len / 8 + 1 in
 	   let tab = String.make tabs '\t' in
-	   let rec cycle l =
+	   let rec cycle l acc =
 	      match l with
-		 | [] -> ""
+		 | [] -> String.concat "" (List.rev acc)
 		 | h :: t ->
 		      let m = tabs - (length h.(0) / 8) in
-			 (Printf.sprintf "%s%s%s\t%s\t%s\t%.2g\n"
+			 cycle t ((Printf.sprintf "%s%s%s\t%s\t%s\t%.2g\n"
 			     h.(0) 
 			     (String.sub tab 0 m)
 			     h.(1) h.(2) h.(3) 
 			     (float_of_string h.(1) /. float_of_string h.(3))
-			 ) ^ cycle t
+			 ) :: acc)
 	   in
-	      out (make_msg xml 
-		      ((Printf.sprintf "\n%s%s%s\t%s\t%s\t%s\n"
-			   header.(0)
-			   (String.sub tab 0 (tabs - (length header.(0)/8)))
-			   header.(1) header.(2) header.(3) header.(4)) ^ 
-			  cycle data))
+	   let r = cycle data [] in
+	      if r <> "" then
+		 out (make_msg xml 
+			 ((Printf.sprintf "\n%s%s%s\t%s\t%s\t%s\n"
+			      header.(0)
+			      (String.sub tab 0 (tabs - (length header.(0)/8)))
+			      header.(1) header.(2) header.(3) header.(4)) ^ 
+			     r))
+	      else
+		 out (make_msg xml
+			 (Lang.get_msg ~xml "plugin_talkers_no_result" []))
       | _ -> ()
 		 
 let _ =

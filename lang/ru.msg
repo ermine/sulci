@@ -16,7 +16,7 @@ plugin_calc_cannot_float_fact Не, я не умею вычислять факт
 plugin_calc_negative_number        Так не бывает.
 plugin_markov_kick_reason          фильтруем базар
 plugin_markov_kick_error           Фиговый модератор!
-plugin_markov_phrase_is_ignored    Фраза игнорируется
+plugin_markov_phrase_is_ignored    Эта фраза игнорируется
 plugin_ping_pong_from_me           Скорость отклика сервера для меня составляет %s
 plugin_ping_pong_from_you          Понг от тебя %s
 plugin_ping_pong_from_somebody     Понг от %s: %s
@@ -44,9 +44,12 @@ plugin_vocabulary_wrote            записал.
 plugin_vocabulary_not_found        хз
 plugin_misc_dns_invalid_syntax     ась?
 plugin_misc_dns_not_resolved       не резолвится
+
 plugin_globalstats_uptime          Сервер %s работает без остановок %s
 plugin_globalstats_uptime_invalid_syntax Имя сервера, сестричка!
 plugin_globalstats_uptime_error    Информация засекречена
+plugin_globalstats_uptime_not_implemented Сервер не считает свой аптайм
+plugin_globalstats_uptime_remote_server_not_found Скорее всего там не поднят джаббер-сервер
 plugin_globalstats_stats_error     Скорее всего, сервер не поддерживает stats
 plugin_google_invalid_syntax       ась?
 plugin_google_not_found            Не нашел :(
@@ -75,4 +78,4 @@ plugin_talkers_top_header_words   Слов
 plugin_talkers_top_header_actions /me
 plugin_talkers_top_header_sentences Фраз
 plugin_talkers_top_header_average   Эфф.
-
+plugin_talkers_no_result          Нет таких болтунов.

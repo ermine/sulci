@@ -228,48 +228,63 @@ let notify_jids =
    with _ -> [] in
       List.map (fun j -> Xml.get_attr_s j "jid") jids
 
-let report word room nick phrase out =
-   let item = Nicks.find nick (GroupchatMap.find room !groupchats).nicks in
+let do_kick =
+   try if Xml.get_attr_s Config.config ~path:["plugins"; "cerberus"] "kick" =
+      "true" then true else false
+   with _ -> true
+
+let report word (from:jid) phrase out =
+   let item = Nicks.find from.lresource 
+      (GroupchatMap.find (from.luser, from.lserver) 
+	  !groupchats).nicks in
       List.iter (fun jid ->
 		    out (Xmlelement ("message", ["type", "chat";
 						 "to", jid],
 				     [make_simple_cdata "body"
 					 (Printf.sprintf 
-					     "Мат: %s\n%s %s (%s)\n%s" 
-					     word room nick item.jid phrase)]))
+					     "Мат: %s\n%s@%s %s (%s@%s/%s)\n%s" 
+					     word 
+					     from.user from.server
+					     from.resource
+					     item.jid.user
+					     item.jid.server
+					     item.jid.resource
+					     phrase)]))
 		) notify_jids
 
-let kill room nick out =
-   if nick = "" then ()
+let kill (from:jid) out =
+   if from.resource = "" then ()
    else
       let id = new_id () in
-      out (Muc.kick id room nick ("plugin_markov_kick_reason", []));
-      let proc event x o = 
-	 match event with
-	    | Iq `Error ->
-		 let err_text = try
-		    get_error_semantic x
-		 with Not_found -> 
-(*
-		    Lang.get_msg ~xml 
-		       "plugin_markov_kick_error" []
-*)
-		    "hmm.."
-		 in
-		    out (Xmlelement ("message", ["type", "groupchat";
-						 "to", room],
-				     [make_simple_cdata "body" err_text]))
-	    | _ -> ()
-      in
-	 Hooks.register_handle (Hooks.Id (id, proc))
+	 out (Muc.kick id from from.resource ("plugin_markov_kick_reason", []));
+	 let proc event f x o = 
+	    match event with
+	       | Iq `Error ->
+		    let err_text = try
+		       get_error_semantic x
+		    with Not_found -> 
+		       (*
+			 Lang.get_msg ~xml 
+			 "plugin_markov_kick_error" []
+		       *)
+		       "hmm.."
+		    in
+		       out (Xmlelement ("message", 
+					["type", "groupchat";
+					 "to", from.user ^ "@" ^ from.server],
+					[make_simple_cdata "body" err_text]))
+	       | _ -> ()
+	 in
+	    Hooks.register_handle (Hooks.Id (id, proc))
 		       
-let check text room nick out =
+let check text from out =
    let lexbuf = Ulexing.from_utf8_string text in
       try match analyze lexbuf with
 	 | Good -> ()
 	 | Bad word ->
-	      report word room nick text out;
-	      kill room nick out;
+	      report word from text out;
+	      if do_kick then
+		 kill from out;
 	      (* out (Xmlelement ("message", ["to", room;
 		 "type", "groupchat"],
 		 [make_simple_cdata "body" nick]))
@@ -285,48 +300,53 @@ let check text room nick out =
 
 let topic = ref " "
 
-let cerberus event xml out =
-   match event with
-      | MUC_join (room, nick, item) ->
-	   if nick <> (GroupchatMap.find room !groupchats).mynick then begin
-	      check nick room nick out;
-	      check item.status room nick out;
-	   end
-      | MUC_change_nick (room, nick, _, item) ->
-	   if nick <> (GroupchatMap.find room !groupchats).mynick then
-	      check nick room nick out
-      | MUC_presence (room, nick, item) ->
-	   if nick <> (GroupchatMap.find room !groupchats).mynick then
-	      check item.status room nick out
-      | MUC_topic (room, nick, subject) ->
-	   if nick <> (GroupchatMap.find room !groupchats).mynick then begin
-	      try check subject room nick out;
-		 topic := subject
-	      with Hooks.FilteredOut ->
-		 out (Muc.set_topic room !topic);
-		 raise FilteredOut
-	   end
-      | MUC_message (room, msg_type, author, nick, body) ->
-	   if author <> (GroupchatMap.find room !groupchats).mynick &&
-	      body <> "" then
-		 check body room author out
-      | MUC_history room ->
-	   if get_tagname xml = "message" then begin
-	      try
-		 let subject = get_cdata xml ~path:["subject"] in
-		 let lexbuf = Ulexing.from_utf8_string subject in
-		    try match analyze lexbuf with
-		       | Good -> topic := subject
-		       | Bad word -> ()
-		    with
-		       | Ulexing.Error ->
-			    Printf.printf
-			       "Lexing error at offset %i\n" 
-			       (Ulexing.lexeme_end lexbuf);
-			    flush Pervasives.stdout;
-	      with _ -> ()
+let cerberus event from xml out =
+   let room = from.luser, from.lserver in
+      match event with
+	 | MUC_join item ->
+	      if from.lresource <> 
+		 (GroupchatMap.find room !groupchats).mynick then begin
+		    check from.resource from out;
+		    check item.status from out;
+		 end
+	 | MUC_change_nick (nick, item) ->
+	      if nick <> (GroupchatMap.find room !groupchats).mynick then
+		 check nick from out
+	 | MUC_presence item ->
+	      if from.lresource <> 
+		 (GroupchatMap.find room !groupchats).mynick then
+		 check item.status from out
+	 | MUC_topic subject ->
+	      if from.lresource <> 
+		 (GroupchatMap.find room !groupchats).mynick then begin
+		    try check subject from out;
+		       topic := subject
+		    with Hooks.FilteredOut ->
+		       out (Muc.set_topic from !topic);
+		       raise FilteredOut
+		 end
+	 | MUC_message (msg_type, nick, body) ->
+	      if from.lresource <> 
+		 (GroupchatMap.find room !groupchats).mynick &&
+		 body <> "" then
+		    check body from out
+	 | MUC_history ->
+	      if get_tagname xml = "message" then begin
+		 try
+		    let subject = get_cdata xml ~path:["subject"] in
+		    let lexbuf = Ulexing.from_utf8_string subject in
+		       try match analyze lexbuf with
+			  | Good -> topic := subject
+			  | Bad word -> ()
+		       with
+			  | Ulexing.Error ->
+			       Printf.printf
+				  "Lexing error at offset %i\n" 
+				  (Ulexing.lexeme_end lexbuf);
+			       flush Pervasives.stdout;
+		 with _ -> ()
 	      end
-      | _ -> ()
+	 | _ -> ()
 
 let _ = 
    Hooks.register_handle (Filter cerberus)

@@ -6,57 +6,69 @@ open Xml
 open Xmpp
 open Common
 open Types
+open Xmpp
 
-let ping text event xml (out:element -> unit) =
+let success starttime lang victim lvictim mynick from xml out =
+   let diff = Lang.float_seconds ~lang "ping" 
+      (Unix.gettimeofday () -. starttime) in
+      if lvictim = mynick then
+	 Lang.get_msg ~lang "plugin_ping_pong_from_me" [diff]
+      else
+	 if from.lresource = lvictim then
+	    Lang.get_msg ~lang "plugin_ping_pong_from_you" [diff]
+	 else
+	    Lang.get_msg ~lang "plugin_ping_pong_from_somebody"[victim; diff]
+	
+
+let ping text event from xml (out:element -> unit) =
    match event with
-      | MUC_message (room, msg_type, author, _, _) ->
+      | MUC_message (msg_type, _, _) ->
 	   let now = Unix.gettimeofday () in
 	      match msg_type with
 		 | `Groupchat ->
-		      let roomenv = GroupchatMap.find room !groupchats in
-		      let victim = if text = "" then author else text in
-		      let proc e x out =
-			 match e with
-			    | Iq `Result ->
-				 let reply =
-				    let diff = Lang.float_seconds ~xml "ping"
-				       (Unix.gettimeofday () -. now) in
-				       if victim = roomenv.mynick then
-					  Lang.get_msg ~xml 
-					     "plugin_ping_pong_from_me" [diff]
-				       else
-					  if author = victim then
-					     Lang.get_msg ~xml
-						"plugin_ping_pong_from_you" 
-						[diff]
-					  else
-					     Lang.get_msg ~xml
-						"plugin_ping_pong_from_somebody"
-						[victim; diff]
-				 in
-				    out (make_msg xml reply)
-			    | Iq `Error ->
-				 let err =
-				    try 
-				       get_cdata ~path:["error"; "text"] x 
-				    with _ ->
-				       Lang.get_msg ~xml
-					  "plugin_ping_error" [victim]
-				 in
-				    out (make_msg xml err)
-			    | _ -> ()
+		      let roomenv = GroupchatMap.find (from.luser, from.lserver)
+			 !groupchats in
+		      let lang = roomenv.lang in
+		      let lvictim = if text = "" then from.lresource
+		      else Stringprep.resourceprep text in
+		      let victim = if text = "" then from.resource else text in
+		      let proc e f x o =
+			 let reply =
+			    match e with
+			       | Iq `Result ->
+				    success now lang victim lvictim 
+				       roomenv.mynick from  x o
+			       | Iq `Error ->
+				    (let cond,_,_ = Error.parse_error x in
+					match cond with
+					   | `ERR_FEATURE_NOT_IMPLEMENTED ->
+						success now lang victim
+						   lvictim roomenv.mynick
+						   from x o
+					   | _ ->
+						try get_cdata 
+						   ~path:["error"; "text"] x 
+						with _ ->
+						   Lang.get_msg ~lang
+						      "plugin_ping_error"
+						      [victim]
+				    )
+			       | _ -> "?!"
+			 in
+			    out (make_msg xml reply)
 		      in
 		      let id = new_id () in
 			 Hooks.register_handle (Hooks.Id (id, proc));
-			 out (iq_query ~to_:(room ^ "/" ^ victim) ~id 
-				 "jabber:iq:version")
+			 out (iq_query ~to_:(string_of_jid 
+						{from with resource = victim})
+				 ~id "jabber:iq:version")
 		 | other ->
 		      if text <> "" then
 			 out (make_msg xml 
 				 (Lang.get_msg ~xml
 				     "plugin_ping_cannot_ping" [text]))
 		      else
-			 let proc e x out =
+			 let proc e f x out =
 			    match e with
 			       | Iq `Result ->
 				    let diff = Lang.float_seconds ~xml "ping" 

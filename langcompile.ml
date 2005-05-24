@@ -89,6 +89,14 @@ Examples:
 	   langcompile export fr fr.text"
 
 
+let diff () =
+   let f1 = input_value (open_in_bin Sys.argv.(2)) in
+   let f2 = input_value (open_in_bin Sys.argv.(3)) in
+      Hashtbl.iter (fun (i:string) _ ->
+		       try let _ = Hashtbl.find f2 i in () with Not_found ->
+			  print_endline i
+		   ) f1
+
 let _ =
    if Array.length Sys.argv = 1 then
       usage ()
@@ -96,5 +104,6 @@ let _ =
       match Sys.argv.(1) with
 	 | "import" -> import ()
 	 | "export" -> export ()
-	 | _ -> usage ()
+	 | "diff"   -> diff ()
+	 | _        -> usage ()
 

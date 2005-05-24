@@ -9,19 +9,18 @@ open Types
 
 let r = Random.self_init ()
 
-let roulette text event xml out =
+let roulette text event from xml out =
    if text <> "" then
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_roulette_syntax_error" []))
    else
       match event with
-	 | MUC_message (room, msg_type, author, _, _) 
-	       when msg_type = `Groupchat ->
+	 | MUC_message (msg_type, _, _) when msg_type = `Groupchat ->
 	      if Random.int 10 = 1 then
 		 let id = new_id () in
-		    out (Muc.kick id room author 
+		    out (Muc.kick id from from.resource 
 			    ("plugin_roulette_kick_reason", []));
-		    let proc e x o = 
+		    let proc e f x o = 
 		       let reply = match e with
 			  | Iq `Result ->
 			       Lang.get_msg ~xml "plugin_roulette_bye" []

@@ -9,7 +9,11 @@ muc_log_change_nick            %s is nu gekend onder de naam %s
 //muc_log_set_subject
 //muc_log_subject
 plugin_calc_not_parsed         Ik versta dat niet. 
-plugin_cakc_empty_command      Wat?
+plugin_calc_empty_command      Wat?
+plugin_calc_divide_by_zero         Делим на нолик, да? :-/
+plugin_calc_number_too_big         Een te groot getal... :(
+plugin_calc_cannot_float_fact      Nee, ik weet echt niet hoe ik de faculteit van een kommagetal zou kunnen berekenen :(
+plugin_calc_negative_number        Onmogelijk..
 plugin_markov_filter_badwords  Woorden uit de zwarte lijst werden weggefilterd
 plugin_markov_kick_error       Slechte moderator!
 plugin_markov_phrase_is_ignore De zin werd genegeerd
@@ -22,6 +26,7 @@ plugin_ping_you_error              Jouw gegevens zijn geheim
 plugin_userinfo_error              Deze gegevens zijn geheim
 plugin_userinfo_version_you        uw client is %s %s - %s
 plugin_userinfo_version_somebody   %s's client is %s %s - %s
+//plugin_userinfo_version_server     %s is running %s
 plugin_userinfo_idle_me            Ik ben helemaal niet stil!
 plugin_userinfo_idle_you           Je bent al %s seconden stil
 plugin_userinfo_idle_somebody      %s is al %s seconden stil
@@ -42,12 +47,12 @@ plugin_misc_dns_not_resolved       kan niet opzoeken
 plugin_globalstats_uptime_invalid_syntax Je moet de servernaam opgeven!
 plugin_globalstats_uptime_error    De gegevens zijn geheim
 plugin_globalstats_stats_error     Die server ondersteunt geen statistieken
+//plugin_globalstats_uptime_not_implemented This server does not know how long it works
+//plugin_globalstats_uptime_remote_server_not_found This server is not an jabber-server
+//plugin_globalstats_stats_error     No support for stats
 plugin_google_invalid_syntax       hm?
 plugin_google_not_found            Niet gevonden :(
 plugin_google_adv_invalid_syntax   Haha! Je hebt de juiste syntaxis niet kunnen gokken
-plugin_calc_number_too_big         Een te groot getal... :(
-plugin_calc_cannot_float_fact      Nee, ik weet echt niet hoe ik de faculteit van een kommagetal zou kunnen berekenen :(
-plugin_calc_negative_number        Onmogelijk..
 plugin_weather_invalid_syntax      Hmm... wat zei je juist?
 plugin_admin_quit_bye              Tot nog eens! Ik ben er eens mee weg...
 plugin_admin_quit_no_access        Wie zou weg moeten?
@@ -72,3 +77,4 @@ plugin_dict_word_not_found         Kan niets bruikbaars vinden
 //plugin_talkers_top_header_actions Actions
 //plugin_talkers_top_header_sentences Sentences
 //plugin_talkers_top_header_average   Avg.
+//plugin_talkers_no_result            No such guys

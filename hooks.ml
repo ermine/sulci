@@ -7,8 +7,6 @@ open Xmpp
 open Common
 open Types
 
-let _ = Scheduler.init ()
-
 module IdMap = Map.Make(Id)
 let idmap = ref IdMap.empty
 
@@ -23,7 +21,8 @@ let commands = ref CommandMap.empty
 let onstart =
    let on_start out =
       GroupchatMap.iter (fun room env ->
-			    out (Muc.join_room env.mynick room)) !groupchats
+			    out (Muc.join_room env.mynick 
+				    (string_of_jid env.room))) !groupchats
    in
       ref [on_start]
 
@@ -32,15 +31,17 @@ let catchset = ref []
 let filters = ref []
 
 type reg_handle =
-   | Xmlns of string * (xmpp_event -> element -> (element -> unit) -> unit)
-   | Id of string * (xmpp_event -> element -> (element -> unit) -> unit)
+   | Xmlns of 
+	string * (xmpp_event -> jid -> element -> (element -> unit) -> unit)
+   | Id of string * (xmpp_event -> jid -> element -> (element -> unit) -> unit)
    | Command of string * 
-	(string -> xmpp_event -> element -> (element -> unit) -> unit)
+	(string -> xmpp_event -> jid -> element -> (element -> unit) -> unit)
    | OnStart of ((element -> unit) -> unit)
    | OnQuit of ((element -> unit) -> unit)
-   | Catch of (xmpp_event -> element -> (element -> unit) -> unit)
-   | Filter of (xmpp_event -> element -> (element -> unit) -> unit)
-   | PresenceHandle of (xmpp_event -> element -> (element -> unit) -> unit)
+   | Catch of (xmpp_event -> jid -> element -> (element -> unit) -> unit)
+   | Filter of (xmpp_event -> jid -> element -> (element -> unit) -> unit)
+   | PresenceHandle of 
+	(xmpp_event -> jid -> element -> (element -> unit) -> unit)
 
 let register_handle (handler:reg_handle) =
    match handler with
@@ -68,7 +69,7 @@ let register_handle (handler:reg_handle) =
 	       with Not_found -> [proc]) !hookmap
 	   *)
 
-let process_iq event xml out =
+let process_iq event from xml out =
    let id = safe_get_attr_s xml "id" in
       if id <> "" then
 	 match event with
@@ -76,16 +77,16 @@ let process_iq event xml out =
 	    | Iq `Error ->
 		 begin try
 		    let f = IdMap.find id !idmap in
-		       f event xml out;
+		       (try f event from xml out with exn -> print_exn exn);
 		       idmap := IdMap.remove id !idmap
-		 with _ -> ()
+		 with Not_found -> ()
 		 end
 	    | Iq `Get
 	    | Iq `Set ->
 		 begin try
 		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-		       f event xml out;
-		 with _ -> ()
+		       (try f event from xml out with exn -> print_exn exn);
+		 with Not_found -> ()
 		 end
 	    | _ -> ()
       else 
@@ -94,68 +95,78 @@ let process_iq event xml out =
 	    | Iq `Set ->
 		 begin try
 		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-		       f event xml out;
-		 with _ -> ()
+		       (try f event from xml out with exn -> print_exn exn);
+		 with Not_found -> ()
 		 end
 	    | _ -> ()
 
-let do_command text event xml out =
+let do_command text event from xml out =
    let word = 
       try String.sub text 0 (String.index text ' ') with Not_found -> text in
    let f = CommandMap.find word !commands in
-   let text = try string_after text (String.index text ' ') with _ -> "" in
-      f (trim text) event xml out
+   let params = try string_after text (String.index text ' ') with _ -> "" in
+      try f (trim params) event from xml out with exn -> print_exn exn
 
-let process_message event xml out =
+let process_message event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, nick, text) ->
+      | MUC_message (msg_type, nick, text) ->
 	   if msg_type <> `Error then
 	      if text <> "" then
 		 try
-		    let room_env = GroupchatMap.find room !groupchats in
+		    let room_env = GroupchatMap.find (from.luser, from.lserver)
+		       !groupchats in
 		       begin match msg_type with
 			  | `Groupchat ->
-			       if author <> room_env.mynick && nick = "" then
-				  do_command text event xml out
+			       if from.lresource <> room_env.mynick && 
+				  nick = "" then
+				     do_command text event from xml out
 			       else
 				  raise Not_found
 			  | _ ->
-			       do_command text event xml out
+			       do_command text event from xml out
 		       end
 		 with Not_found ->
-		    List.iter  (fun f -> f event xml out) !catchset
+		    List.iter  (fun f -> 
+				   try f event from xml out with exn ->
+				      print_exn exn
+			       ) !catchset 
 	      else
-		 List.iter  (fun f -> f event xml out) !catchset
+		 List.iter  (fun f -> 
+				try f event from xml out with exn ->
+				   print_exn exn
+			    ) !catchset 
       | Message ->
 	   let text = try get_cdata xml ~path:["body"] with Not_found -> "" in
-	      try do_command text event xml out with Not_found ->
-		 List.iter  (fun f -> f event xml out) !catchset
+	      try do_command text event from xml out with Not_found ->
+		 List.iter  (fun f -> 
+				try f event from xml out with exn ->
+				   print_exn exn
+			    ) !catchset
 
 exception FilteredOut
 exception InvalidStanza of string
   
 let rec process_xml next_xml out =
    let xml = next_xml () in
-   let from = get_attr_s xml "from" in
-   let room = get_bare_jid from in
+   let from = safe_jid_of_string (get_attr_s xml "from") in
+   let room = (from.luser, from.lserver) in
    let tag = get_tagname xml in
    let event =
       if GroupchatMap.mem room !groupchats then
-	 let nick = get_resource from in
-	    match tag with
-	       | "presence" ->
-		    Muc.process_presence room nick xml out
-	       | "message" ->
-		    Muc.process_message room nick xml out
-	       | "iq" ->
-		    let iq_type = match safe_get_attr_s xml "type" with
-		       | "get" -> `Get
-		       | "set" -> `Set
-		       | "result" -> `Result
-		       | "error" -> `Error
-		    in
-		       Iq iq_type
-	       | _ -> raise (InvalidStanza (Xml.element_to_string xml))
+	 match tag with
+	    | "presence" ->
+		 Muc.process_presence from xml out
+	    | "message" ->
+		 Muc.process_message from xml out
+	    | "iq" ->
+		 let iq_type = match safe_get_attr_s xml "type" with
+		    | "get" -> `Get
+		    | "set" -> `Set
+		    | "result" -> `Result
+		    | "error" -> `Error
+		 in
+		    Iq iq_type
+	    | _ -> raise (InvalidStanza (Xml.element_to_string xml))
       else
 	 match tag with
 	    | "message" -> Message
@@ -171,40 +182,46 @@ let rec process_xml next_xml out =
 	    | _ -> raise (InvalidStanza (Xml.element_to_string xml))
    in
    let () =
-      Muc_log.process_log event xml;
+      Muc_log.process_log event from xml;
       try
-	 List.iter (fun proc -> proc event xml out) !filters;
+	 List.iter (fun proc -> 
+		       try proc event from xml out with exn -> print_exn exn
+		   ) !filters;
       with FilteredOut ->
 	 process_xml next_xml out
    in
       begin match event with
 	 | Iq _ ->
-	      process_iq event xml out
+	      process_iq event from xml out
 	 | MUC_message _
 	 | Message ->
-	      process_message event xml out;
+	      process_message event from xml out;
 	 | _ -> 
-	      List.iter (fun proc -> proc event xml out) !catchset
+	      List.iter (fun proc -> 
+			    try proc event from xml out with exn ->
+			       print_exn exn
+			) !catchset
       end;
       process_xml next_xml out
 
 let quit out =
-   List.iter (fun proc -> proc out) !onquit;
+   List.iter (fun proc -> try proc out with exn -> print_exn exn) !onquit;
    Pervasives.exit 0
 
-let check_access jid classname =
+let check_access (jid:jid) classname =
    let who =
-      let room = get_bare_jid jid in
-	 try 
-	    let env = GroupchatMap.find room !groupchats in
-	    let nick = get_resource jid in
-	    let item = Nicks.find nick env.nicks in
-	       get_bare_jid (item.jid)
-	 with Not_found -> get_bare_jid jid 
+      try 
+	 let env = GroupchatMap.find (jid.luser, jid.lserver) !groupchats in
+	 let nick = jid.lresource in
+	 let item = Nicks.find nick env.nicks in
+	    item.jid
+      with Not_found -> jid 
    in
    let acls = get_subels Config.config ~tag:"acl" in
       if List.exists (fun a -> 
-			 if get_attr_s a "jid" = who &&
-			    get_attr_s a "class" = classname then
-			       true else false) acls 
+			 let jid = jid_of_string (get_attr_s a "jid") in
+			    if jid.luser = who.luser && 
+			       jid.lserver = who.lserver &&
+			       get_attr_s a "class" = classname then
+				  true else false) acls 
       then true else false

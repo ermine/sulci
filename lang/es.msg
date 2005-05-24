@@ -20,11 +20,15 @@ plugin_calc_divide_by_zero     división por cero
 plugin_dict_db_not_found       No existe esa Base de Datos
 plugin_dict_invalid_syntax     Sintaxis incorrecta.
 plugin_dict_word_not_found     Palabra no encontrada
+
 plugin_globalstats_stats_error     Parece que el servidor no proporciona estadísticas
 plugin_globalstats_uptime_error    La información es secreta
 plugin_globalstats_uptime_invalid_syntax ¡Te falta el nombre del servidor, pequeño saltamontes!
+//plugin_globalstats_uptime_not_implemented This server does not know how long it works
+//plugin_globalstats_uptime_remote_server_not_found This server is not an jabber-server
 plugin_globalstats_uptime      %s lleva activo %s
 plugin_google_adv_invalid_syntax   Je je, no has adivinado la sintaxis correcta
+
 plugin_google_invalid_syntax       ¿eh?
 plugin_google_not_found            No encontrado :(
 plugin_markov_filter_badwords  Filtrando palabras malas
@@ -65,6 +69,7 @@ plugin_userinfo_time_me            son las %s aqui
 plugin_userinfo_time_somebody      Son las %s en el reloj de %s
 plugin_userinfo_time_you           Son las %s en tu reloj
 plugin_userinfo_version_somebody   el cliente de %s es %s %s - %s
+//plugin_userinfo_version_server     %s is running %s
 plugin_userinfo_version_you        tu cliente es %s %s - %s
 plugin_vocabulary_invalid_suntax   ¿eh?
 plugin_vocabulary_not_found        no lo se
@@ -75,3 +80,4 @@ plugin_weather_invalid_syntax     Esto... ¿el tiempo de dónde?
 //plugin_talkers_top_header_actions Actions
 //plugin_talkers_top_header_sentences Sentences
 //plugin_talkers_top_header_average   Avg.
+//plugin_talkers_no_result            No such guys

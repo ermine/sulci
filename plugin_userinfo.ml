@@ -16,22 +16,23 @@ let error xml =
    with _ -> 
       Lang.get_msg ~xml "plugin_userinfo_error" []
 
-let groupchat xml out text xmlns myself common =
-   let from = get_attr_s xml "from" in
-   let asker = get_resource from in
-   let nick = if text = "" then asker else text in
-   let mynick = 
-      let r = GroupchatMap.find (get_bare_jid from) !groupchats in r.mynick in
-      if nick = mynick then
+let groupchat from xml out text xmlns myself common =
+   let victim = 
+      if text = "" then from.lresource 
+      else Stringprep.resourceprep text in
+   let r = GroupchatMap.find (from.luser, from.lserver) !groupchats in
+      if victim = r.mynick then
 	 out (make_msg xml myself)
       else
 	 let to_ = 
-	    if text = "" then from 
-	    else get_bare_jid from ^ "/" ^ text in
-	 let proc e x o =
+	    if text = "" then string_of_jid from
+	    else string_of_jid {from with resource = text} in
+	 let proc e f x o =
 	    match e with
 	       | Iq `Result ->
-		    o (make_msg xml (common x asker nick))
+		    o (make_msg xml (common x from.resource 
+					(if text = "" then
+					    from.resource else text)))
 	       | Iq `Error ->
 		    o (make_msg xml (error x))
 	       | _ -> ()
@@ -40,29 +41,31 @@ let groupchat xml out text xmlns myself common =
 	    Hooks.register_handle (Hooks.Id (id, proc));
 	    out (iq_query ~to_ ~id xmlns)
 
-let version text event xml out =
+let version text event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, _, _) ->
+      | MUC_message (msg_type, _, _) ->
 	   let myself = 
 	      Printf.sprintf "Sulci %s - %s" Version.version Jeps.os in
-	   let common x asker nick =
+	   let common x author nick =
 	      let client = get_cdata x ~path:["query"; "name"] in
 	      let version = get_cdata x ~path:["query"; "version"] in
 	      let os = get_cdata x ~path:["query"; "os"] in
-		 if asker = nick then
+		 if author = nick then
 		    Lang.get_msg ~xml "plugin_userinfo_version_you"
 		       [client; version; os]
 		 else
 		    Lang.get_msg ~xml "plugin_userinfo_version_somebody"
-		       [nick; client; version; os]
+		       [(if text = "" then
+			    from.resource else text); client; version; os]
 	   in
-	      groupchat xml out text "jabber:iq:version" myself common
+	      groupchat from xml out text 
+		 "jabber:iq:version" myself common
       | _ ->
 	   if text <> "" then 
 	      out (make_msg xml (Lang.get_msg ~xml 
 				    "plugin_userinfo_chat_syntax_error" 
 				    [text]));
-	   let proc e x o =
+	   let proc e f x o =
 	      match e with
 		 | Iq `Result ->
 		      let client = get_cdata x ~path:["query"; "name"] in
@@ -81,13 +84,11 @@ let version text event xml out =
 	      out 
 		 (iq_query ~to_:(get_attr_s xml "from") ~id "jabber:iq:version")
 
-let version_server text event xml out =
+let version_server text event from xml out =
    try
-      let user, server, resource = jid_of_string text in
-	 if user = "" && resource = "" then
-	    out (make_msg xml "invalid server name")
-	 else
-	    let proc event x o =
+      let server = jid_of_string text in
+	 if server.user = "" && server.resource = "" then
+	    let proc event f x o =
 	       match event with
 		  | Iq `Result ->
 		       let client = get_cdata x ~path:["query"; "name"] in
@@ -96,20 +97,22 @@ let version_server text event xml out =
 			  o (make_msg xml 
 				(Lang.get_msg ~xml 
 				    "plugin_userinfo_version_server"
-				    [server; client; version; os]))
+				    [server.server; client; version; os]))
 		  | Iq `Error ->
 		       o (make_msg xml (error x))
 		  | _ -> ()
 	    in
 	    let id = new_id () in
 	       Hooks.register_handle (Hooks.Id (id, proc));
-	       out (iq_query ~to_:server ~id "jabber:iq:version")
+	       out (iq_query ~to_:server.server ~id "jabber:iq:version")
+	 else
+	    out (make_msg xml "invalid server name")
    with _ ->
       out (make_msg xml "invalid server name")
 
-let idle text event xml out =
+let idle text event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, _, _) ->
+      | MUC_message (msg_type, _, _) ->
 	   let myself = Lang.get_msg ~xml "plugin_userinfo_idle_me" [] in
 	   let common x asker nick =
 	      let seconds = get_attr_s x ~path:["query"] "seconds" in
@@ -118,15 +121,16 @@ let idle text event xml out =
 		    Lang.get_msg ~xml "plugin_userinfo_idle_you" [idle]
 		 else 
 		    Lang.get_msg ~xml "plugin_userinfo_idle_somebody"
-		       [nick; idle]
+		       [(if text = "" then from.resource
+			 else text); idle]
 	   in
-	      groupchat xml out text "jabber:iq:last" myself common
+	      groupchat from xml out text "jabber:iq:last" myself common
       | _ ->
 	   if text <> "" then 
 	      out (make_msg xml (Lang.get_msg ~xml 
 				    "plugin_userinfo_chat_syntax_error"
 				    [text]));
-	   let proc e x o =
+	   let proc e f x o =
 	      match e with
 		 | Iq `Result ->
 		      let seconds = get_attr_s x ~path:["query"] "seconds" in
@@ -143,9 +147,9 @@ let idle text event xml out =
 	      Hooks.register_handle (Hooks.Id (id, proc));
 	      out (iq_query ~to_:(get_attr_s xml "from") ~id "jabber:iq:last")
 		 
-let time text event xml out =
+let time text event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, _, _) ->
+      | MUC_message (msg_type, _, _) ->
 	   let myself = Lang.get_msg ~xml "plugin_userinfo_time_me"
 	      [Strftime.strftime ~tm:(localtime (time ())) "%H:%M"] in
 	   let common x asker nick =
@@ -154,15 +158,16 @@ let time text event xml out =
 		    Lang.get_msg ~xml "plugin_userinfo_time_you" [display]
 		 else
 		    Lang.get_msg ~xml "plugin_userinfo_time_somebody"
-		       [nick; display]
+		       [(if text = "" then
+			    from.resource else text); display]
 	   in
-	      groupchat xml out text "jabber:iq:time" myself common
+	      groupchat from xml out text "jabber:iq:time" myself common
       | _ ->
 	   if text <> "" then 
 	      out (make_msg xml (Lang.get_msg ~xml 
 				    "plugin_userinfo_chat_syntax_error"
 				    [text]));
-	   let proc e x o =
+	   let proc e f x o =
 	      match e with
 		 | Iq `Result ->
 		      let display = get_cdata x ~path:["query"; "display"] in
@@ -177,13 +182,15 @@ let time text event xml out =
 	      Hooks.register_handle (Hooks.Id (id, proc));
 	      out (iq_query ~id ~to_:(get_attr_s xml "from") "jabber:iq:time")
 
-let status text event xml out =
+let status text event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, _, _) ->
-	   let nick = if text = "" then author else text in
+      | MUC_message (msg_type, _, _) ->
+	   let victim = if text = "" then from.lresource else 
+	      Stringprep.resourceprep text in
 	      begin try
-		 let item = Nicks.find nick 
-		    (GroupchatMap.find room !groupchats).nicks in
+		 let item = Nicks.find victim
+		    (GroupchatMap.find (from.luser, from.lserver) 
+			!groupchats).nicks in
 		    if item.status = "" then
 		       out (make_msg xml ("[" ^ item.show ^ "]"))
 		    else

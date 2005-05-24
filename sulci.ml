@@ -29,6 +29,6 @@ let _ =
       Sys.set_signal Sys.sigterm
 	 (Sys.Signal_handle (function x -> Hooks.quit out));
 
-      List.iter (fun proc -> proc out) !onstart;
+      List.iter (fun proc -> try proc out with exn -> print_exn exn) !onstart;
       process_xml next_xml out
 

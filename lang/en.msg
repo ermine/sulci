@@ -9,11 +9,14 @@ muc_log_change_nick            %s is now known as %s
 muc_log_set_subject            %s has set the subject to: %s
 muc_log_subject                Theme: %s
 plugin_calc_not_parsed         I dont understand. 
-plugin_cakc_empty_command      What?
+plugin_calc_empty_command      What?
 plugin_calc_divide_by_zero     Please dont divide by zero!
+plugin_calc_number_too_big         Too big number... :(
+plugin_calc_cannot_float_fact      No, I don't know how to calculate float factorial :(
+plugin_calc_negative_number        Impossible..
 plugin_markov_kick_reason      Filtering out badwords
 plugin_markov_kick_error       Bad moderator!
-plugin_markov_phrase_is_ignore Phrase is ignored
+plugin_markov_phrase_is_ignored Phrase is ignored
 plugin_ping_pong_from_me       For me pong from the server is %s
 plugin_ping_pong_from_you      Pong from you: %s
 plugin_ping_pong_from_somebody Pong from %s: %s
@@ -23,6 +26,7 @@ plugin_ping_you_error              The information about you is secret
 plugin_userinfo_error              The information is secret
 plugin_userinfo_version_you        your client is %s %s - %s
 plugin_userinfo_version_somebody   %s's client is %s %s - %s
+plugin_userinfo_version_server     %s is running %s
 plugin_userinfo_idle_me            I am not silent at all!
 plugin_userinfo_idle_you           You are silent %s
 plugin_userinfo_idle_somebody      %s is silent %s
@@ -43,13 +47,12 @@ plugin_misc_dns_not_resolved       cannot resolve
 plugin_globalstats_uptime          %s's uptime is %s
 plugin_globalstats_uptime_invalid_syntax Servername, dear sister!
 plugin_globalstats_uptime_error    Information is secret
+plugin_globalstats_uptime_not_implemented This server does not know how long it works
+plugin_globalstats_uptime_remote_server_not_found This server is not an jabber-server
 plugin_globalstats_stats_error     It seems that server does not support stats
 plugin_google_invalid_syntax       hm?
 plugin_google_not_found            Not found :(
 plugin_google_adv_invalid_syntax   He-he! You have not guessed the proper syntax
-plugin_calc_number_too_big         Too big number... :(
-plugin_calc_cannot_float_fact      No, I don't know how to calculate float factorial :(
-plugin_calc_negative_number        Impossible..
 plugin_weather_invalid_syntax      Hmm... whose weather?
 plugin_admin_quit_bye              Bye! I'm gone...
 plugin_admin_quit_no_access        Who should to quit?
@@ -74,3 +77,4 @@ plugin_talkers_top_header_words   Words
 plugin_talkers_top_header_actions Actions
 plugin_talkers_top_header_sentences Phrs.
 plugin_talkers_top_header_average   Avg.
+plugin_talkers_no_result            No such guys

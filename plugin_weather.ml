@@ -75,7 +75,7 @@ let get_weather code =
 
 let r = Pcre.regexp "[a-zA-Z]{4}"
 
-let weather text event xml out =
+let weather text event from xml out =
    if pmatch ~rex:r text then
       let proc () =
 	 let response = 

@@ -7,22 +7,23 @@ open Unix
 open Pcre
 open Muc
 open Types
+open Xmpp
 
 let basedir = 
    let dir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"]) in
       if not (Sys.file_exists dir) then mkdir dir 0o755;
       dir
 
-module LogMap = Map.Make(Id)
+module LogMap = Map.Make(GID)
 let logmap = ref LogMap.empty
 
-let open_log room =
+let open_log (user, host) =
    let tm = localtime (time ()) in
    let year = tm.tm_year + 1900 in
    let month = tm.tm_mon + 1 in
    let day = tm.tm_mday in
 
-   let p1 = Filename.concat basedir room in
+   let p1 = Filename.concat basedir (user ^ "@" ^ host) in
    let () = if not (Sys.file_exists p1) then mkdir p1 0o755 in
    let p2 = Printf.sprintf "%s/%i" p1 year in
    let () = if not (Sys.file_exists p2) then mkdir p2 0o755 in
@@ -35,9 +36,9 @@ let open_log room =
 	       (Printf.sprintf 
 		   "<html><head>
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />
-<title>%s - %0.2d/%0.2d/%d</title></head>\n
-<body><h1>%s - %0.2d/%0.2d/%d</h1>\n"
-		   room day month year room day month year);
+<title>%s@%s - %0.2d/%0.2d/%d</title></head>\n
+<body><h1>%s@%s - %0.2d/%0.2d/%d</h1>\n"
+		   user host day month year user host day month year);
 	    flush out_log;
 	    out_log
       else
@@ -108,7 +109,7 @@ let make_message author nick body =
       else
 	 Printf.sprintf "&lt;%s&gt; %s" author (html_url text)
 
-let write room text =
+let write (room:string * string) text =
    if text <> "" then
       let out_log = get_logfile room in
       let curtime = Strftime.strftime ~tm:(localtime (time ())) "%H:%M" in
@@ -118,65 +119,76 @@ let write room text =
 		curtime text);
 	 flush out_log
 
-let process_log event xml =
+let process_log event (from:jid) xml =
    let lang room = (GroupchatMap.find room !groupchats).lang in
       match event with
-	 | MUC_history _ -> ()
-	 | MUC_topic (room, nick, subject) ->
-	      if nick <> "" then
-		 write room (Lang.get_msg ~lang:(lang room) 
-				"muc_log_set_subject" 
-				[nick;  html_url subject])
+	 | MUC_history -> ()
+	 | MUC_topic subject ->
+	      if from.resource <> "" then
+		 write (from.luser, from.lserver) 
+		    (Lang.get_msg ~lang:(lang (from.luser, from.lserver)) 
+			"muc_log_set_subject" 
+			[from.resource;  html_url subject])
 	      else
-		 write room (Lang.get_msg ~lang:(lang room)
-				"muc_log_subject" [html_url subject])
-	 | MUC_message (room, msg_type, author, nick, body)
-	       when msg_type = `Groupchat  ->
+		 write (from.luser, from.lserver) 
+		    (Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+			"muc_log_subject" [html_url subject])
+	 | MUC_message (msg_type, nick, body) when msg_type = `Groupchat  ->
 	      if body <> "" then
-		 write room (
+		 write (from.luser, from.lserver) (
 		    if nick = "" then
 		       if String.length body = 3 && body = "/me" then
-			  Printf.sprintf "* %s" author
+			  Printf.sprintf "* %s" from.resource
 		       else if String.length body > 3 && 
 			  String.sub body 0 4 = "/me " then
-			     Printf.sprintf "* %s %s" author 
+			     Printf.sprintf "* %s %s" from.resource
 				(html_url (string_after body 4))
 		       else
-			  make_message author nick body
+			  make_message from.resource nick body
 		    else
-		       make_message author nick body)
-	 | MUC_join (room, user, item) ->
-	      write room 
-		 ("-- " ^ Lang.get_msg ~lang:(lang room) "muc_log_join" [user])
-	 | MUC_leave (room, user, reason, item) ->
-	      write room 
+		       make_message from.resource nick body)
+	 | MUC_join item ->
+	      write (from.luser, from.lserver)
+		 ("-- " ^ Lang.get_msg ~lang:(lang (from.luser, from.lserver)) 
+		     "muc_log_join" 
+		     [from.resource])
+	 | MUC_leave (reason, item) ->
+	      write (from.luser, from.lserver)
 		 ("-- " ^
 		     (if reason = "" then
-			 Lang.get_msg ~lang:(lang room) "muc_log_leave" [user]
+			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+			    "muc_log_leave" 
+			    [from.resource]
 		      else
-			 Lang.get_msg ~lang:(lang room) "muc_log_leave_reason" 
-			    [user; reason]))
-	 | MUC_kick (room, user, reason,item) ->
-	      write room 
+			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+			    "muc_log_leave_reason" 
+			    [from.resource; reason]))
+	 | MUC_kick (reason,item) ->
+	      write (from.luser, from.lserver)
 		 ("-- " ^
 		     (if reason = "" then
-			 Lang.get_msg ~lang:(lang room) "muc_log_kick" [user]
+			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+			    "muc_log_kick" 
+			    [from.resource]
 		      else
-			 Lang.get_msg ~lang:(lang room) "muc_log_kick_reason" 
-			    [user; reason]))
-	 | MUC_ban (room, user, reason, item) ->
-	      write room 
+			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+			    "muc_log_kick_reason" 
+			    [from.resource; reason]))
+	 | MUC_ban (reason, item) ->
+	      write (from.luser, from.lserver)
 		 ("-- " ^
 		     (if reason = "" then
-			 Lang.get_msg ~lang:(lang room) "muc_log_ban" [user]
+			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+			    "muc_log_ban" 
+			    [from.resource]
 		      else
-			 Lang.get_msg ~lang:(lang room) 
-			    "muc_log_ban_reason" [user; reason]))
-	 | MUC_change_nick (room, newnick, user, item) ->
-	      write room 
+			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+			    "muc_log_ban_reason" [from.resource; reason]))
+	 | MUC_change_nick (newnick, item) ->
+	      write (from.luser, from.lserver)
 		 ("-- " ^
-		     (Lang.get_msg ~lang:(lang room) 
-			 "muc_log_change_nick" [user; newnick]))
+		     (Lang.get_msg ~lang:(lang (from.luser, from.lserver)) 
+			 "muc_log_change_nick" [from.resource; newnick]))
 (*
 	 | MUC_presence (room, user, item) ->
 	   (* Lang.get_msg ~lang:(lang room) "muc_log_presence" 

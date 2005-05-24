@@ -9,12 +9,13 @@ open Sqlite
 open Sqlite_util
 open Hooks
 open Types
+open Xmpp
 
 type mevent = 
-   | MMessage of xmpp_event * Xml.element * (Xml.element -> unit) 
+   | MMessage of xmpp_event * jid * Xml.element * (Xml.element -> unit) 
    | MStop 
-   | MCount of Xml.element * (Xml.element -> unit)
-   | MTop of Xml.element * (Xml.element -> unit)
+   | MCount of jid * Xml.element * (Xml.element -> unit)
+   | MTop of jid * Xml.element * (Xml.element -> unit)
 
 type t = {
    queue: mevent Queue.t;
@@ -22,7 +23,7 @@ type t = {
    cond: Condition.t;
 }
 
-module MarkovMap = Map.Make(Id)
+module MarkovMap = Map.Make(GID)
 let markovrooms = ref MarkovMap.empty
 
 let _ = Random.self_init ()
@@ -42,13 +43,13 @@ let take_queue (m:t) =
       Mutex.unlock m.mutex;
       e
 
-let open_markovdb room =
+let open_markovdb (luser, lserver) =
    let path = 
       try trim (Xml.get_attr_s Config.config 
 		   ~path:["plugins"; "markov"] "dir")
       with Not_found -> "./markov_db/" in
       if not (Sys.file_exists path) then Unix.mkdir path 0o755;
-      let db = Sqlite.db_open (path ^ room) in
+      let db = Sqlite.db_open (path ^ luser ^ "@" ^ lserver) in
 	 if not (result_bool db
 	   "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='words'")
 	 then begin try
@@ -61,7 +62,7 @@ let open_markovdb room =
 	 db
 
 let add db words =
-   let rec cycle w1 lst =
+   let rec cycle1 w1 lst =
       match lst with
 	 | [] ->
 	      let cond = ("word1=" ^ escape w1 ^ " AND word2=''") in 
@@ -74,7 +75,7 @@ let add db words =
 			     escape w1 ^ ",'',1)");
 	 | w2 :: tail ->
 	      if w1 = w2 then
-		 cycle w2 tail
+		 cycle1 w2 tail
 	      else begin
 		 let cond = ("word1=" ^ escape w1 ^ " AND word2=" ^ 
 				escape w2) in
@@ -85,10 +86,10 @@ let add db words =
 		    else
 		       exec db ("INSERT INTO words VALUES(" ^ 
 				   escape w1 ^ "," ^ escape w2 ^ ",1)");
-		    cycle w2 tail
+		    cycle1 w2 tail
 	      end
    in
-      cycle "" words
+      cycle1 "" words
 
 let seek db (w1:string) =
    let sum = result_integer db
@@ -100,36 +101,43 @@ let seek db (w1:string) =
 	 let vm = compile_simple db 
 		     ("SELECT word1, word2, counter FROM words WHERE word1=" ^
 		      escape w1) in
-	 let rec cycle lsum =
-	    try 
-	       let data = step_simple vm in
-		  if lsum - int_of_string data.(2) <= 0 then begin
-		     finalize vm;
-		     data.(0), data.(1)
-		  end
-		  else
-		     cycle (lsum - int_of_string data.(2))
+	 let rec cycle2 lsum =
+	    let data = step_simple vm in
+	       if lsum - int_of_string data.(2) <= 0 then begin
+		  finalize vm;
+		  data.(0), data.(1)
+	       end
+	       else
+		  cycle2 (lsum - int_of_string data.(2))
+	 in
+	    try
+	       cycle2 (Random.int sum + 1)
 	    with Sqlite_done -> 
 	       w1, ""
-	 in
-	    cycle (Random.int sum + 1)
 
 let generate db word =
-   let rec cycle w i =
-      let w1, w2 = seek db w in
-	 if w2 = "" then ""
-	 else
-	    w2 ^ " " ^ cycle w2 (i+1)
-   in cycle word 0
+   let rec cycle3 w i acc =
+      if i = 20 then
+	 let p = String.concat " " (List.rev acc) in
+	    print_endline p;
+	    flush stdout;
+	    p
+      else
+	 let w1, w2 = seek db w in
+	    if w2 = "" then String.concat " " (List.rev acc)
+	    else cycle3 w2 (i+1) (w2::acc)
+   in
+      cycle3 word 0 []
 
 let split_words body =
    Pcre.split ~pat:"[ \t\n]+" body
 
-let process_markov db event xml out =
+let process_markov db event from xml out =
    match event with
-      | MUC_message (room, msg_type, author, nick, body) ->
+      | MUC_message (msg_type, nick, body) ->
+	   let room = from.luser, from.lserver in
 	   let room_env = GroupchatMap.find room !groupchats in
-	      if author <> room_env.mynick then
+	      if from.lresource <> room_env.mynick then
 		 let words = split_words body in
 		    if words = [] then begin
 		       if (msg_type = `Groupchat && nick = room_env.mynick) ||
@@ -151,24 +159,24 @@ let process_markov db event xml out =
 
 let rec markov_thread (db, m) =
    begin match take_queue m with
-      | MMessage (event, xml, out) ->
-	   process_markov db event xml out
-      | MCount (xml, out) ->
+      | MMessage (event, from, xml, out) ->
+	   process_markov db event from xml out
+      | MCount (from, xml, out) ->
 	   let result = result_integer db "SELECT COUNT(*) FROM words" in
 	      out (make_msg xml (string_of_int result))
-      | MTop (xml, out) ->
+      | MTop (from, xml, out) ->
 	   let vm = compile_simple db 
 	"SELECT word1, word2, counter FROM words WHERE word1!='' AND word2!='' \
        ORDER BY counter DESC LIMIT 10" in
-	   let rec cycle () =
+	   let rec cycle4 () =
 	      try 
 		 let data = step_simple vm in
 		    (Printf.sprintf "\n%s | %s | %s"
 			data.(0) data.(1) data.(2))
-		    ^ cycle ()
+		    ^ cycle4 ()
 	      with Sqlite_done -> ""
 	   in
-	      out (make_msg xml (cycle ()))
+	      out (make_msg xml (cycle4 ()))
       | MStop -> Thread.exit ()
    end;
    markov_thread (db, m)
@@ -184,30 +192,30 @@ let get_markov_queue room =
 	 markovrooms := MarkovMap.add room m !markovrooms;
 	 m
 
-let markov_chain event xml out =
+let markov_chain event from xml out =
    match event with
-      | MUC_message (room, _, _, _, _) ->
+      | MUC_message _ ->
 	   begin try
-	      let m = get_markov_queue room in
-		 add_queue m (MMessage (event, xml, out))
+	      let m = get_markov_queue (from.luser, from.lserver) in
+		 add_queue m (MMessage (event, from, xml, out))
 	   with _ -> ()
 	   end
       | _ -> ()
 
-let markov_count text event xml out =
+let markov_count text event from xml out =
    match event with
-      | MUC_message (room, _, _, _, _) ->
+      | MUC_message _ ->
 	   try
-	      let m = get_markov_queue room in
-		 add_queue m (MCount (xml, out))
+	      let m = get_markov_queue (from.luser, from.lserver) in
+		 add_queue m (MCount (from, xml, out))
 	   with _ -> ()
 
-let markov_top text event xml out =
+let markov_top text event from xml out =
    match event with
-      | MUC_message (room, _, _, _, _) ->
+      | MUC_message _ ->
 	   try
-	      let m = get_markov_queue room in
-		 add_queue m (MTop (xml, out))
+	      let m = get_markov_queue (from.luser, from.lserver) in
+		 add_queue m (MTop (from, xml, out))
 	   with _ -> ()
    
 let _ =

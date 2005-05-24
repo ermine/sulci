@@ -77,7 +77,7 @@ let list_curr =
 
 let rex = Pcre.regexp "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
 
-let currency text event xml out =
+let currency text event from xml out =
    if text = "list" then out (make_msg xml (list_curr))
    else
       try

@@ -13,7 +13,9 @@ let register_handle proc =
    muc_handlers := proc :: !muc_handlers
 *)
 
-let process_presence room user xml out =
+let process_presence (from:jid) xml out =
+   let room = from.luser, from.lserver in
+   let luser = from.lresource in
    let room_env = GroupchatMap.find room !groupchats in
    let x = List.find (function 
 			 | Xmlelement ("x", attrs, _) ->
@@ -23,76 +25,85 @@ let process_presence room user xml out =
 			 | _ -> false
 		     ) (Xml.get_subels xml) in
       match safe_get_attr_s xml "type"  with
-      | "" -> 
-	   let status = try get_cdata xml ~path:["status"] with _ -> "" in
-	   let show = try get_cdata xml ~path:["show"] with _ -> "available" in
-	      if not (Nicks.mem user room_env.nicks) then begin
-		 let item = { jid = (try get_attr_s x ~path:["item"] "jid"
-				     with _ -> "");
-			      role = (try get_attr_s x ~path:["item"] "role" 
+	 | "" -> 
+	      let status = try get_cdata xml ~path:["status"] with _ -> "" in
+	      let show = 
+		 try get_cdata xml ~path:["show"] with _ -> "available" in
+		 if not (Nicks.mem luser room_env.nicks) then
+		    let jid = 
+		       try 
+			  safe_jid_of_string (get_attr_s x ~path:["item"] "jid")
+		       with _ -> from in
+		    let item = { 
+		       jid = jid;
+		       role = (try get_attr_s x ~path:["item"] "role" 
+			       with _ -> "");
+		       affiliation = (try get_attr_s x 
+					 ~path:["item"] "affiliation"
 				      with _ -> "");
-			      affiliation = (try get_attr_s x 
-						~path:["item"] "affiliation"
-					     with _ -> "");
-			      status = status;
-			      show = show;
-			      orig_nick = user
-			    } in
-		    groupchats := GroupchatMap.add room 
-		       {room_env with nicks = Nicks.add user item
-			     room_env.nicks} !groupchats;
-		    MUC_join (room, user, item)
-	      end
-	      else
-		 let item = Nicks.find user room_env.nicks in
-		 let newitem = {item with status = status; show = show } in
-		    groupchats := GroupchatMap.add room 
-		       {room_env with 
-			   nicks = Nicks.add user newitem
-			     room_env.nicks} !groupchats;
-		    MUC_presence (room, user, newitem)
-      | "unavailable" -> 
-	   (match safe_get_attr_s x ~path:["status"] "code" with
-	       | "303" -> (* /nick *)
-		    let newnick = 
-		       get_attr_s xml ~path:["x"; "item"] "nick" in
-		    let item = Nicks.find user room_env.nicks in
-		       groupchats := GroupchatMap.add room
-			  {room_env with nicks = 
-				Nicks.add newnick item
-				   (Nicks.remove user room_env.nicks)} 
-			  !groupchats;
-		       MUC_change_nick (room, newnick, user, item)
-	       | "307" -> (* /kick *)
-		    let item = Nicks.find user 
-		       (GroupchatMap.find room !groupchats).nicks in
-		    let reason =
-		       try get_cdata ~path:["reason"] x with _ -> "" in
-		       groupchats := GroupchatMap.add room
-			  {room_env with nicks =
-				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_kick (room, user, reason, item)
-	       | "301" -> (* /ban *)
-		    let item = Nicks.find user 
-		       (GroupchatMap.find room !groupchats).nicks in
-		    let reason = 
-		       try get_cdata ~path:["reason"] x with _ -> "" in
-		       groupchats := GroupchatMap.add room
-			  {room_env with nicks =
-				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_ban (room, user, reason, item)
-	       | "321" (* non-member *)
-	       | _ ->
-		    let item = Nicks.find user 
-		       (GroupchatMap.find room !groupchats).nicks in
-		    let reason = 
-		       try get_cdata ~path:["status"] xml with _ -> "" in
-		       groupchats := GroupchatMap.add room
-			  {room_env with nicks =
-				Nicks.remove user room_env.nicks} !groupchats;
-		       MUC_leave (room, user, reason, item)
-	   )
-      | _ -> MUC_other room
+		       status = status;
+		       show = show;
+		       orig_nick = luser
+		    } in
+		       groupchats := GroupchatMap.add room 
+			  {room_env with nicks = Nicks.add luser item
+				room_env.nicks} !groupchats;
+		       MUC_join item
+		 else
+		    let item = Nicks.find luser room_env.nicks in
+		    let newitem = {item with status = status; show = show } in
+		       groupchats := GroupchatMap.add room 
+			  {room_env with 
+			      nicks = Nicks.add luser newitem
+				room_env.nicks} !groupchats;
+		       MUC_presence newitem
+	 | "unavailable" -> 
+	      (match safe_get_attr_s x ~path:["status"] "code" with
+		  | "303" -> (* /nick *)
+		       let newnick = 
+			  Stringprep.resourceprep 
+			     (get_attr_s xml ~path:["x"; "item"] "nick") in
+		       let item = Nicks.find luser room_env.nicks in
+			  groupchats := GroupchatMap.add room
+			     {room_env with nicks = 
+				   Nicks.add newnick item
+				      (Nicks.remove luser 
+					  room_env.nicks)} 
+			     !groupchats;
+			  MUC_change_nick (newnick, item)
+		  | "307" -> (* /kick *)
+		       let item = Nicks.find luser
+			  (GroupchatMap.find room !groupchats).nicks in
+		       let reason =
+			  try get_cdata ~path:["reason"] x with _ -> "" in
+			  groupchats := GroupchatMap.add room
+			     {room_env with nicks =
+				   Nicks.remove luser 
+				      room_env.nicks} !groupchats;
+			  MUC_kick (reason, item)
+		  | "301" -> (* /ban *)
+		       let item = Nicks.find luser 
+			  (GroupchatMap.find room !groupchats).nicks in
+		       let reason = 
+			  try get_cdata ~path:["reason"] x with _ -> "" in
+			  groupchats := GroupchatMap.add room
+			     {room_env with nicks =
+				   Nicks.remove luser 
+				      room_env.nicks} !groupchats;
+			  MUC_ban (reason, item)
+		  | "321" (* non-member *)
+		  | _ ->
+		       let item = Nicks.find luser 
+			  (GroupchatMap.find room !groupchats).nicks in
+		       let reason = 
+			  try get_cdata ~path:["status"] xml with _ -> "" in
+			  groupchats := GroupchatMap.add room
+			     {room_env with nicks =
+				   Nicks.remove luser 
+				      room_env.nicks} !groupchats;
+			  MUC_leave (reason, item)
+	      )
+	 | _ -> MUC_other
 
 let split_nick_body room_env body =
    let rec cycle pos =
@@ -128,13 +139,14 @@ let split_nick_body room_env body =
 	    else
 	       rn, rt
 
-let process_message room author xml out = 
+let process_message (from:jid) xml out = 
+   let room = from.luser, from.lserver in
    if (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) then
-      MUC_history room
+      MUC_history
    else
       try
 	 let subject = get_cdata xml ~path:["subject"] in
-	    MUC_topic (room, author, subject)
+	    MUC_topic subject
       with Not_found ->
 	 try 
 	    let body = get_cdata xml ~path:["body"] in
@@ -148,11 +160,11 @@ let process_message room author xml out =
 		  | `Groupchat ->
 		       let room_env = GroupchatMap.find room !groupchats in
 		       let nick, text = split_nick_body room_env body in
-			  MUC_message (room, msg_type, author, nick, text)
+			  MUC_message (msg_type, nick, text)
 		  | _ ->
-		       MUC_message (room, msg_type, author, "", body)
+		       MUC_message (msg_type, "", body)
 	 with Not_found ->
-	    MUC_other room
+	    MUC_other
 
 (*
 let dispatch xml out =
@@ -177,26 +189,34 @@ let join_room nick room =
       [Xmlelement ("x", ["xmlns", "http://jabber.org/protocol/muc"], [])]
       (room ^ "/" ^ nick)
 
-let kick id room nick (reason, args) =
+let kick id (room:jid) nick (reason, args) =
    let msg = 
-      Lang.get_msg ~lang:(GroupchatMap.find room !groupchats).lang reason args
+      Lang.get_msg ~lang:(GroupchatMap.find (room.luser, room.lserver) 
+			     !groupchats).lang reason args
    in
-      Xmlelement ("iq", ["to", room; "type", "set"; "id", id],
-		  [Xmlelement ("query", ["xmlns",
-				      "http://jabber.org/protocol/muc#admin"],
-			    [Xmlelement ("item", ["nick", nick; "role", "none"],
-					 [make_simple_cdata "reason" msg]
-					)])])
+      Xmlelement ("iq", ["to", room.user ^ "@" ^ room.server; 
+			 "type", "set"; "id", id],
+		  [Xmlelement ("query", 
+			       ["xmlns",
+				"http://jabber.org/protocol/muc#admin"],
+			       [Xmlelement ("item", ["nick", nick; "role", "none"],
+					    [make_simple_cdata "reason" msg]
+					   )])])
 
-let set_topic room subject =
-   Xmlelement ("message", ["to", room; "type", "groupchat"],
-		[make_simple_cdata "subject" subject])
+let set_topic from subject =
+   Xmlelement ("message", ["to", from.user ^ "@" ^ from.server;
+			   "type", "groupchat"],
+	       [make_simple_cdata "subject" subject])
 
-let register_room nick room =
-   groupchats := GroupchatMap.add room {mynick = nick;
-			      nicks = Nicks.empty;
-			      lang = "ru"} !groupchats
-   (* Hooks.register_handle (Hooks.From (room, dispatch)) *)
+let register_room nick (room:string) =
+   let jid = jid_of_string room in
+      groupchats := GroupchatMap.add (jid.luser, jid.lserver)
+	 {
+	    room = jid;
+	    mynick = Stringprep.stringprep ~mode:Stringprep.Resourceprep nick;
+	    nicks = Nicks.empty;
+	    lang = "ru"} !groupchats
+	 (* Hooks.register_handle (Hooks.From (room, dispatch)) *)
 
 let _ =
    let default_mynick = 
@@ -206,12 +226,18 @@ let _ =
 
       List.iter 
 	 (fun r ->
-	     let mynick = try Xml.get_attr_s r "nick" with _ -> default_mynick
-	     and roomname = Xml.get_attr_s r "jid"
+	     let mynick = try 
+		Stringprep.stringprep ~mode:Stringprep.Resourceprep
+		   (Xml.get_attr_s r "nick") with Not_found -> default_mynick
+	     and jid = jid_of_string (Xml.get_attr_s r "jid")
 	     and lang = try Xml.get_attr_s r "lang" with _ -> "ru" in
-		groupchats:= GroupchatMap.add roomname 
-		   {mynick = mynick;
-		    nicks = Nicks.empty;
-		    lang = lang} !groupchats;
+
+		groupchats:= GroupchatMap.add (jid.luser, jid.lserver)
+		   {
+		      room = jid;
+		      mynick = mynick;
+		      nicks = Nicks.empty;
+		      lang = lang
+		   } !groupchats
 	 ) rconf
  

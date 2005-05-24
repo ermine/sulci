@@ -9,7 +9,7 @@ open Types
 let _ =
    Hooks.register_handle 
       (Xmlns ("jabber:iq:version", 
-	      (fun event xml out -> 
+	      (fun event from xml out -> 
 		  match event with
 		     | Iq `Get ->
 			  iq_version_reply "Sulci" Version.version xml out

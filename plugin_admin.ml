@@ -9,23 +9,24 @@ open Muc
 open Hooks
 open Types
 
-let msg text event xml out =
-   if check_access (get_attr_s xml "from") "admin" then
+let msg text event from xml out =
+   if check_access from "admin" then
       let s = String.index text ' ' in
-      let to_ = String.sub text 0 s in
+      let to_ = jid_of_string (String.sub text 0 s) in
       let msg_body = string_after text (s+1) in
 	 out (Xmlelement ("message", 
-			  ["to", to_; 
+			  ["to", string_of_jid to_; 
 			   "type", 
-			   if GroupchatMap.mem to_ !groupchats then
+			   if GroupchatMap.mem (to_.luser, to_.lserver) 
+			      !groupchats then
 			      "groupchat" else "chat"
 			  ],
 			  [make_simple_cdata "body" msg_body]))
    else
       out (make_msg xml ":-P")
 	  
-let quit text event xml out =
-   if check_access (get_attr_s xml "from") "admin" then begin
+let quit text event from xml out =
+   if check_access from "admin" then begin
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_quit_bye" []));
       Hooks.quit out
@@ -34,8 +35,8 @@ let quit text event xml out =
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_quit_no_access" []))
 
-let join text event xml out =
-   if check_access (get_attr_s xml "from") "admin" then
+let join text event from xml out =
+   if check_access from "admin" then
       let room, nick =
 	 try
 	    let s = String.index text ' ' in
@@ -52,8 +53,8 @@ let join text event xml out =
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_join_no_access" []))
 	 
-let lang_update text event xml out =
-   if check_access (get_attr_s xml "from") "admin" then
+let lang_update text event from xml out =
+   if check_access from "admin" then
       if text = "" then
 	 out (make_msg xml "What language?")
       else

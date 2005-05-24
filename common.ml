@@ -62,3 +62,8 @@ let get_error_semantic xml =
 	 get_cdata ~path:["error"; "text"] xml
       with _ -> raise Not_found
    in err_text
+
+let print_exn exn =
+   Printf.eprintf "Catched exception in hooks.ml: %s\n"
+      (Printexc.to_string exn)
+

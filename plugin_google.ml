@@ -163,7 +163,7 @@ let google_spell request =
       with HttpClientError err  -> err
 	 | _ -> "Error getting data"
 
-let google text event xml out =
+let google text event from xml out =
    if text = "" then
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_google_invalid_syntax" []))
@@ -180,7 +180,8 @@ let google text event xml out =
 	 ignore (Thread.create proc ())
 
 let rx = Pcre.regexp "([0-9]+) ([1-9]{1}) (.+)"
-let google_adv text event xml out =
+
+let google_adv text event from xml out =
    try
       let r = Pcre.exec ~rex:rx text in
       let start = Pcre.get_substring r 1 in
@@ -200,7 +201,7 @@ let google_adv text event xml out =
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_google_adv_invalid_syntax" []))
 
-let gspell text event xml out =
+let gspell text event from xml out =
    if text = "" then
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_google_invalid_syntax" []))
