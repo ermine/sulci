@@ -6,11 +6,11 @@ open Xmpp
 
 let _ = Scheduler.init ()
 
-let my_id = ref 0
-
-let new_id () = 
-   incr my_id;
-   "stoat_" ^ string_of_int !my_id
+let new_id = 
+   let my_id = ref 0 in
+      fun () ->
+	 incr my_id;
+	 "stoat_" ^ string_of_int !my_id
 
 module Id =
 struct

@@ -58,8 +58,7 @@ let get_next_update () =
 
 let _ = 
    load_curr ();
-   (* Timer.register load_curr ((get_next_update ()) *. 1000.) 86400000. *)
-   Scheduler.add_task load_curr (get_next_update ()) 86400000.
+   Scheduler.add_task load_curr (get_next_update ()) 86400.
 
 let list_curr =
    let sorted = List.sort (fun (v1, _) (v2, _) ->

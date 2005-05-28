@@ -61,7 +61,7 @@ let rotate_logs () =
 			     close_out lf;
 			     open_log room) !logmap
    
-let _ = Scheduler.add_task rotate_logs (get_next_noun ()) 86400000.
+let _ = Scheduler.add_task rotate_logs (get_next_noun ()) 86400.
 
 let get_logfile room =
    try 

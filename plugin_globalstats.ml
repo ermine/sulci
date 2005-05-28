@@ -133,8 +133,6 @@ let _ =
 		~path:["plugins"; "globalstats"; "store"] "interval") in
 	    
 	 let start_stats out =
-	    (* let _ = Timer.register (stats_sum serverlist result out)
-	       (interval *. 1000.) 86400000. *)
 	    let _ = Scheduler.add_task (stats_sum serverlist result out)
 	       (Unix.gettimeofday () +. 10.) interval
 	    in ()
