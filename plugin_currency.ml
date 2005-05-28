@@ -53,7 +53,6 @@ let get_next_update () =
 	  tm_mday = (if curr_tm.tm_hour < 11 then 
 			curr_tm.tm_mday else curr_tm.tm_mday + 1)} 
    in
-      (* noun -. curr_time *)
       noun
 
 let _ = 
