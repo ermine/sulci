@@ -1,12 +1,12 @@
-muc_log_join                       %s появился в конференции
-muc_log_leave                      %s покинул конференцию
-muc_log_leave_reason               %s покинул конференцию: %s
-muc_log_kick                       %s кикнули из конференции
-muc_log_kick_reason                %s кикнули из конференции: %s
-muc_log_ban                        %s забанён
-muc_log_ban_reason                 %s забанён: %s
-muc_log_change_nick                %s переименовался в %s
-muc_log_set_subject                %s изменил тему: %s
+muc_log_join                       %s вошел(а) в комнату
+muc_log_leave                      %s вышел(а) из комнаты
+muc_log_leave_reason               %s вышел(а) из комнаты: %s
+muc_log_kick                       %s выгнали из комнаты
+muc_log_kick_reason                %s выгнали из комнаты: %s
+muc_log_ban                        %s запретили входить в комнату
+muc_log_ban_reason                 %s запретили входить в комнату: %s
+muc_log_change_nick                %s изменил(а) имя на %s
+muc_log_set_subject                %s изменил(а) тему: %s
 muc_log_subject                    Тема: %s
 plugin_calc_not_parsed             что это было?!
 plugin_calc_empty_command          ась?

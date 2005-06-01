@@ -81,6 +81,7 @@ let usage () =
    print_endline "Usage:
 langcompile import <lang> <file>
 langcompile export <lang> <file>
+langcompile diff <file1.htbl> <file2.htbl>
 
 Examples:
            # import ru.msg to ru.htbl
