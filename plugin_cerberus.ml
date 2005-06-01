@@ -80,6 +80,10 @@ let rec analyze = lexer
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | co ct cs co cs (ci | (ca ct)) ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
+   | cp ci cn cd cie cts ->
+	Bad (Ulexing.utf8_lexeme lexbuf)
+   | cm cl cya ct csoft_sign ->
+	Bad (Ulexing.utf8_lexeme lexbuf)
    | cyrillic* cs ck ci cp ci cd ca cr (* cyrillic* *) ->
 	Good
    | cs cr ca (ck | ct) ->
