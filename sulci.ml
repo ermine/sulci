@@ -21,7 +21,7 @@ let _ =
       with Not_found -> None in
 
    let jid, out, next_xml = 
-      Xmpp.client ~username ~password ~resource ?logfile ~server () in
+      Xmpp.client ~username ~password ~resource ?logfile ~server ~port () in
 
       Sys.set_signal Sys.sigint
 	 (Sys.Signal_handle (function x -> Hooks.quit out));
