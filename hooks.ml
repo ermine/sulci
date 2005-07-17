@@ -77,7 +77,7 @@ let process_iq event from xml out =
 	    | Iq `Error ->
 		 begin try
 		    let f = IdMap.find id !idmap in
-		       (try f event from xml out with exn -> print_exn exn);
+		       (try f event from xml out with exn -> print_exn exn ~xml);
 		       idmap := IdMap.remove id !idmap
 		 with Not_found -> ()
 		 end
@@ -85,7 +85,7 @@ let process_iq event from xml out =
 	    | Iq `Set ->
 		 begin try
 		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-		       (try f event from xml out with exn -> print_exn exn);
+		       (try f event from xml out with exn -> print_exn exn ~xml);
 		 with Not_found -> ()
 		 end
 	    | _ -> ()
@@ -95,7 +95,7 @@ let process_iq event from xml out =
 	    | Iq `Set ->
 		 begin try
 		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-		       (try f event from xml out with exn -> print_exn exn);
+		       (try f event from xml out with exn -> print_exn exn ~xml);
 		 with Not_found -> ()
 		 end
 	    | _ -> ()
@@ -105,7 +105,7 @@ let do_command text event from xml out =
       try String.sub text 0 (String.index text ' ') with Not_found -> text in
    let f = CommandMap.find word !commands in
    let params = try string_after text (String.index text ' ') with _ -> "" in
-      try f (trim params) event from xml out with exn -> print_exn exn
+      try f (trim params) event from xml out with exn -> print_exn exn ~xml
 
 let process_message event from xml out =
    match event with
@@ -128,23 +128,24 @@ let process_message event from xml out =
 		 with Not_found ->
 		    List.iter  (fun f -> 
 				   try f event from xml out with exn ->
-				      print_exn exn
+				      print_exn exn ~xml
 			       ) !catchset 
 	      else
 		 List.iter  (fun f -> 
 				try f event from xml out with exn ->
-				   print_exn exn
+				   print_exn exn ~xml
 			    ) !catchset 
       | Message ->
-	   let text = try get_cdata xml ~path:["body"] with Not_found -> "" in
-	      try do_command text event from xml out with Not_found ->
-		 List.iter  (fun f -> 
-				try f event from xml out with exn ->
-				   print_exn exn
-			    ) !catchset
+	   if safe_get_attr_s xml "type" <> "error" then
+	      let text = 
+		 try get_cdata xml ~path:["body"] with Not_found -> "" in
+		 try do_command text event from xml out with Not_found ->
+		    List.iter  (fun f -> 
+				   try f event from xml out with exn ->
+				      print_exn exn ~xml
+			       ) !catchset
 
 exception FilteredOut
-exception InvalidStanza of string
   
 let rec process_xml next_xml out =
    let xml = next_xml () in
@@ -164,9 +165,10 @@ let rec process_xml next_xml out =
 		    | "set" -> `Set
 		    | "result" -> `Result
 		    | "error" -> `Error
+		    | _ -> `InvalidType
 		 in
 		    Iq iq_type
-	    | _ -> raise (InvalidStanza (Xml.element_to_string xml))
+	    | _ -> InvalidStanza xml
       else
 	 match tag with
 	    | "message" -> Message
@@ -177,32 +179,47 @@ let rec process_xml next_xml out =
 		    | "set" -> `Set
 		    | "result" -> `Result
 		    | "error" -> `Error
+		    | _ -> `InvalidType
 		 in
 		    Iq iq_type
-	    | _ -> raise (InvalidStanza (Xml.element_to_string xml))
+	    | _ -> InvalidStanza xml
    in
-   let () =
-      Muc_log.process_log event from xml;
-      try
-	 List.iter (fun proc -> 
-		       try proc event from xml out with exn -> print_exn exn
-		   ) !filters;
-      with FilteredOut ->
-	 process_xml next_xml out
-   in
-      begin match event with
-	 | Iq _ ->
-	      process_iq event from xml out
-	 | MUC_message _
-	 | Message ->
-	      process_message event from xml out;
-	 | _ -> 
-	      List.iter (fun proc -> 
-			    try proc event from xml out with exn ->
-			       print_exn exn
-			) !catchset
-      end;
-      process_xml next_xml out
+      match event with
+	 | Iq `InvalidType ->
+	      begin try
+		 let id = Xml.get_attr_s xml "id" in
+		    if IdMap.mem id !idmap then
+		       idmap := IdMap.remove id !idmap
+	      with Not_found -> ()
+	      end;
+	      Printf.printf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
+	      process_xml next_xml out
+	 | InvalidStanza xml ->
+	      Printf.printf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
+	      process_xml next_xml out
+	 | _ ->
+	      Muc_log.process_log event from xml;
+	      let () =
+		 try
+		    List.iter (fun proc -> proc event from xml out) !filters;
+		 with 
+		    | FilteredOut ->
+			 process_xml next_xml out
+		    | exn -> print_exn exn ~xml
+	      in
+		 begin match event with
+		    | Iq _ ->
+			 process_iq event from xml out
+		    | MUC_message _
+		    | Message ->
+			 process_message event from xml out;
+		    | _ -> 
+			 List.iter (fun proc -> 
+				       try proc event from xml out with exn ->
+					  print_exn exn ~xml
+				   ) !catchset
+		 end;
+		 process_xml next_xml out
 
 let quit out =
    List.iter (fun proc -> try proc out with exn -> print_exn exn) !onquit;

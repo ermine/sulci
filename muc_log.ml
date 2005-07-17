@@ -54,7 +54,6 @@ let get_next_noun () =
       noun
 
 let rotate_logs () =
-   print_endline "Rotating chatlogs"; flush Pervasives.stdout;
    logmap := LogMap.mapi (fun room lf ->
 			     output_string lf "</body>\n</html>";
 			     flush lf;
@@ -71,7 +70,8 @@ let get_logfile room =
 	 logmap := LogMap.add room out_log !logmap;
 	 out_log
 
-let rex = regexp "((https?|ftp)://[^ ]+|(www|ftp)[a-z0-9.-]*\\.[a-z]{2,4}[^ ]*)"
+let rex = regexp ~flags:[`CASELESS;]
+   "((https?|ftp)://.*(?![?!,.]*(\\s|$))[^\\s])|((www|ftp)[a-z0-9.-]*\\.[a-z]{2,}.*(?![?!,.]*(\\s|$))[^\\s])"
 
 let html_url text =
    try

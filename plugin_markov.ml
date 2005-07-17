@@ -119,8 +119,6 @@ let generate db word =
    let rec cycle3 w i acc =
       if i = 20 then
 	 let p = String.concat " " (List.rev acc) in
-	    print_endline p;
-	    flush stdout;
 	    p
       else
 	 let w1, w2 = seek db w in

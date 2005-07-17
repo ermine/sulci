@@ -10,7 +10,7 @@ SOURCES = common.ml config.ml version.ml types.ml lang.ml muc.ml muc_log.ml hook
 
 ifdef PLUGIN_GOOGLE
   SOURCES += plugin_google.ml
-  HTTP_LIB = http_client.cmxa
+  HTTP_LIB = ../libs/hex/hex.cmxa http_client.cmxa
   HTTP_INC = ../libs/http
 endif
 ifdef PLUGIN_CALC
@@ -48,7 +48,7 @@ ifdef PLUGIN_DICT
 endif 
 ifdef PLUGIN_WEATHER
   SOURCES += plugin_weather.ml
-  HTTP_LIB = http_client.cmxa
+  HTTP_LIB = ../libs/hex/hex.cmxa http_client.cmxa
   HTTP_INC = ../libs/http
 endif
 ifdef PLUGIN_GLOBALSTATS
@@ -87,9 +87,11 @@ SOURCES += $(LANGPACKS) sulci.ml
 
 THREADS = yes
 PACKS = ulex unix str netstring $(DBM_LIB)
-INCDIRS = ../xmpp ../xml ../libs/scheduler ../libs/strftime $(HTTP_INC) $(SQLITE_INC)
+INCDIRS = ../libs/xml ../xmpp ../libs/xmlstring ../libs/scheduler \
+	  ../libs/strftime $(HTTP_INC) $(SQLITE_INC)
 OCAMLLDFLAGS = nums.cmxa cryptokit.cmxa \
-		xml.cmxa xmpp.cmxa strftime.cmxa scheduler.cmxa \
+		xml.cmxa xmpp.cmxa xmlstring.cmxa strftime.cmxa \
+		scheduler.cmxa \
 		$(SQLITE_LIB) $(HTTP_LIB) -linkall -linkpkg
 RESULT = sulci
 

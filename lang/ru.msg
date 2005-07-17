@@ -27,6 +27,10 @@ plugin_userinfo_error              Информация засекречена
 plugin_userinfo_version_you        у тебя клиент %s %s - %s
 plugin_userinfo_version_somebody   у %s клиент %s %s - %s
 plugin_userinfo_version_server     на %s запущен %s %s (%s)
+plugin_userinfo_version_server_not_implemented  Сервер %s ничего не знает о себе
+plugin_userinfo_version_server_remote_server_timeout Сервер %s отвалился по таймауту
+plugin_userinfo_version_server_remote_server_not_found Скорее всего,чы на %s не поднят джаббер сервер
+plugin_userinfo_version_server_error Информация засекречена
 plugin_userinfo_idle_me            я вообще не молчу!
 plugin_userinfo_idle_you           Молчишь %s
 plugin_userinfo_idle_somebody      %s молчит %s

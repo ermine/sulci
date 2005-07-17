@@ -39,6 +39,10 @@ let rec token = lexer
    | xml_digit+ ("." xml_digit)* ("e"|"E")('-'|'+')? xml_digit+ ->
 	let num = Ulexing.utf8_lexeme lexbuf in
            NUM (float_of_string num)
+   | '0' ('x'|'X') ['a'-'f' 'A'-'F' '0'-'9']+ ->
+	NUM (float_of_string (Ulexing.utf8_lexeme lexbuf))
+   | '0' ('b'|'B') ['0' '1']+ ->
+	NUM (float_of_int (int_of_string (Ulexing.utf8_lexeme lexbuf)))
    | '+' ->
         PLUS
    | '-' ->

@@ -34,20 +34,26 @@ let trim str =
    let r1 = skip_ws str in
       rskip_ws r1
 
+let msg_limit = ref 450
+
 let make_msg xml response =
    let from = Xml.get_attr_s xml "from" in
    let nick = Xmpp.get_resource from in
       match safe_get_attr_s xml "type" with
 	 | "groupchat" ->
-	      Xmlelement ("message", ["to", Xmpp.get_bare_jid from;
-				      "type", "groupchat"],
-			  [make_simple_cdata "body" 
-			      (if Pcre.pmatch ~pat:"/me" response then
-				  response
-			       else
-				  if nick = "" then response
-				  else (nick ^ ": " ^ response)
-			      )])
+	      if String.length response < !msg_limit then (* TODO: config *)
+		 Xmlelement ("message", ["to", Xmpp.get_bare_jid from;
+					 "type", "groupchat"],
+			     [make_simple_cdata "body" 
+				 (if Pcre.pmatch ~pat:"/me" response then
+				     response
+				  else
+				     if nick = "" then response
+				     else (nick ^ ": " ^ response)
+				 )])
+	      else
+		 Xmlelement ("message", ["to", from; "type", "chat"],
+			     [make_simple_cdata "body" response])
 	 | other ->
 	      Xmlelement ("message", 
 		       (match other with
@@ -63,7 +69,11 @@ let get_error_semantic xml =
       with _ -> raise Not_found
    in err_text
 
-let print_exn exn =
-   Printf.eprintf "Catched exception in hooks.ml: %s\n"
-      (Printexc.to_string exn)
+let print_exn ?xml exn =
+   Printf.eprintf "Catched exception in hooks.ml: %s\n%s"
+      (Printexc.to_string exn) 
+      (match xml with
+	 | None -> ""
+	 | Some x ->
+	      (Xml.element_to_string x) ^ "\n\n")
 

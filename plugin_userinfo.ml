@@ -9,6 +9,7 @@ open Unix
 open Hooks
 open Types
 open Muc
+open Error
 
 let error xml =
    try
@@ -98,9 +99,29 @@ let version_server text event from xml out =
 				(Lang.get_msg ~xml 
 				    "plugin_userinfo_version_server"
 				    [server.server; client; version; os]))
+
 		  | Iq `Error ->
-		       o (make_msg xml (error x))
-		  | _ -> ()
+		       let reply =
+			  let cond, type_, text = parse_error x in
+			     match cond with
+				| `ERR_FEATURE_NOT_IMPLEMENTED ->
+				     Lang.get_msg ~xml
+			        "plugin_userinfo_version_server_not_implemented"
+					[text]
+				| `ERR_REMOTE_SERVER_TIMEOUT ->
+				     Lang.get_msg ~xml
+			 "plugin_userinfo_version_server_remote_server_timeout"
+					[text]
+				| `ERR_REMOTE_SERVER_NOT_FOUND ->
+				     Lang.get_msg ~xml 
+			"plugin_userinfo_version_server_remote_server_not_found"
+					[text]
+				| _ ->
+				     Lang.get_msg ~xml 
+					"plugin_userinfo_version_server_error" 
+					[]
+		       in
+			  o (make_msg xml reply)
 	    in
 	    let id = new_id () in
 	       Hooks.register_handle (Hooks.Id (id, proc));

@@ -154,6 +154,7 @@ let process_message (from:jid) xml out =
 	       try match get_attr_s xml "type" with
 		  | "groupchat" -> `Groupchat
 		  | "chat" -> `Chat
+		  | "error" -> `Error
 		  | _ -> `Normal
 	       with _ -> `Normal in
 	       match msg_type with

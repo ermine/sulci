@@ -66,9 +66,11 @@ let rec analyze = lexer
 	drochit (Ulexing.utf8_lexeme lexbuf) lexbuf
    | cd co cl cb co cie_io cb (* cyrillic* *) ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
-   | prefix* cm ca cn cd cyrillic ->
+   | cm ca cn cd cyrillic ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cm ca cn cd cyrillic cyrillic ->
+	Good
+   | ci cp ca ct csoft_sign cie cv cs ck ->
 	Good
    | ci cp ca (ct | cn) ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
@@ -330,10 +332,11 @@ let cerberus event from xml out =
 		       raise FilteredOut
 		 end
 	 | MUC_message (msg_type, nick, body) ->
-	      if from.lresource <> 
-		 (GroupchatMap.find room !groupchats).mynick &&
-		 body <> "" then
-		    check body from out
+	      if msg_type <> `Error then
+		 if from.lresource <> 
+		    (GroupchatMap.find room !groupchats).mynick &&
+		    body <> "" then
+		       check body from out
 	 | MUC_history ->
 	      if get_tagname xml = "message" then begin
 		 try

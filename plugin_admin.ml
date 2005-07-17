@@ -60,8 +60,31 @@ let lang_update text event from xml out =
       else
 	 out (make_msg xml (Lang.update text))
 
+
+(* TODO: it is scratch *)
+
+let sulci_set_rex = Pcre.regexp "([a-zA-Z_-]+)=(.+)"
+
+let sulci_set text event from xml out =
+   if check_access from "admin" then
+      try
+	 let r = Pcre.exec ~rex:sulci_set_rex text in
+	 let var = Pcre.get_substring r 1
+	 and value = Pcre.get_substring r 2 in
+	    if var = "msg_limit" then
+	       try
+		  let newvalue = int_of_string value in
+		     Common.msg_limit := newvalue
+	       with _ ->
+		  out (make_msg xml "Bad value: must be integer")
+	    else
+	       out (make_msg xml "Unknown variable")
+      with Not_found ->
+	 out (make_msg xml "Hm?")
+
 let _ =
    register_handle (Command ("msg", msg));
    register_handle (Command ("quit", quit));
    register_handle (Command ("join", join));
    register_handle (Command ("lang_update", lang_update));
+   register_handle (Command ("sulci_set", sulci_set));

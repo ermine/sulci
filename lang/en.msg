@@ -27,6 +27,10 @@ plugin_userinfo_error              The information is secret
 plugin_userinfo_version_you        your client is %s %s - %s
 plugin_userinfo_version_somebody   %s's client is %s %s - %s
 plugin_userinfo_version_server     %s is running %s %s (%s)
+plugin_userinfo_version_server_not_implemented  %s does not know anything about its version
+plugin_userinfo_version_server_remote_server_timeout Timeout...
+plugin_userinfo_version_server_remote_server_not_found It seems on %s there is no jabber server
+plugin_userinfo_version_server_error The information is secret
 plugin_userinfo_idle_me            I am not silent at all!
 plugin_userinfo_idle_you           You are silent %s
 plugin_userinfo_idle_somebody      %s is silent %s
