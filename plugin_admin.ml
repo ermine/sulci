@@ -63,7 +63,7 @@ let lang_update text event from xml out =
 
 (* TODO: it is scratch *)
 
-let sulci_set_rex = Pcre.regexp "([a-zA-Z_-]+)=(.+)"
+let sulci_set_rex = Pcre.regexp "([a-zA-Z_-]+) *= *(.+)"
 
 let sulci_set text event from xml out =
    if check_access from "admin" then
