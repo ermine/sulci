@@ -37,7 +37,7 @@ let load_curr () =
 			     let pos = String.index x ',' in
 				String.set x pos '.';
 				try float_of_string (x) with exn ->
-				   Printf.printf "%s\n" x; raise exn
+				   Printf.eprintf "%s\n" x; raise exn
 			 }
 		     ) z in
 	    curr := ["RUR", {nominal = 1; name = "Рубль"; value = 1.0}] @ r
@@ -104,9 +104,11 @@ let currency text event from xml out =
       with
 	 | Failure "int_of_string" ->
 	      out (make_msg xml "Таких денег не бывает!")
+	 | Not_found ->
+	      ()
 	 | exn ->
-	      Printf.printf "exception %s: [%s]\n" 
-		  (Printexc.to_string exn) text;
+	      Printf.eprintf "plugin_currency exception: %s: [%s]\n" 
+		 (Printexc.to_string exn) text;
 	      flush Pervasives.stdout;
 	      ()
 

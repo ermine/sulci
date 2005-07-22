@@ -192,10 +192,11 @@ let rec process_xml next_xml out =
 		       idmap := IdMap.remove id !idmap
 	      with Not_found -> ()
 	      end;
-	      Printf.printf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
+
+	      Printf.eprintf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
 	      process_xml next_xml out
 	 | InvalidStanza xml ->
-	      Printf.printf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
+	      Printf.eprintf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
 	      process_xml next_xml out
 	 | _ ->
 	      Muc_log.process_log event from xml;

@@ -298,7 +298,7 @@ let check text from out =
 	      raise Hooks.FilteredOut
       with
 	 | Ulexing.Error ->
-	      Printf.printf
+	      Printf.eprintf
 		 "Lexing error at offset %i\n" 
 		 (Ulexing.lexeme_end lexbuf);
 	      flush Pervasives.stdout
@@ -347,7 +347,7 @@ let cerberus event from xml out =
 			  | Bad word -> ()
 		       with
 			  | Ulexing.Error ->
-			       Printf.printf
+			       Printf.eprintf
 				  "Lexing error at offset %i\n" 
 				  (Ulexing.lexeme_end lexbuf);
 			       flush Pervasives.stdout;

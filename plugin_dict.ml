@@ -24,15 +24,15 @@ let connect server port =
    let sock_addr = Unix.ADDR_INET (inet_addr, port) in
       try
 	 let pair = Unix.open_connection sock_addr in
-	    Printf.printf "%s:%d connected\n" server port;
+	    Printf.eprintf "%s:%d connected\n" server port;
 	    pair
       with 
 	 | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect", _) ->
 	      let rec cycle () = 
-		 Printf.printf "attempting to connect [%s][%d]\n" server port;
+		 Printf.eprintf "attempting to connect [%s][%d]\n" server port;
 		 try 
 		    let pair = Unix.open_connection sock_addr in
-		       Printf.printf "again: %s:%d\n" server port;
+		       Printf.eprintf "again: %s:%d\n" server port;
 		       pair
 		 with 
 		    | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect",_) ->

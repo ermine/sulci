@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include Makefile.conf
 
-SOURCES = common.ml config.ml version.ml types.ml lang.ml muc.ml muc_log.ml hooks.ml iq.ml
+SOURCES = version.ml config.ml common.ml types.ml lang.ml muc.ml muc_log.ml hooks.ml iq.ml
 
 #ifdef MUC_LOG
 #  SOURCES += muc_log.ml
@@ -87,10 +87,10 @@ SOURCES += $(LANGPACKS) sulci.ml
 
 THREADS = yes
 PACKS = ulex unix str netstring $(DBM_LIB)
-INCDIRS = ../libs/xml ../xmpp ../libs/xmlstring ../libs/scheduler \
+INCDIRS = ../libs/getopt ../libs/xml ../xmpp ../libs/xmlstring ../libs/scheduler \
 	  ../libs/strftime $(HTTP_INC) $(SQLITE_INC)
 OCAMLLDFLAGS = nums.cmxa cryptokit.cmxa \
-		xml.cmxa xmpp.cmxa xmlstring.cmxa strftime.cmxa \
+		getopt.cmxa xml.cmxa xmpp.cmxa xmlstring.cmxa strftime.cmxa \
 		scheduler.cmxa \
 		$(SQLITE_LIB) $(HTTP_LIB) -linkall -linkpkg
 RESULT = sulci

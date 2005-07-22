@@ -115,9 +115,14 @@ let seek db (w1:string) =
 	    with Sqlite_done -> 
 	       w1, ""
 
+let chain_limit = ref
+   (try int_of_string (get_attr_s Config.config ~path:["plugin"; "markov"]
+			  "msg_limit")
+    with Not_found -> 20)
+
 let generate db word =
    let rec cycle3 w i acc =
-      if i = 20 then
+      if i = !chain_limit then
 	 let p = String.concat " " (List.rev acc) in
 	    p
       else

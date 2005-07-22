@@ -11,36 +11,49 @@
 
  <acl jid='ermine@jabber.ru' class='admin'/>
  
- <muc>
+ <muc msg_limit="400">
   <!--  <room nick="sulci-test" jid="z@conference.jabber.ru" lang="ru"/> -->
   <room nick="sulci" jid="ejabberd@conference.jabber.ru" lang="en"/>
 
   <chatlogs>./chatlogs</chatlogs>
  </muc>
+
  <debug>
   <logfile>log.log</logfile>
  </debug>
+
  <plugins>
+
   <google>
    <key>00000000000000000000000000000</key>
   </google>
+
   <vocabulary name="vocabulary"/>
+
   <mueller file="/path/to/Mueller24.koi" hashext=".hash" />
-  <markov dir="./markov_db"/>
+
+  <markov dir="./markov_db" msg_limit="20" />
+
+  <!-- it used on http://ejabberd.jabber.ru/ to display total registered users 
+       and users online using ejabberd -->
   <!--
     <globalstats>
      <store serverlist='servers.list' result='servers.res' interval='3600'/>
     </globalstats>
   -->
+
   <dict>
    <!-- <server port=2628>localhost</server> -->
    <server>dict.org</server>
   </dict>
+
   <!--
     <talkers db="talkers.db"/>
   -->
+
   <cerberus kick="true">
-   <notify jid="ermine@jabber.ru"/>
+   <notify jid="jid@jabber.server"/>
   </cerberus>
+
  </plugins>
 </sulci>

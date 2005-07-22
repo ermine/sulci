@@ -34,14 +34,16 @@ let trim str =
    let r1 = skip_ws str in
       rskip_ws r1
 
-let msg_limit = ref 450
+let msg_limit = ref 
+   (try int_of_string (get_attr_s Config.config ~path:["muc"] "limit")
+    with Not_found -> 450)
 
 let make_msg xml response =
    let from = Xml.get_attr_s xml "from" in
    let nick = Xmpp.get_resource from in
       match safe_get_attr_s xml "type" with
 	 | "groupchat" ->
-	      if String.length response < !msg_limit then (* TODO: config *)
+	      if String.length response < !msg_limit then
 		 Xmlelement ("message", ["to", Xmpp.get_bare_jid from;
 					 "type", "groupchat"],
 			     [make_simple_cdata "body" 
