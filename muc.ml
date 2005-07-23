@@ -6,12 +6,6 @@ open Common
 open Xml
 open Xmpp
 open Types
-(*
-let muc_handlers = ref []
-
-let register_handle proc =
-   muc_handlers := proc :: !muc_handlers
-*)
 
 let process_presence (from:jid) xml out =
    let room = from.luser, from.lserver in
@@ -167,23 +161,6 @@ let process_message (from:jid) xml out =
 	 with Not_found ->
 	    MUC_other
 
-(*
-let dispatch xml out =
-   let from = get_attr_s xml "from" in
-   let room = get_bare_jid from in
-   let nick = get_resource from in
-   let event = 
-      if get_tagname xml = "presence" then
-	 process_presence room nick xml out
-      else
-	 if get_tagname xml = "message" then
-	    process_message room nick xml out
-	 else
-	    MUC_other room
-   in
-      List.iter (fun proc -> proc room event xml out) !muc_handlers
-*)
-
 let join_room nick room =
    make_presence 
       ~subels:
@@ -200,7 +177,8 @@ let kick id (room:jid) nick (reason, args) =
 		  [Xmlelement ("query", 
 			       ["xmlns",
 				"http://jabber.org/protocol/muc#admin"],
-			       [Xmlelement ("item", ["nick", nick; "role", "none"],
+			       [Xmlelement ("item", ["nick", nick; 
+						     "role", "none"],
 					    [make_simple_cdata "reason" msg]
 					   )])])
 

@@ -5,7 +5,14 @@
   <user>sxxxx</user>
   <resource>Ocaml</resource>
   <password>secret</password>
+  <rconnect flag="true">10</reconnect>
  </jabber>
+
+ <!-- Reconnect interval in seconds. If count=0 do it infinitely -->
+ <!-- If you use NOT OWN jabber server, it is strongly recommended do not
+      do counts more than 3.
+ -->
+ <reconnect interval='10' count='3' />
 
  <lang dir="./lang" default="ru"/>
 
