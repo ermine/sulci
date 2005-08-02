@@ -5,7 +5,6 @@
   <user>sxxxx</user>
   <resource>Ocaml</resource>
   <password>secret</password>
-  <rconnect flag="true">10</reconnect>
  </jabber>
 
  <!-- Reconnect interval in seconds. If count=0 do it infinitely -->
@@ -25,9 +24,11 @@
   <chatlogs>./chatlogs</chatlogs>
  </muc>
 
+ <!-- produces raw xml log
  <debug>
   <logfile>log.log</logfile>
  </debug>
+ -->
 
  <plugins>
 

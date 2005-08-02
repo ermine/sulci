@@ -22,9 +22,9 @@ let roulette text event from xml out =
 			    ("plugin_roulette_kick_reason", []));
 		    let proc e f x o = 
 		       let reply = match e with
-			  | Iq `Result ->
+			  | Iq (_, `Result, _) ->
 			       Lang.get_msg ~xml "plugin_roulette_bye" []
-			  | Iq `Error ->
+			  | Iq (_, `Error, _) ->
 			       let err_text =  
 				  try 
 				     get_cdata ~path:["error"; "text"] x 

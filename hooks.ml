@@ -70,36 +70,27 @@ let register_handle (handler:reg_handle) =
 	   *)
 
 let process_iq event from xml out =
-   let id = safe_get_attr_s xml "id" in
-      if id <> "" then
-	 match event with
-	    | Iq `Result
-	    | Iq `Error ->
-		 begin try
-		    let f = IdMap.find id !idmap in
-		       (try f event from xml out with exn -> print_exn exn ~xml);
-		       idmap := IdMap.remove id !idmap
-		 with Not_found -> ()
-		 end
-	    | Iq `Get
-	    | Iq `Set ->
-		 begin try
-		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-		       (try f event from xml out with exn -> print_exn exn ~xml);
-		 with Not_found -> ()
-		 end
-	    | _ -> ()
-      else 
-	 match event with
-	    | Iq `Get
-	    | Iq `Set ->
-		 begin try
-		    let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-		       (try f event from xml out with exn -> print_exn exn ~xml);
-		 with Not_found -> ()
-		 end
-	    | _ -> ()
-
+   match event with
+      | Iq (id, type_, xmlns) ->
+	   (match type_ with
+	       | `Result
+	       | `Error ->
+		    if id <> "" then
+		       (try
+			   let f = IdMap.find id !idmap in
+			      (try f event from xml out with exn -> 
+				  print_exn exn ~xml);
+			      idmap := IdMap.remove id !idmap
+			with Not_found -> ())
+	       | `Get
+	       | `Set ->
+		    (try			
+			let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
+			   (try f event from xml out with exn -> 
+			       print_exn exn ~xml);
+		     with Not_found -> ()))
+      | _ -> ()
+	    
 let do_command text event from xml out =
    let word = 
       try String.sub text 0 (String.index text ' ') with Not_found -> text in
@@ -139,88 +130,62 @@ let process_message event from xml out =
 	   if safe_get_attr_s xml "type" <> "error" then
 	      let text = 
 		 try get_cdata xml ~path:["body"] with Not_found -> "" in
-		 try do_command text event from xml out with Not_found ->
-		    List.iter  (fun f -> 
-				   try f event from xml out with exn ->
-				      print_exn exn ~xml
-			       ) !catchset
+		 (try do_command text event from xml out with Not_found ->
+		     List.iter  (fun f -> 
+				    try f event from xml out with exn ->
+				       print_exn exn ~xml
+				) !catchset)
+      | _ -> ()
 
-exception FilteredOut
+exception Filtered
   
 let rec process_xml next_xml out =
    let xml = next_xml () in
    let from = safe_jid_of_string (get_attr_s xml "from") in
    let room = (from.luser, from.lserver) in
    let tag = get_tagname xml in
-   let event =
-      if GroupchatMap.mem room !groupchats then
-	 match tag with
-	    | "presence" ->
+   let get_event () =
+      match tag with
+	 | "presence" ->
+	      if GroupchatMap.mem room !groupchats then
 		 Muc.process_presence from xml out
-	    | "message" ->
+	      else
+		 Presence
+	 | "message" ->
+	      if GroupchatMap.mem room !groupchats then
 		 Muc.process_message from xml out
-	    | "iq" ->
-		 let iq_type = match safe_get_attr_s xml "type" with
-		    | "get" -> `Get
-		    | "set" -> `Set
-		    | "result" -> `Result
-		    | "error" -> `Error
-		    | _ -> `InvalidType
-		 in
-		    Iq iq_type
-	    | _ -> InvalidStanza xml
-      else
-	 match tag with
-	    | "message" -> Message
-	    | "presence" -> Presence
-	    | "iq" ->
-		 let iq_type = match safe_get_attr_s xml "type" with
-		    | "get" -> `Get
-		    | "set" -> `Set
-		    | "result" -> `Result
-		    | "error" -> `Error
-		    | _ -> `InvalidType
-		 in
-		    Iq iq_type
-	    | _ -> InvalidStanza xml
-   in
-      match event with
-	 | Iq `InvalidType ->
-	      begin try
-		 let id = Xml.get_attr_s xml "id" in
-		    if IdMap.mem id !idmap then
-		       idmap := IdMap.remove id !idmap
-	      with Not_found -> ()
-	      end;
-
-	      Printf.eprintf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
-	      process_xml next_xml out
-	 | InvalidStanza xml ->
-	      Printf.eprintf "Invalid Stanza: %s\n" (Xml.element_to_string xml);
-	      process_xml next_xml out
+	      else
+		 Message
+	 | "iq" ->
+	      let id, type_, xmlns = iq_info xml in
+		 Iq (id, type_, xmlns)
 	 | _ ->
-	      Muc_log.process_log event from xml;
-	      let () =
-		 try
-		    List.iter (fun proc -> proc event from xml out) !filters;
-		 with 
-		    | FilteredOut ->
-			 process_xml next_xml out
-		    | exn -> print_exn exn ~xml
-	      in
-		 begin match event with
-		    | Iq _ ->
-			 process_iq event from xml out
-		    | MUC_message _
-		    | Message ->
-			 process_message event from xml out;
-		    | _ -> 
-			 List.iter (fun proc -> 
-				       try proc event from xml out with exn ->
-					  print_exn exn ~xml
-				   ) !catchset
-		 end;
-		 process_xml next_xml out
+	      raise InvalidStanza
+   in
+      (try
+	  let event = get_event () in
+	     Muc_log.process_log event from xml;
+	     List.iter (fun proc -> proc event from xml out) !filters;
+	     (match event with
+		 | Iq _ ->
+		      process_iq event from xml out
+		 | MUC_message _
+		 | Message ->
+		      process_message event from xml out;
+		 | _ -> 
+		      List.iter (fun proc -> 
+				    try proc event from xml out with exn ->
+				       print_exn exn ~xml
+				) !catchset
+	     );
+       with
+	  | InvalidStanza as exn ->
+	       print_exn exn ~xml
+	  | Filtered -> ()
+	  | exn ->
+	       print_exn exn ~xml
+      );
+      process_xml next_xml out
 
 let quit out =
    List.iter (fun proc -> try proc out with exn -> print_exn exn) !onquit;

@@ -11,7 +11,11 @@ let _ =
       (Xmlns ("jabber:iq:version", 
 	      (fun event from xml out -> 
 		  match event with
-		     | Iq `Get ->
-			  iq_version_reply "Sulci" Version.version xml out
+		     | Iq (id, type_, xmlns) ->
+			  if type_ = `Get && xmlns = "jabber:iq:version" then
+			     out (iq_version_reply 
+				     Version.name Version.version xml)
+			  else
+			     ()
 		     | _ -> ())))
       (* "jabber:iq:last", Iq.iq_last_reply *)

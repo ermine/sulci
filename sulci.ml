@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>             *)
+(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
 (*                                                                          *)
 
 open Types
@@ -9,14 +9,38 @@ open Hooks
 open Xmpp
 
 let _ = 
-   let server = trim (Xml.get_cdata config ~path:["jabber"; "server"]) in
-   let port = int_of_string (trim (Xml.get_cdata config 
-				      ~path:["jabber"; "port"])) in
-   let username = trim (Xml.get_cdata config ~path:["jabber"; "user"]) in
-   let password = trim (Xml.get_cdata config
-			   ~path:["jabber"; "password"]) in
-   let resource = trim (Xml.get_cdata config
-			   ~path:["jabber"; "resource"]) in
+   let server = try 
+      trim (Xml.get_cdata config ~path:["jabber"; "server"]) 
+   with Not_found ->
+      print_endline "Cannot find servername in config file";
+      flush stdout;
+      Pervasives.exit 127
+   in
+   let port = try 
+      int_of_string (trim (Xml.get_cdata config ~path:["jabber"; "port"]))
+   with Not_found -> 5222 
+   in
+   let username = try
+      trim (Xml.get_cdata config ~path:["jabber"; "user"]) 
+   with Not_found ->
+      print_endline "Cannot find username in config file";
+      flush stdout;
+      Pervasives.exit 127
+   in
+   let password = try
+      trim (Xml.get_cdata config ~path:["jabber"; "password"])
+   with Not_found ->
+      print_endline "Cannot find password in config file";
+      flush stdout;
+      Pervasives.exit 127
+   in
+   let resource = try
+      trim (Xml.get_cdata config ~path:["jabber"; "resource"])
+   with Not_found ->
+      print_endline "Cannot find resource name in config file";
+      flush stdout;
+      Pervasives.exit 127
+   in
    let logfile = 
       try Some (trim (Xml.get_cdata config ~path:["debug"; "logfile"]))
       with Not_found -> None in

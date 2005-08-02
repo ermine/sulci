@@ -16,7 +16,7 @@ let stats_sum serverlist result out () =
    let rec each_server server =
       let proc e f x o =
 	 (match e with
-	     | Iq `Result ->
+	     | Iq (_, `Result, _) ->
 		  let stats = get_subels ~path:["query"] ~tag:"stat" x in
 		  let data = List.map (fun z ->
 					  get_attr_s z "name",
@@ -55,7 +55,7 @@ let cmd_stats text event from xml out =
    let server = text in
    let proc e f x o =
       match e with
-	 | Iq `Result ->
+	 | Iq (_, `Result, _) ->
 	      let stats = get_subels ~path:["query"] ~tag:"stat" x in
 	      let data = List.map (fun z ->
 				      get_attr_s z "name",		 
@@ -66,7 +66,7 @@ let cmd_stats text event from xml out =
 		       (Printf.sprintf "\nUsers Total: %s\nUsers Online: %s"
 			   (List.assoc "users/total" data)
 			   (List.assoc "users/online" data)))
-	 | Iq `Error ->
+	 | Iq (_, `Error, _) ->
 	      o (make_msg xml 
 		    (Lang.get_msg ~xml "plugin_globalstats_stats_error" []))
 	 | _ -> ()
@@ -88,14 +88,14 @@ let uptime text event from xml out =
    else
       let proc e f x o =
 	 match e with
-	    | Iq `Result ->
+	    | Iq (_, `Result, _) ->
 		 let seconds = get_attr_s x ~path:["query"] "seconds" in
 		 let last = 
 		    Lang.expand_time ~xml "uptime" (int_of_string seconds) in
 		    o (make_msg xml
 			  (Lang.get_msg ~xml "plugin_globalstats_uptime"
 			      [text; last]))
-	    | Iq `Error ->
+	    | Iq (_, `Error, _) ->
 		 let reply =
 		    let cond, type_, text = parse_error x in
 		       match cond with
@@ -118,7 +118,7 @@ let uptime text event from xml out =
       in
       let id = new_id () in
 	 Hooks.register_handle (Hooks.Id (id, proc));
-	 out (iq_query ~to_:text ~id "jabber:iq:last")
+	 out (iq_query ~to_:text ~id ~xmlns:"jabber:iq:last" ~type_:`Get ())
 
 let _ =
    if Xml.mem_xml Config.config ["sulci"; "plugins"; "globalstats"] "store" [] 

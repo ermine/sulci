@@ -49,9 +49,6 @@ end
 module GroupchatMap = Map.Make(GID)
 let groupchats = ref (GroupchatMap.empty:groupchat_t GroupchatMap.t)
 
-type msg_type = [`Groupchat | `Chat | `Normal | `Error]
-type iq_type = [`Get | `Set | `Result | `Error | `InvalidType]
-
 type xmpp_event = 
    | MUC_join of participant_t
    | MUC_leave of string * participant_t
@@ -60,10 +57,9 @@ type xmpp_event =
    | MUC_ban of string * participant_t
    | MUC_presence of participant_t
    | MUC_topic of string
-   | MUC_message of msg_type * string * string
+   | MUC_message of message_type * string * string
    | MUC_other
    | MUC_history
    | Message
-   | Iq of iq_type
+   | Iq of string * iq_type * string
    | Presence
-   | InvalidStanza of Xml.element

@@ -41,7 +41,9 @@ let rec token = lexer
            NUM (float_of_string num)
    | '0' ('x'|'X') ['a'-'f' 'A'-'F' '0'-'9']+ ->
 	NUM (float_of_string (Ulexing.utf8_lexeme lexbuf))
-   | '0' ('b'|'B') ['0' '1']+ ->
+   | '0' ['b' 'B'] ['0' '1']+ ->
+	NUM (float_of_int (int_of_string (Ulexing.utf8_lexeme lexbuf)))
+   | '0' ['o' 'O'] ['0'-'8']+ ->
 	NUM (float_of_int (int_of_string (Ulexing.utf8_lexeme lexbuf)))
    | '+' ->
         PLUS

@@ -77,5 +77,12 @@ let print_exn ?xml exn =
       (match xml with
 	 | None -> ""
 	 | Some x ->
-	      (Xml.element_to_string x) ^ "\n\n")
+	      (Xml.element_to_string x) ^ "\n\n");
+   flush stderr
 
+(* temp code *)
+exception DNSPrepError
+
+let dnsprep str =
+   if String.contains str '.' then ()
+   else raise DNSPrepError

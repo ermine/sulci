@@ -9,7 +9,8 @@ open Getopt
 let config =
    let version arg = 
       Printf.printf 
-	 "Sulci %s (c) 2004-2005, Anastasia Gornostaeva <ermine@ermine.pp.ru>\n"
+	 "%s %s (c) 2004-2005, Anastasia Gornostaeva <ermine@ermine.pp.ru>\n"
+	 Version.name
 	 Version.version;
       Pervasives.exit 0
    in
@@ -42,4 +43,3 @@ let config =
 	 in
 	 let content = cycle () in
 	    Xmlstring.parse_string content
-	 

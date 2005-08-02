@@ -30,23 +30,24 @@ let groupchat from xml out text xmlns myself common =
 	    else string_of_jid {from with resource = text} in
 	 let proc e f x o =
 	    match e with
-	       | Iq `Result ->
+	       | Iq (_, `Result, _) ->
 		    o (make_msg xml (common x from.resource 
 					(if text = "" then
 					    from.resource else text)))
-	       | Iq `Error ->
+	       | Iq (_, `Error, _) ->
 		    o (make_msg xml (error x))
 	       | _ -> ()
 	 in
 	 let id = new_id () in
 	    Hooks.register_handle (Hooks.Id (id, proc));
-	    out (iq_query ~to_ ~id xmlns)
+	    out (iq_query ~to_ ~id ~xmlns ~type_:`Get ())
 
 let version text event from xml out =
    match event with
       | MUC_message (msg_type, _, _) ->
 	   let myself = 
-	      Printf.sprintf "Sulci %s - %s" Version.version Jeps.os in
+	      Printf.sprintf "%s %s - %s" Version.name Version.version 
+		 Jeps.os in
 	   let common x author nick =
 	      let client = get_cdata x ~path:["query"; "name"] in
 	      let version = get_cdata x ~path:["query"; "version"] in
@@ -68,7 +69,7 @@ let version text event from xml out =
 				    [text]));
 	   let proc e f x o =
 	      match e with
-		 | Iq `Result ->
+		 | Iq (_, `Result, _) ->
 		      let client = get_cdata x ~path:["query"; "name"] in
 		      let version = get_cdata x ~path:["query"; "version"] in
 		      let os = get_cdata x ~path:["query"; "os"] in
@@ -76,14 +77,15 @@ let version text event from xml out =
 			       (Lang.get_msg ~xml 
 				   "plugin_userinfo_version_you"
 				   [client; version; os]))
-		 | Iq `Error ->
+		 | Iq (_, `Error, _) ->
 		      o (make_msg xml (error x))
 		 | _ -> ()
 	   in
 	   let id = new_id () in
 	      Hooks.register_handle (Hooks.Id (id, proc));
 	      out 
-		 (iq_query ~to_:(get_attr_s xml "from") ~id "jabber:iq:version")
+		 (iq_query ~to_:(get_attr_s xml "from") ~id 
+		     ~xmlns:"jabber:iq:version" ~type_:`Get ())
 
 let version_server text event from xml out =
    try
@@ -91,7 +93,7 @@ let version_server text event from xml out =
 	 if server.user = "" && server.resource = "" then
 	    let proc event f x o =
 	       match event with
-		  | Iq `Result ->
+		  | Iq (_, `Result, _) ->
 		       let client = get_cdata x ~path:["query"; "name"] in
 		       let version = get_cdata x ~path:["query"; "version"] in
 		       let os = get_cdata x ~path:["query"; "os"] in
@@ -100,7 +102,7 @@ let version_server text event from xml out =
 				    "plugin_userinfo_version_server"
 				    [server.server; client; version; os]))
 
-		  | Iq `Error ->
+		  | Iq (_, `Error, _) ->
 		       let reply =
 			  let cond, type_, text = parse_error x in
 			     match cond with
@@ -125,7 +127,8 @@ let version_server text event from xml out =
 	    in
 	    let id = new_id () in
 	       Hooks.register_handle (Hooks.Id (id, proc));
-	       out (iq_query ~to_:server.server ~id "jabber:iq:version")
+	       out (iq_query ~to_:server.server ~id 
+		       ~xmlns:"jabber:iq:version" ~type_:`Get ())
 	 else
 	    out (make_msg xml "invalid server name")
    with _ ->
@@ -153,20 +156,21 @@ let idle text event from xml out =
 				    [text]));
 	   let proc e f x o =
 	      match e with
-		 | Iq `Result ->
+		 | Iq (_, `Result,_) ->
 		      let seconds = get_attr_s x ~path:["query"] "seconds" in
 		      let idle = 
 			 Lang.expand_time ~xml "idle" (int_of_string seconds) in
 			 o (make_msg xml 
 			       (Lang.get_msg ~xml "plugin_userinfo_idle_you"
 				   [idle]))
-		 | Iq `Error ->
+		 | Iq (_, `Error, _) ->
 		      o (make_msg xml (error x))
 		 | _ -> ()
 	   in
 	   let id = new_id () in
 	      Hooks.register_handle (Hooks.Id (id, proc));
-	      out (iq_query ~to_:(get_attr_s xml "from") ~id "jabber:iq:last")
+	      out (iq_query ~to_:(get_attr_s xml "from") ~id 
+		      ~xmlns:"jabber:iq:last" ~type_:`Get ())
 		 
 let time text event from xml out =
    match event with
@@ -190,18 +194,19 @@ let time text event from xml out =
 				    [text]));
 	   let proc e f x o =
 	      match e with
-		 | Iq `Result ->
+		 | Iq (_, `Result, _) ->
 		      let display = get_cdata x ~path:["query"; "display"] in
 			 o (make_msg xml
 			       (Lang.get_msg ~xml "plugin_userinfo_time_you"
 				   [display]))
-		 | Iq `Error ->
+		 | Iq (_, `Error, _) ->
 		      o (make_msg xml (error x))
 		 | _ -> ()
 	   in
 	   let id = new_id () in
 	      Hooks.register_handle (Hooks.Id (id, proc));
-	      out (iq_query ~id ~to_:(get_attr_s xml "from") "jabber:iq:time")
+	      out (iq_query ~id ~to_:(get_attr_s xml "from") 
+		      ~xmlns:"jabber:iq:time" ~type_:`Get ())
 
 let status text event from xml out =
    match event with

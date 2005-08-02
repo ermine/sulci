@@ -4,7 +4,6 @@
 
 open Xml
 open Xmpp
-open Http_client
 open Common
 
 (* 
@@ -113,12 +112,12 @@ let google_search start items request =
    let soap = make_query start items request in
    let query = element_to_string soap in
       try
-	 let content = Http_client.request "api.google.com"
-			  (Http_client.Post ("/search/beta2", 
-					     (xmldecl ^ query)))
-			  ["Accept-Encoding: identity";
-			   "SOAPAction: urn:GoogleSearchAction";
-			   "Content-Type: text/xml; charset=utf-8"] in
+	 let content = Midge.simple_post
+	    "http://api.google.com/search/beta2"
+	    ~headers:["Accept-Encoding", "identity";
+		      "SOAPAction", "urn:GoogleSearchAction";
+		      "Content-Type", "text/xml; charset=utf-8"]
+	    ~data:(xmldecl ^ query) in
 	 let parsed = Xmlstring.parse_string content in
 	 let result = Xml.get_tag parsed ["SOAP-ENV:Body"; 
 					  "ns1:doGoogleSearchResponse";
@@ -126,8 +125,10 @@ let google_search start items request =
 					  "resultElements"] 
 	 in
 	    message result
-      with HttpClientError err  -> err
-(*	 | _ -> "Error getting data" *)
+      with
+	 | Midge.ClientError -> "not found"
+	 | Midge.ServerError -> "server failed"
+	 | _ -> "some problems"
 
 let google_spell request =
    let soap = 
@@ -150,18 +151,19 @@ let google_spell request =
 			    ])])]) in
    let query = element_to_string soap in
       try
-	 let content = Http_client.request "api.google.com"
-			  (Http_client.Post ("/search/beta2", 
-					     (xmldecl ^ query)))
-			  ["Content-Type: text/xml; charset=utf-8"] in
+	 let content = Midge.simple_post "http://api.google.com/search/beta2"
+	    ~data:(xmldecl ^ query)
+	    ~headers:["Content-Type", "text/xml; charset=utf-8"] in
 	 let parsed = Xmlstring.parse_string content in
 	 let response = 
 	    Xml.get_cdata parsed ~path:["SOAP-ENV:Body"; 
 					"ns1:doSpellingSuggestionResponse";
 					"return"] in
 	    if response = "" then "[нет ответа]" else response
-      with HttpClientError err  -> err
-	 | _ -> "Error getting data"
+      with 
+	 | Midge.ClientError -> "not found"
+	 | Midge.ServerError -> "server fails"
+	 | _ -> "other problem"
 
 let google text event from xml out =
    if text = "" then

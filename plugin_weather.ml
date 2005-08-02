@@ -4,10 +4,15 @@
 
 open Xml
 open Common
-open Http_client
+open Http_client.Convenience;;
 open Pcre
 
 (* http://weather.noaa.gov/pub/data/observations/metar/decoded/ULLI.TXT *)
+
+let get noaa =
+   Midge.simple_get 
+      ("http://weather.noaa.gov/pub/data/observations/metar/decoded/" ^
+	  noaa ^ ".TXT")
 
 let split_lines lines =
    let map = List.find_all 
@@ -21,10 +26,12 @@ let split_lines lines =
 	       ) map
 
 let get_weather code =
-   let content = 
+   let content = get code in
+(*
       Http_client.request "weather.noaa.gov"
 	 (Get ("/pub/data/observations/metar/decoded/" ^ code ^ ".TXT"))
 	 [] in
+*)
    let lines = Str.split (Str.regexp "\n") content in
 
    let line1 = List.hd lines in
@@ -79,9 +86,16 @@ let weather text event from xml out =
    if pmatch ~rex:r text then
       let proc () =
 	 let response = 
-	    try get_weather (String.uppercase text) with exn ->
-	       Printexc.to_string exn
-		  (* "Undefined error" *) in
+	    try get_weather (String.uppercase text) with
+	       | Midge.ClientError ->
+		    "is there such airport?" (* TODO: lang *)
+	       | Midge.ServerError ->
+		    "There are problems at NOAA server" (* TOTO: lang *)
+	       | exn ->
+		    Printf.printf "Weather problem: %s" 
+		       (Printexc.to_string exn);
+		    "Unknown error: poke ermine" (* TOTO: lang *)
+	 in
 	    out (make_msg xml response)
       in
 	 ignore (Thread.create proc ())

@@ -2,8 +2,6 @@
 (* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
 (*                                                                          *)
 
-open Http_client
-open Netconversion
 open Xml
 open Common
 open Unix
@@ -17,9 +15,8 @@ type t = {
 let curr = ref []
 
 let load_curr () =
-   let content = Http_client.request "www.cbr.ru"
-		    (Http_client.Get "/scripts/XML_daily.asp") [] in
-   let parsed = Xmlstring.parse_string content in
+   let content = Midge.simple_get "http://www.cbr.ru/scripts/XML_daily.asp"in
+   let parsed = Xmlstring_netstring.parse_string content in
       if match_xml parsed "ValCurs" [] then
 	 let date = get_attr_s parsed "Date" in
 	 let vals = get_subels parsed in
@@ -56,7 +53,7 @@ let get_next_update () =
       noun
 
 let _ = 
-   load_curr ();
+   Thread.create load_curr ();
    Scheduler.add_task load_curr (get_next_update ()) 86400.
 
 let list_curr =

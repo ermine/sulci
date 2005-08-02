@@ -265,7 +265,7 @@ let kill (from:jid) out =
 	 out (Muc.kick id from from.resource ("plugin_markov_kick_reason", []));
 	 let proc event f x o = 
 	    match event with
-	       | Iq `Error ->
+	       | Iq (_, `Error, _) ->
 		    let err_text = try
 		       get_error_semantic x
 		    with Not_found -> 
@@ -295,7 +295,7 @@ let check text from out =
 		 "type", "groupchat"],
 		 [make_simple_cdata "body" nick]))
 	      *)
-	      raise Hooks.FilteredOut
+	      raise Hooks.Filtered
       with
 	 | Ulexing.Error ->
 	      Printf.eprintf
@@ -327,9 +327,9 @@ let cerberus event from xml out =
 		 (GroupchatMap.find room !groupchats).mynick then begin
 		    try check subject from out;
 		       topic := subject
-		    with Hooks.FilteredOut ->
+		    with Hooks.Filtered ->
 		       out (Muc.set_topic from !topic);
-		       raise FilteredOut
+		       raise Filtered
 		 end
 	 | MUC_message (msg_type, nick, body) ->
 	      if msg_type <> `Error then
