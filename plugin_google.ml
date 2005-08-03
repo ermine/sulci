@@ -110,14 +110,12 @@ let message result =
 
 let google_search start items request =
    let soap = make_query start items request in
-   let query = element_to_string soap in
+   let query = (xmldecl ^ element_to_string soap) in
       try
-	 let content = Midge.simple_post
-	    "http://api.google.com/search/beta2"
-	    ~headers:["Accept-Encoding", "identity";
-		      "SOAPAction", "urn:GoogleSearchAction";
-		      "Content-Type", "text/xml; charset=utf-8"]
-	    ~data:(xmldecl ^ query) in
+	 let content = Midge.post "http://api.google.com/search/beta2"
+	    ["Accept-Encoding", "identity";
+	     "SOAPAction", "urn:GoogleSearchAction";
+	     "Content-Type", "text/xml; charset=utf-8"] query in
 	 let parsed = Xmlstring.parse_string content in
 	 let result = Xml.get_tag parsed ["SOAP-ENV:Body"; 
 					  "ns1:doGoogleSearchResponse";
@@ -151,9 +149,8 @@ let google_spell request =
 			    ])])]) in
    let query = element_to_string soap in
       try
-	 let content = Midge.simple_post "http://api.google.com/search/beta2"
-	    ~data:(xmldecl ^ query)
-	    ~headers:["Content-Type", "text/xml; charset=utf-8"] in
+	 let content = Midge.post "http://api.google.com/search/beta2"
+	    ["Content-Type", "text/xml; charset=utf-8"] (xmldecl ^ query) in
 	 let parsed = Xmlstring.parse_string content in
 	 let response = 
 	    Xml.get_cdata parsed ~path:["SOAP-ENV:Body"; 
@@ -163,7 +160,7 @@ let google_spell request =
       with 
 	 | Midge.ClientError -> "not found"
 	 | Midge.ServerError -> "server fails"
-	 | _ -> "other problem"
+	 | exn -> "other problem: " ^ Printexc.to_string exn
 
 let google text event from xml out =
    if text = "" then
