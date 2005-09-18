@@ -56,8 +56,8 @@ let _ =
 	 (Sys.Signal_handle (function x -> Hooks.quit out));
       
       List.iter (fun proc -> 
-		    try proc out with exn -> print_exn exn) !onstart;
-
+		    try proc out with exn -> 
+		       Logger.print_exn "sulci.ml" exn) !onstart;
       process_xml next_xml out
    in
 
@@ -89,33 +89,31 @@ let _ =
 	    ()
       with
 	 | Unix.Unix_error (code, "connect", _) ->
-	      Printf.printf "Unable to connect to %s:%d: %s\n"
-		 server port (Unix.error_message code);
-	      flush stdout;
+	      Logger.out
+		 (Printf.sprintf "Unable to connect to %s:%d: %s"
+		     server port (Unix.error_message code));
 	      if times > 0 then begin
 		 Unix.sleep reconnect_interval;
-		 Printf.printf "Reconnecting. Attempts remains: %d\n" times;
+		 Logger.out 
+		    (Printf.sprintf "Reconnecting. Attempts remains: %d" 
+			times);
 	      end;
 	      reconnect (times - 1)
 	 | Auth.AuthError ->
-	      print_endline "Authorization failed";
-	      flush stdout;
+	      Logger.out "Authorization failed";
 	      Pervasives.exit 127
 	 | Xmpp.XMPPStreamEnd ->
-	      print_endline "The connection to the server is lost";
-	      flush stdout;
+	      Logger.out "The connection to the server is lost";
 	      cleanup_for_reconnect ();
 	      reconnect count
 	 | Xmpp.XMPPStreamError els ->
 	      (* todo: analyze els *)
-	      print_endline 
-		 "The server reject us because we used invalid protocol.\n";
-	      print_endline "Please send me a bugreport";
-	      flush stdout;
+	      Logger.out 
+		 "The server reject us because we used invalid protocol.";
+	      Logger.out "Please send me a bugreport";
 	      Pervasives.exit 127
 	 | exn ->
-	      Printf.printf "process_xml exception %s\n"
-		 (Printexc.to_string exn);
-	      print_endline "Probably it is a bug, please send me a bugreport"
+	      Logger.print_exn "sulci.ml" exn;
+	      Logger.out "Probably it is a bug, please send me a bugreport"
    in
       reconnect count

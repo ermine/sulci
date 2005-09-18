@@ -134,7 +134,7 @@ let _ =
 	    
 	 let start_stats out =
 	    let _ = Scheduler.add_task (stats_sum serverlist result out)
-	       (Unix.gettimeofday () +. 10.) interval
+	       (Unix.gettimeofday () +. 10.) (fun () -> interval)
 	    in ()
 	 in
 	    Hooks.register_handle (Hooks.OnStart start_stats)

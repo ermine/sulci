@@ -94,8 +94,8 @@ let get_msg ?xml ?(lang="") msgid args =
 	 let hashtbl = LangMap.find deflang !langmsgs in
 	    Hashtbl.find hashtbl msgid
       with Not_found ->
-	 Printf.eprintf "lang not found: [%s]\n" msgid;
-	 flush Pervasives.stdout;
+	 Logger.out
+	    (Printf.sprintf "lang not found: [%s]\n" msgid);
 	 "[not found in lang pack"
    in
       process str args

@@ -26,7 +26,7 @@ let rskip_ws str =
 	 if i = -1 then ""
 	 else
 	    if List.mem str.[i] [' '; '\n'; '\t'; '\r'] then cycle (pred i)
-	    else str
+	    else String.sub str 0 (i+1)
       in
 	 cycle (pred (String.length str))
 
@@ -53,15 +53,16 @@ let make_msg xml response =
 				     if nick = "" then response
 				     else (nick ^ ": " ^ response)
 				 )])
-	      else
+	      else begin
 		 Xmlelement ("message", ["to", from; "type", "chat"],
 			     [make_simple_cdata "body" response])
+	      end
 	 | other ->
 	      Xmlelement ("message", 
 		       (match other with
 			  | "" -> ["to", from]
 			  | o -> ["to", from; "type", other]),
-		       [make_simple_cdata "body" response])
+			  [make_simple_cdata "body" response])
 
 
 let get_error_semantic xml =
@@ -70,15 +71,6 @@ let get_error_semantic xml =
 	 get_cdata ~path:["error"; "text"] xml
       with _ -> raise Not_found
    in err_text
-
-let print_exn ?xml exn =
-   Printf.eprintf "Catched exception in hooks.ml: %s\n%s"
-      (Printexc.to_string exn) 
-      (match xml with
-	 | None -> ""
-	 | Some x ->
-	      (Xml.element_to_string x) ^ "\n\n");
-   flush stderr
 
 (* temp code *)
 exception DNSPrepError

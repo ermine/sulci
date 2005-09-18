@@ -23,9 +23,9 @@ end
 module Nicks = Map.Make(Id)
 
 type participant_t = {
-   jid: Xmpp.jid;
+   jid: Xmpp.jid option;
    status: string;
-   show: string;
+   show: presence_show_t;
    role: string;
    orig_nick: string;
    affiliation: string

@@ -13,6 +13,8 @@
  -->
  <reconnect interval='10' count='3' />
 
+ <lifelog>./sulci_life.log</lifelog>
+
  <lang dir="./lang" default="ru"/>
 
  <acl jid='ermine@jabber.ru' class='admin'/>
@@ -50,18 +52,16 @@
     </globalstats>
   -->
 
-  <dict>
-   <!-- <server port=2628>localhost</server> -->
-   <server>dict.org</server>
-  </dict>
+      <dict>
+         <!-- <server port=2628>localhost</server> -->
+         <server>dict.org</server>
+      </dict>
 
-  <!--
-    <talkers db="talkers.db"/>
-  -->
+      <talkers db="talkers.db"/>
 
-  <cerberus kick="true">
-   <notify jid="jid@jabber.server"/>
-  </cerberus>
+      <cerberus kick="true">
+         <notify jid="jid@jabber.server"/>
+      </cerberus>
 
- </plugins>
+   </plugins>
 </sulci>

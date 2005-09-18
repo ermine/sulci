@@ -17,13 +17,12 @@ let _ =
 	    let f = get_attr_s Config.config ~path:["plugins"; 
 						    "mueller"] "file" in
 	       if Sys.file_exists f then f else begin
-		  Printf.printf "Mueller dictonary %s does not exists\n" f;
-		  flush Pervasives.stdout;
+		  Logger.out 
+		     (Printf.sprintf "Mueller dictonary %s does not exists" f);
 		  Pervasives.exit 127
 	       end
 	 with Not_found ->
-	    Printf.printf "Invalid mueller stanza in config file\n";
-	    flush Pervasives.stdout;
+	    Logger.out "Invalid mueller stanza in config file";
 	    Pervasives.exit 127
 	 in
 	 let idx =
@@ -33,9 +32,9 @@ let _ =
 	 in
 	 let hash = 
 	    let fhash = try open_in idx with Sys_error err ->
-	       Printf.printf "Cannot open Mueller Dictonary's hash file: %s\n" 
-		  err;
-	       flush Pervasives.stdout;
+	       Logger.out
+		  (Printf.sprintf 
+		      "Cannot open Mueller Dictonary's hash file: %s" err);
 	       Pervasives.exit 127
 	    in
 	    let rec cycle () =
@@ -66,9 +65,9 @@ let _ =
 	    let fdict = 
 	       try openfile dict [O_RDONLY] 0o644 
 	       with Unix_error (err, _, _) ->
-		  Printf.eprintf "Cannot open %s: %s\n" dict 
-		     (Unix.error_message err);
-		  flush Pervasives.stdout;
+		  Logger.out
+		     (Printf.sprintf "plugin_mueller.ml: Cannot open %s: %s" 
+			 dict (Unix.error_message err));
 		  Pervasives.exit 127
 	    in
 	    let rec cycle i =

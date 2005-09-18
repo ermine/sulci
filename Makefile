@@ -1,9 +1,11 @@
-
 OCAMLMAKEFILE = ../OCamlMakefile
+
+VERSION=0.5-alpha-20050918
 
 include Makefile.conf
 
-SOURCES = version.ml config.ml common.ml types.ml lang.ml muc.ml muc_log.ml hooks.ml iq.ml
+SOURCES = version.ml config.ml logger.ml common.ml types.ml lang.ml muc.ml \
+	  find_url.ml muc_log.ml hooks.ml iq.ml http_suck.ml
 
 #ifdef MUC_LOG
 #  SOURCES += muc_log.ml
@@ -11,13 +13,9 @@ SOURCES = version.ml config.ml common.ml types.ml lang.ml muc.ml muc_log.ml hook
 
 ifdef PLUGIN_GOOGLE
   SOURCES += plugin_google.ml
-  MIDGE = yes
 endif
 ifdef PLUGIN_CALC
   SOURCES += math.ml pcalc.mly pcalc_lexer.mll icalc.mly icalc_ulex.ml plugin_calc.ml
-  USE_CAMLP4=yes
-  OCAMLDEP = ocamldep -package ulex -syntax camlp4o
-  OCAMLFLAGS = -syntax camlp4o
 endif
 ifdef PLUGIN_MUELLER
   SOURCES += plugin_mueller.ml
@@ -47,7 +45,6 @@ ifdef PLUGIN_DICT
 endif 
 ifdef PLUGIN_WEATHER
   SOURCES += plugin_weather.ml
-  MIDGE = yes
 endif
 ifdef PLUGIN_GLOBALSTATS
   SOURCES += plugin_globalstats.ml
@@ -73,13 +70,9 @@ ifdef PLUGIN_TALKERS
 endif
 ifdef PLUGIN_CERBERUS
   SOURCES += plugin_cerberus.ml
-  USE_CAMLP4=yes
-  OCAMLDEP = ocamldep -package ulex -syntax camlp4o
-  OCAMLFLAGS = -syntax camlp4o
 endif
 ifdef PLUGIN_TRANSLATE
   SOURCES += plugin_translate.ml
-  MIDGE = yes
 endif
 ifdef PLUGIN_VCARD
   SOURCES += plugin_vcard.ml
@@ -93,21 +86,13 @@ LANGPACKS = lang/ru_time.ml lang/en_time.ml lang/es_time.ml
 SOURCES += $(LANGPACKS) sulci.ml
 
 THREADS = yes
-PACKS = ulex unix str netstring $(DBM_LIB)
-
-ifdef MIDGE
-  PACKS += netclient
-endif
+PACKS = ulex unix str netstring netclient $(DBM_LIB)
 
 INCDIRS = ../libs/getopt ../libs/xml ../xmpp ../libs/xmlstring ../libs/scheduler \
 	  ../libs/strftime
 
 ifdef SQLITE
   INCDIRS += ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
-endif
-
-ifdef MIDGE
-  INCDIRS += ../libs/midge
 endif
 
 OCAMLLDFLAGS =  nums.cmxa cryptokit.cmxa \
@@ -122,15 +107,37 @@ ifdef SQLITE
   OCAMLLDFLAGS += sqlite.cmxa sqlite_util.cmxa
 endif
 
-ifdef MIDGE
-  OCAMLLDFLAGS += midge.cmxa
-endif
-
 OCAMLLDFLAGS += -linkall -linkpkg
+
+USE_CAMLP4    = yes
+OCAMLDEP      = ocamldep -package ulex -syntax camlp4o
+OCAMLFLAGS    = -syntax camlp4o
 
 RESULT = sulci
 
 all: nc langcompile
+
+SDIR=/tmp/sulci-$(VERSION)
+
+tarball::
+	rm -rf $(SDIR)
+	mkdir $(SDIR)
+	cp -Rp ../packages $(SDIR)
+	cp -Rp ../xmpp $(SDIR)
+	cp -Rp ../sulci $(SDIR)
+	mkdir $(SDIR)/libs
+	cp -Rp ../libs/xml $(SDIR)/libs
+	cp -Rp ../libs/scheduler $(SDIR)/libs
+	cp -Rp ../libs/sqlite_util $(SDIR)/libs
+	cp -Rp ../libs/strftime $(SDIR)/libs
+	cp -Rp ../libs/xmlstring $(SDIR)/libs
+	cp -Rp ../libs/getopt $(SDIR)/libs
+	mkdir $(SDIR)/docs
+	cp -Rp ../doc/sulci $(SDIR)/docs/
+	cp README $(SDIR)/
+	cp ../OCamlMakefile $(SDIR)
+	cp ../misc/Makefile.sulci $(SDIR)/Makefile
+	tar czf sulci-$(VERSION).tar.gz $(SDIR)
 
 langcompile: langcompile.ml
 	ocamlopt langcompile.ml -o langcompile

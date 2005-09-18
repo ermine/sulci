@@ -5,6 +5,9 @@
 open Xml
 open Common
 open Unix
+open Http_suck
+
+let url = "http://www.cbr.ru/scripts/XML_daily.asp"
 
 type t = {
    nominal: int;
@@ -14,8 +17,7 @@ type t = {
 
 let curr = ref []
 
-let load_curr () =
-   let content = Midge.simple_get "http://www.cbr.ru/scripts/XML_daily.asp"in
+let parse_content content =
    let parsed = Xmlstring_netstring.parse_string content in
       if match_xml parsed "ValCurs" [] then
 	 let date = get_attr_s parsed "Date" in
@@ -27,19 +29,29 @@ let load_curr () =
 	 let r = 
 	    List.map (function v ->
 			 get_cdata v ~path:["CharCode"],
-			 {nominal = int_of_string (get_cdata v ~path:["Nominal"]);
+			 {nominal = int_of_string (get_cdata v 
+						      ~path:["Nominal"]);
 			  name = get_cdata v ~path:["Name"];
 			  value = 
-			     let x = get_cdata v ~path:["Value"] in
-			     let pos = String.index x ',' in
-				String.set x pos '.';
-				try float_of_string (x) with exn ->
-				   Printf.eprintf "%s\n" x; raise exn
+			       let x = get_cdata v ~path:["Value"] in
+			       let pos = String.index x ',' in
+				  String.set x pos '.';
+				  try float_of_string (x) with exn ->
+				     Logger.print_exn "plugin_currency.ml" exn; 
+				     raise exn
 			 }
 		     ) z in
 	    curr := ["RUR", {nominal = 1; name = "Рубль"; value = 1.0}] @ r
       else 
 	 curr := []
+
+let load_curr () =
+   let callback data =
+      match data with
+	 | OK content -> parse_content content
+	 | Exception exn -> ()
+   in
+      Http_suck.http_get url callback
 
 let get_next_update () =
    let curr_time = gettimeofday () in
@@ -53,8 +65,8 @@ let get_next_update () =
       noun
 
 let _ = 
-   Thread.create load_curr ();
-   Scheduler.add_task load_curr (get_next_update ()) 86400.
+   load_curr ();
+   Scheduler.add_task load_curr (get_next_update ()) (fun () -> 86400.)
 
 let list_curr =
    let sorted = List.sort (fun (v1, _) (v2, _) ->
@@ -104,10 +116,7 @@ let currency text event from xml out =
 	 | Not_found ->
 	      ()
 	 | exn ->
-	      Printf.eprintf "plugin_currency exception: %s: [%s]\n" 
-		 (Printexc.to_string exn) text;
-	      flush Pervasives.stdout;
-	      ()
+	      Logger.print_exn ("plugin_currency.ml (" ^ text ^ ")") exn
 
 let _ =
    Hooks.register_handle (Hooks.Command ("curr", currency))

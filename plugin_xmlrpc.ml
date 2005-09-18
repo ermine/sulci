@@ -41,9 +41,9 @@ let _ =
 	       ignore (Thread.create (sulci_rpc out in_chan out_chan) ())
 	 done
       with Unix.Unix_error (code, syscall, _) ->
-	 Printf.printf "problem with %s: %s\n" syscall
-	    (Unix.error_message code);
-	 flush Pervasives.stdout;
+	 Logger.out
+	    (Printf.sprintf "problem with %s: %s\n" syscall
+		(Unix.error_message code));
 	 Thread.exit ()
    in
    let start out =

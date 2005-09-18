@@ -60,7 +60,7 @@ let rotate_logs () =
 			     close_out lf;
 			     open_log room) !logmap
    
-let _ = Scheduler.add_task rotate_logs (get_next_noun ()) 86400.
+let _ = Scheduler.add_task rotate_logs (get_next_noun ()) (fun () -> 86400.)
 
 let get_logfile room =
    try 
@@ -70,6 +70,7 @@ let get_logfile room =
 	 logmap := LogMap.add room out_log !logmap;
 	 out_log
 
+(*
 let rex = regexp ~flags:[`CASELESS;]
    "((https?|ftp)://.*(?![?!,.]*(\\s|$))[^\\s])|((www|ftp)[a-z0-9.-]*\\.[a-z]{2,}.*(?![?!,.]*(\\s|$))[^\\s])"
 
@@ -88,6 +89,12 @@ let html_url text =
 		)
 	 text
    with Not_found -> text
+*)
+
+open Find_url
+
+let html_url text =
+   find_url make_hyperlink text
 
 let make_message author nick body =
    let text =

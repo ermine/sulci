@@ -67,7 +67,11 @@ let catch_seen event from xml out =
    let room_s = from.luser ^ "@" ^ from.lserver in
       match event with
 	 | MUC_join item ->
-	      let jid_s = item.jid.luser ^ "@" ^ item.jid.lserver in
+	      let jid_s =
+		 match item.jid with
+		    | None -> ""
+		    | Some j -> j.luser ^ "@" ^ j.lserver
+	      in
 	      let vm = compile_simple db 
 		 ("SELECT msg FROM greeting WHERE jid=" ^ escape jid_s ^
 		     " AND room=" ^ escape room_s) in
@@ -86,7 +90,12 @@ let catch_seen event from xml out =
 	 | MUC_leave (reason, item)
 	 | MUC_kick (reason, item)
 	 | MUC_ban (reason, item) as action ->
-	      let jid_s = item.jid.luser ^ "@" ^ item.jid.lserver  in
+	      let cond =
+		 match item.jid with
+		    | None -> 
+"nick=" ^ escape from.lresource
+		    | Some j -> "jid=" ^ escape (j.luser ^ "@" ^ j.lserver)
+	      in
 	      let room_s = from.luser ^ "@" ^ from.lserver in
 	      let last = Int32.to_string (Int32.of_float (Unix.time ())) in
 	      let action = match action with
@@ -95,17 +104,20 @@ let catch_seen event from xml out =
 		 | MUC_ban _ -> "ban"
 	      in
 		 if result_bool db 
-		    ("SELECT last FROM users where jid=" ^ escape jid_s ^
+		    ("SELECT last FROM users where " ^ cond ^
 			" AND room=" ^ escape room_s) then
 		       exec db ("UPDATE users SET last=" ^ last ^
 				   ", action=" ^ escape action ^
 				   ", reason=" ^ escape reason ^
-				   " WHERE jid=" ^ escape jid_s ^ 
+				   " WHERE " ^ cond ^
 				   " AND room=" ^ escape room_s)
 		 else
 		    exec db 
 		   ("INSERT INTO users (jid, room, nick, last, action, reason) "
-		    ^ values [escape jid_s; escape room_s; 
+		    ^ values [escape (match item.jid with
+					 | None -> ""
+					 | Some j -> j.luser ^ "@" ^ j.lserver);
+			      escape room_s; 
 			      escape from.resource;
 			      last; escape action; escape reason])
 	 | _ -> ()
@@ -114,26 +126,38 @@ let catch_seen event from xml out =
 let find_nick (jid:string) nicks =
    let result = ref [] in
       Nicks.iter (fun nick item ->
-		     if jid = item.jid.luser ^ "@" ^ item.jid.lserver then
-			result := nick :: !result
+		     match item.jid with
+			| None -> ()
+			| Some j ->
+			     if jid = j.luser ^ "@" ^ j.lserver then
+				result := nick :: !result
 		 ) nicks;
       if !result = [] then raise Not_found else !result
 
 let verify_nick nick jid nicks xml =
    try
       let item = Nicks.find nick nicks in
-	 if jid = item.jid.luser ^ "@" ^ item.jid.lserver then
-	    Lang.get_msg ~xml "plugin_seen_is_here" [nick]
-	 else
-	    try let changed = find_nick jid nicks in
-	       Lang.get_msg ~xml "plugin_seen_changed_nick" 
-		  [nick; (String.concat ", " changed)]
-	    with Not_found ->
-	       Lang.get_msg ~xml "plugin_seen_is_not_same" [nick; nick]
+	 match item.jid with
+	    | None ->
+		 Lang.get_msg ~xml "plugin_seen_is_here" [nick]
+	    | Some j ->
+		 if jid = j.luser ^ "@" ^ j.lserver then
+		    Lang.get_msg ~xml "plugin_seen_is_here" [nick]
+		 else if jid = "" then
+		    Lang.get_msg ~xml "plugin_seen_is_here" [nick]
+		 else
+		    try let changed = find_nick jid nicks in
+		       Lang.get_msg ~xml "plugin_seen_changed_nick" 
+			  [nick; (String.concat ", " changed)]
+		    with Not_found ->
+		       Lang.get_msg ~xml "plugin_seen_is_not_same" [nick; nick]
    with Not_found ->
-      let changed = find_nick jid nicks in
-	 Lang.get_msg ~xml "plugin_seen_changed_nick" 
-	    [nick; (String.concat ", " changed)]
+      if jid <> "" then
+	 let changed = find_nick jid nicks in
+	    Lang.get_msg ~xml "plugin_seen_changed_nick" 
+	       [nick; (String.concat ", " changed)]
+      else
+	 raise Not_found
 
 let seen text event from xml out =
    if text = "" then

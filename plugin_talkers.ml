@@ -54,21 +54,29 @@ let talkers event from xml out =
 				"1" else "0" in
 			  let jid = (Nicks.find from.lresource 
 					room_env.nicks).jid in
-			  let jid_s = jid.luser ^ "@" ^ jid.lserver in
+			  let cond =
+			     match jid with
+				| None -> "nick=" ^ escape from.lresource
+				| Some j -> "jid=" ^ escape (j.luser ^ "@" ^
+								j.lserver)
+			  in
 			     if result_bool db
-				("SELECT words FROM talkers WHERE jid=" ^
-				    escape jid_s ^
+				("SELECT words FROM talkers WHERE " ^ cond ^
 				    " AND room=" ^ escape room_s) then
 				   exec db 
 				      ("UPDATE talkers SET words=words+" ^ 
 					  words ^
 					", sentences=sentences+1, me=me+" ^ me ^
-					  " WHERE jid=" ^ escape jid_s ^
+					  " WHERE " ^ cond ^
 					  " AND room=" ^ escape room_s)
 			     else
 				exec db ("INSERT INTO talkers " ^ values 
-				    [escape jid_s; escape from.resource; 
-				     escape room_s; words; me; "1"])
+					    [escape (match jid with
+							| None -> ""
+							| Some j -> j.luser ^
+							     "@" ^ j.lserver);
+					     escape from.resource; 
+					     escape room_s; words; me; "1"])
       | _ -> ()
 
 let cmd_talkers text event from xml out =

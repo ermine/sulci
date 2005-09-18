@@ -1,0 +1,44 @@
+Ocaml "Just for fun" Software
+Anastasia Gornostaeva <ermine@ermine.pp.ru>
+
+
+Sulci
+---------------------------------------------------------------------------
+It is an Jabber bot
+
+To compile, you need previously installed:
+
+* Ocaml 3.08.3
+     www.ocaml.org
+* cryptokit
+     http://cristal.inria.fr/~xleroy/software.html
+* ulex
+     http://www.cduce.org/download/
+     It is strongly recomended to use version 0.7
+* ocamlfind
+     http://www.ocaml-programming.de/packages/documentation/findlib/
+* ocamlnet
+     http://sourceforge.net/projects/ocamlnet
+* pcre-ocaml
+     http://www.ai.univie.ac.at/~markus/home/ocaml_sources.html
+* netclient
+     http://www.ocaml-programming.de/programming/netclient.html
+* sqlite 2.x
+     www.sqlite.org
+
+Note: If you plan to use Mueller dictonary, you should compile pcre library
+with enabled UTF-8 support
+
+
+Most of those packets can be retrieved and installed using your Package 
+management such as apt-get or FreeBSD Port Collection
+
+
+To compile Sulci, an jabber bot:
+   make
+
+You can find sulci and sulci.conf.example in sulci subdir.
+
+
+Note: Now Sulci is available in FreeBSD Port Collection
+

@@ -10,21 +10,21 @@ open Muc
 open Hooks
 
 let regexp ca          = 0x430 | 0x410 | 'a' | 'A'
-let regexp cb          = 0x431 | 0x411
-let regexp cv          = 0x432 | 0x412
+let regexp cb          = 0x431 | 0x411 | '6'
+let regexp cv          = 0x432 | 0x412 | 'B' 
 let regexp cg          = 0x433 | 0x413
 let regexp cd          = 0x434 | 0x414
 let regexp cie         = 0x435 | 0x415 | 'e' | 'E'
-let regexp czh         = 0x436 | 0x416
+let regexp czh         = 0x436 | 0x416 | "}|{"
 let regexp cz          = 0x437 | 0x417 | '3'
 let regexp ci          = 0x438 | 0x418 | "|/|"
-let regexp cj          = 0x439 | 0x419 | 'K'
-let regexp ck          = 0x43A | 0x41A
+let regexp cj          = 0x439 | 0x419
+let regexp ck          = 0x43A | 0x41A | 'K' | 'k'
 let regexp cl          = 0x43B | 0x41B
 let regexp cm          = 0x43C | 0x41C | 'M'
 let regexp cn          = 0x43D | 0x41D | 'H'
 let regexp co          = 0x43E | 0x41E | 'o' | 'O' | '0'
-let regexp cp          = 0x43F | 0x41F
+let regexp cp          = 0x43F | 0x41F | 'n'
 let regexp cr          = 0x440 | 0x420 | 'p' | 'P'
 let regexp cs          = 0x441 | 0x421 | 'c' | 'C'
 let regexp ct          = 0x442 | 0x422 | 'T'
@@ -36,7 +36,7 @@ let regexp cch         = 0x447 | 0x427
 let regexp csh         = 0x448 | 0x428
 let regexp cshch       = 0x449 | 0x429
 let regexp chard_sign  = 0x44A | 0x42A
-let regexp cy          = 0x44B | 0x42B
+let regexp cy          = 0x44B | 0x42B | "bl" | "bI"
 let regexp csoft_sign  = 0x44C | 0x42C
 let regexp ce          = 0x44D | 0x42D
 let regexp cyu         = 0x44E | 0x42E
@@ -44,7 +44,8 @@ let regexp cya         = 0x44F | 0x42F
 let regexp cio         = 0x451 | 0x401 | ci co | cj co
 
 let regexp cyrillic = [0x410-0x44F 0x451 0x401 '0' '3' 'a''A' 'e' 'E' 'H' 
-			  'o' 'O' 'c' 'C' 'T' 'x' 'X' 'y' 'Y' 'p' 'P'] | "|/|"
+			  'o' 'O' 'c' 'C' 'k' 'K' 'T' 'x' 'X' 'y' 'Y' 'p' 
+			  'P' '6' '0'] | "|/|" | "bl" | "bI"
 
 let regexp ci_ie_io = ci | cie | cio
 let regexp cie_io = cie | cio
@@ -53,7 +54,7 @@ let regexp prefix = cn ca | cn cie | cn ci | cp co | co | ca | cv
    | cp cr ci | cz ca | cd co | ci cs | cp ce cr ce | cr ca cs | cr ca cz
    | cp cr co | cp cie cr cie | cn cie cd co | cv cy
    | cs chard_sign | cv chard_sign | cs csoft_sign | co ct chard_sign
-   | co cd cn co | cn ce cd co 
+   | co cd cn co | cn ce cd co | cs cu cp cie cr | cg ci cp cie cr
 
 type t =
    | Bad of string
@@ -84,7 +85,7 @@ let rec analyze = lexer
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cp ci cn cd cie cts ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
-   | cm cl cya ct csoft_sign ->
+   | cm cl cya (ct | cd) csoft_sign ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cyrillic* cs ck ci cp ci cd ca cr (* cyrillic* *) ->
 	Good
@@ -144,6 +145,9 @@ let rec analyze = lexer
    | cyrillic ->
 	skip lexbuf
    | eof ->
+	Good
+   | cs cu cp cie cr cd
+   | cg ci cp cie cr cd ->
 	Good
    | _ -> 
 	analyze lexbuf
@@ -248,13 +252,13 @@ let report word (from:jid) phrase out =
 						 "to", jid],
 				     [make_simple_cdata "body"
 					 (Printf.sprintf 
-					     "Мат: %s\n%s@%s %s (%s@%s/%s)\n%s" 
+					     "Мат: %s\n%s@%s %s (%s)\n%s" 
 					     word 
 					     from.user from.server
 					     from.resource
-					     item.jid.user
-					     item.jid.server
-					     item.jid.resource
+					     (match item.jid with
+						 | None -> "unknown jid"
+						 | Some j -> string_of_jid j)
 					     phrase)]))
 		) notify_jids
 
@@ -298,11 +302,9 @@ let check text from out =
 	      raise Hooks.Filtered
       with
 	 | Ulexing.Error ->
-	      Printf.eprintf
-		 "Lexing error at offset %i\n" 
-		 (Ulexing.lexeme_end lexbuf);
-	      flush Pervasives.stdout
-
+	      Logger.out (Printf.sprintf
+			     "cerberus: Lexing error at offset %i"
+			     (Ulexing.lexeme_end lexbuf))
 
 let topic = ref " "
 
@@ -347,11 +349,12 @@ let cerberus event from xml out =
 			  | Bad word -> ()
 		       with
 			  | Ulexing.Error ->
-			       Printf.eprintf
-				  "Lexing error at offset %i\n" 
-				  (Ulexing.lexeme_end lexbuf);
-			       flush Pervasives.stdout;
-		 with _ -> ()
+			       Logger.out
+				  (Printf.sprintf
+				      "cerberus: Lexing error at offset %i" 
+				      (Ulexing.lexeme_end lexbuf));
+		 with exn ->
+		    (* Logger.print_exn "cerberus" exn *) ()
 	      end
 	 | _ -> ()
 

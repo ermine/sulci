@@ -79,7 +79,7 @@ let process_iq event from xml out =
 		       (try
 			   let f = IdMap.find id !idmap in
 			      (try f event from xml out with exn -> 
-				  print_exn exn ~xml);
+				  Logger.print_exn "hooks.ml" exn ~xml);
 			      idmap := IdMap.remove id !idmap
 			with Not_found -> ())
 	       | `Get
@@ -87,7 +87,7 @@ let process_iq event from xml out =
 		    (try			
 			let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
 			   (try f event from xml out with exn -> 
-			       print_exn exn ~xml);
+			       Logger.print_exn "hooks.ml" exn ~xml);
 		     with Not_found -> ()))
       | _ -> ()
 	    
@@ -96,7 +96,8 @@ let do_command text event from xml out =
       try String.sub text 0 (String.index text ' ') with Not_found -> text in
    let f = CommandMap.find word !commands in
    let params = try string_after text (String.index text ' ') with _ -> "" in
-      try f (trim params) event from xml out with exn -> print_exn exn ~xml
+      try f (trim params) event from xml out with exn -> 
+	 Logger.print_exn "hooks.ml" exn ~xml
 
 let process_message event from xml out =
    match event with
@@ -119,12 +120,12 @@ let process_message event from xml out =
 		 with Not_found ->
 		    List.iter  (fun f -> 
 				   try f event from xml out with exn ->
-				      print_exn exn ~xml
+				      Logger.print_exn "hooks.ml" exn ~xml
 			       ) !catchset 
 	      else
 		 List.iter  (fun f -> 
 				try f event from xml out with exn ->
-				   print_exn exn ~xml
+				   Logger.print_exn "hooks.ml" exn ~xml
 			    ) !catchset 
       | Message ->
 	   if safe_get_attr_s xml "type" <> "error" then
@@ -133,7 +134,7 @@ let process_message event from xml out =
 		 (try do_command text event from xml out with Not_found ->
 		     List.iter  (fun f -> 
 				    try f event from xml out with exn ->
-				       print_exn exn ~xml
+				       Logger.print_exn "hooks.ml" exn ~xml
 				) !catchset)
       | _ -> ()
 
@@ -175,22 +176,24 @@ let rec process_xml next_xml out =
 		 | _ -> 
 		      List.iter (fun proc -> 
 				    try proc event from xml out with exn ->
-				       print_exn exn ~xml
+				       Logger.print_exn "hooks.ml" exn ~xml
 				) !catchset
 	     );
        with
 	  | InvalidStanza as exn ->
-	       print_exn exn ~xml
+	       Logger.print_exn "hooks.ml" exn ~xml
 	  | Filtered -> ()
 	  | exn ->
-	       print_exn exn ~xml
+	       Logger.print_exn "hooks.ml" exn ~xml
       );
       process_xml next_xml out
 
 let quit out =
-   List.iter (fun proc -> try proc out with exn -> print_exn exn) !onquit;
+   List.iter (fun proc -> try proc out with exn -> 
+		 Logger.print_exn "hooks.ml" exn) !onquit;
    Pervasives.exit 0
 
+(*
 let check_access (jid:jid) classname =
    let who =
       try 
@@ -208,3 +211,26 @@ let check_access (jid:jid) classname =
 			       get_attr_s a "class" = classname then
 				  true else false) acls 
       then true else false
+*)
+
+let check_access (jid:jid) classname =
+   let find_acl who =
+      let acls = get_subels Config.config ~tag:"acl" in
+	 if List.exists (fun a -> 
+			    let jid = jid_of_string (get_attr_s a "jid") in
+			       if jid.luser = who.luser && 
+				  jid.lserver = who.lserver &&
+				  get_attr_s a "class" = classname then
+				     true else false) acls 
+	 then true else false
+   in
+      try 
+	 let env = GroupchatMap.find (jid.luser, jid.lserver) !groupchats in
+	 let nick = jid.lresource in
+	 let item = Nicks.find nick env.nicks in
+	    match item.jid with
+	       | None -> false (* TODO? *)
+	       | Some j -> find_acl j
+      with Not_found ->
+	 find_acl jid
+	      

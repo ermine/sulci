@@ -108,7 +108,7 @@ let version_server text event from xml out =
 			     match cond with
 				| `ERR_FEATURE_NOT_IMPLEMENTED ->
 				     Lang.get_msg ~xml
-			        "plugin_userinfo_version_server_not_implemented"
+				"plugin_userinfo_version_server_not_implemented"
 					[text]
 				| `ERR_REMOTE_SERVER_TIMEOUT ->
 				     Lang.get_msg ~xml
@@ -124,6 +124,7 @@ let version_server text event from xml out =
 					[]
 		       in
 			  o (make_msg xml reply)
+		  | _ -> ()
 	    in
 	    let id = new_id () in
 	       Hooks.register_handle (Hooks.Id (id, proc));
@@ -213,17 +214,20 @@ let status text event from xml out =
       | MUC_message (msg_type, _, _) ->
 	   let victim = if text = "" then from.lresource else 
 	      Stringprep.resourceprep text in
-	      begin try
-		 let item = Nicks.find victim
-		    (GroupchatMap.find (from.luser, from.lserver) 
-			!groupchats).nicks in
-		    if item.status = "" then
-		       out (make_msg xml ("[" ^ item.show ^ "]"))
-		    else
-		       out (make_msg xml (item.status ^ " [" ^ item.show ^ "]"))
-	      with _ ->
-		 out (make_msg xml "Whose status?")
-	      end
+	      (try
+		  let item = Nicks.find victim
+		     (GroupchatMap.find (from.luser, from.lserver) 
+			 !groupchats).nicks in
+		     out (make_msg xml ((if item.status = "" then ""
+					 else item.status ^ " ") ^
+					   "[" ^ (match item.show with
+						     | `Online -> "online"
+						     | `Away -> "away"
+						     | `DND -> "dnd"
+						     | `Chat -> "free for chat"
+						     | `XA -> "xa") ^ "]"))
+	       with _ ->
+		  out (make_msg xml "Whose status?"))
       | _ -> ()
 
 let _ =
