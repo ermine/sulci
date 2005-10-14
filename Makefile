@@ -1,6 +1,6 @@
 OCAMLMAKEFILE = ../OCamlMakefile
 
-VERSION=0.5-alpha-20050924
+VERSION=0.5-alpha-20051014
 
 include Makefile.conf
 
@@ -138,10 +138,11 @@ tarball::
 	cp ../OCamlMakefile $(SDIR)
 	cp ../misc/Makefile.sulci $(SDIR)/Makefile
 	cp ../COPYING $(SDIR)/
-	cp ../Changelog $(SDIR)/
-	find -d /tmp/$(SDIR) -name .svn -print0 | xargs -0 -- rm -rf
+	cp ../ChangeLog $(SDIR)/
+	find -d $(SDIR) -name ".svn" -print0 | xargs -0 -- rm -rf
 	find $(SDIR) -name *.cm* -delete
 	tar jcf sulci-$(VERSION).tar.bz2 -C /tmp sulci-$(VERSION)
+	tar zcf sulci-$(VERSION).tar.gz -C /tmp sulci-$(VERSION)
 
 langcompile: langcompile.ml
 	ocamlopt langcompile.ml -o langcompile
