@@ -125,7 +125,7 @@ let request call callback =
       Unixqueue.add_event esys (Unixqueue.Extra (HTTP_Job (call, f_done)))
 
 let http_get url callback =
-   request (new my_aget url) callback
+   request (new my_get url) callback
 
 let http_post url headers data callback =
    let p = new post_call in
