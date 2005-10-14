@@ -34,12 +34,5 @@ let config =
 	 Pervasives.exit 127
       end
       else
-	 let fin = open_in !configfile in
-	 let rec cycle () =
-	    try
-	       let line = input_line fin in
-		  line ^ cycle ()
-	    with _ -> ""
-	 in
-	 let content = cycle () in
-	    Xmlstring.parse_string content
+	 let xml = Xmlstring.parse_from_file !configfile in
+	    xml

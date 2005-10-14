@@ -8,6 +8,28 @@ exception Unserved
 
 exception HTTP_Job of http_call * (http_call -> unit)
 
+class my_pipeline =
+object
+   inherit pipeline as super
+   method add_with_callback request f_done =
+      try
+         super#add_with_callback request f_done;
+      with exn ->
+         Logger.print_exn "http_suck.ml" exn;
+         f_done request
+end
+
+class my_get the_query =
+object
+   inherit get the_query as super
+   method set_request_uri query =
+      try
+         super # set_request_uri query
+      with exn ->
+         Logger.print_exn "http_suck.ml" exn;
+         raise (Http_protocol exn)
+end
+
 let http_esys = ref None
 
 let get_http_esys() =
@@ -33,7 +55,7 @@ let http_init() =
 let http_thread() =
    (* Create the HTTP pipeline for a known event system: *)
    let esys = get_http_esys() in
-   let pipeline = new pipeline in
+   let pipeline = new my_pipeline in
       pipeline # set_event_system esys;
       
      (* In order to keep the event system active when there are no HTTP requests
@@ -57,7 +79,7 @@ let http_thread() =
 			try
 			   pipeline # add_with_callback call f_done
 			with exn ->
-			   raise ClientError
+			   f_done call
 		   | _ ->
 			raise Equeue.Reject  (* The event is not for us *)
 	    );
@@ -92,8 +114,8 @@ let request call callback =
 		 raise exn
             | `Redirection ->    (* TODO *)
 		 raise Redirect
-            | `Unserved ->       (* TODO *)
-		 raise Unserved
+            | `Unserved ->       (* raises at add_with_callback *)
+		 raise ClientError
 	 in
 	    callback (OK result)
       with exn ->
@@ -103,7 +125,7 @@ let request call callback =
       Unixqueue.add_event esys (Unixqueue.Extra (HTTP_Job (call, f_done)))
 
 let http_get url callback =
-   request (new get url) callback
+   request (new my_aget url) callback
 
 let http_post url headers data callback =
    let p = new post_call in

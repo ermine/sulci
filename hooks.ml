@@ -81,7 +81,8 @@ let process_iq event from xml out =
 			      (try f event from xml out with exn -> 
 				  Logger.print_exn "hooks.ml" exn ~xml);
 			      idmap := IdMap.remove id !idmap
-			with Not_found -> ())
+			with Not_found -> 
+			   ())
 	       | `Get
 	       | `Set ->
 		    (try			
