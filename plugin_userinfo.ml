@@ -49,9 +49,12 @@ let version text event from xml out =
 	      Printf.sprintf "%s %s - %s" Version.name Version.version 
 		 Jeps.os in
 	   let common x author nick =
-	      let client = get_cdata x ~path:["query"; "name"] in
-	      let version = get_cdata x ~path:["query"; "version"] in
-	      let os = get_cdata x ~path:["query"; "os"] in
+	      let client = try get_cdata x ~path:["query"; "name"] with 
+		    Not_found -> "[unknown]" in
+	      let version = try get_cdata x ~path:["query"; "version"] with
+		    Not_found -> "[unknown]" in
+	      let os = try get_cdata x ~path:["query"; "os"] with Not_found ->
+		 "[unknown]" in
 		 if author = nick then
 		    Lang.get_msg ~xml "plugin_userinfo_version_you"
 		       [client; version; os]
