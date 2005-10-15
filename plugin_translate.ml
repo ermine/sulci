@@ -51,6 +51,10 @@ let  do_map =
       fun xml out -> out (make_msg xml list)
 
 let url lang text =
+   let text =
+      let lexbuf = Ulexing.from_utf8_string text in
+	 Xmlstring.decode_xml "" lexbuf
+   in
    Printf.sprintf 
       "http://wap.translate.ru/default.asp?cp=cyr&dir=%s&source=%s"
       lang (Netencoding.Url.encode text)
