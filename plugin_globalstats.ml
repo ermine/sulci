@@ -9,6 +9,7 @@ open Error
 open Types
 
 let stats_sum serverlist result out () =
+   Logger.out "Globalstats: Start polling";
    let totals = ref 0 in
    let onlines = ref 0 in
    let servers = ref 0 in
@@ -31,6 +32,10 @@ let stats_sum serverlist result out () =
 	    let server = input_line sin in
 	       each_server server
 	 with End_of_file ->
+	    Logger.out 
+	       (Printf.sprintf 
+	"Globalstats: end polling, results: %d total, %d onlines, %d servers" 
+		   !totals !onlines !servers);
 	    let sout = open_out result in
 	       output_string sout (Printf.sprintf "%d\n%d\n%d\n"
 				      !totals !onlines !servers);

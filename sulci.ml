@@ -49,16 +49,18 @@ let _ =
       let jid, out, next_xml = 
 	 Xmpp.client ~username ~password ~resource ?logfile ~server ~port () in
 
-      Sys.set_signal Sys.sigint
-	 (Sys.Signal_handle (function x -> Hooks.quit out));
+	 Logger.out (Printf.sprintf "Connected to %s!" server);
 
-      Sys.set_signal Sys.sigterm
-	 (Sys.Signal_handle (function x -> Hooks.quit out));
+	 Sys.set_signal Sys.sigint
+	    (Sys.Signal_handle (function x -> Hooks.quit out));
+	 
+	 Sys.set_signal Sys.sigterm
+	    (Sys.Signal_handle (function x -> Hooks.quit out));
       
-      List.iter (fun proc -> 
-		    try proc out with exn -> 
-		       Logger.print_exn "sulci.ml" exn) !onstart;
-      process_xml next_xml out
+	 List.iter (fun proc -> 
+		       try proc out with exn -> 
+			  Logger.print_exn "sulci.ml" exn) !onstart;
+	 process_xml next_xml out
    in
 
    let reconnect_interval = 

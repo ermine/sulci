@@ -54,11 +54,14 @@ let get_next_noun () =
       noun
 
 let rotate_logs () =
+   Logger.out "MUC Log: Rotating chatlogs";
    logmap := LogMap.mapi (fun room lf ->
-			     output_string lf "</body>\n</html>";
-			     flush lf;
-			     close_out lf;
-			     open_log room) !logmap
+			     let old = lf in
+			     let newlog = open_log room in
+				output_string old "</body>\n</html>";
+				flush old;
+				close_out old;
+				newlog) !logmap
    
 let _ = Scheduler.add_task rotate_logs (get_next_noun ()) (fun () -> 86400.)
 
