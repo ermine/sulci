@@ -95,9 +95,10 @@ and query = lexer
 	""
 
 and path acc = lexer
-   | ['.' ',' '?' '!' ':' ';' ')' '(' '-''|']+ (space | eof) ->
+   | ['.' ',' '?' '!' ':' ';' '-''|']+ (space | eof) ->
 	Ulexing.rollback lexbuf;
 	acc
+   | [ '<' '>'] 
    | space ->
 	Ulexing.rollback lexbuf;
 	acc
