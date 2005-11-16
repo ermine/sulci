@@ -93,8 +93,9 @@ let catch_seen event from xml out =
 	      let cond =
 		 match item.jid with
 		    | None -> 
-"nick=" ^ escape from.lresource
-		    | Some j -> "jid=" ^ escape (j.luser ^ "@" ^ j.lserver)
+			 "nick=" ^ escape from.lresource
+		    | Some j -> 
+			 "jid=" ^ escape (j.luser ^ "@" ^ j.lserver)
 	      in
 	      let room_s = from.luser ^ "@" ^ from.lserver in
 	      let last = Int32.to_string (Int32.of_float (Unix.time ())) in
@@ -199,6 +200,7 @@ let seen text event from xml out =
 				[text; diff; result.(3)]
 		    end
 	      with Sqlite_done -> begin
+print_endline "here";
 		 if Nicks.mem text nicks then
 		    if get_resource (get_attr_s xml "from") = text then
 		       Lang.get_msg ~xml "plugin_seen_you" []

@@ -17,6 +17,8 @@ type t = {
 
 let curr = ref []
 
+let list_curr = ref ""
+
 let parse_content content =
    let parsed = Xmlstring_netstring.parse_string content in
       if match_xml parsed "ValCurs" [] then
@@ -41,15 +43,29 @@ let parse_content content =
 				     raise exn
 			 }
 		     ) z in
-	    curr := ["RUR", {nominal = 1; name = "Рубль"; value = 1.0}] @ r
+	    curr := List.sort (fun (v1, _) (v2, _) -> compare v1 v2)
+	       (["RUR", {nominal = 1; name = "Рубль"; value = 1.0}] @ r);
+	    let rec cycle lst =
+	       match lst with
+		  | [] -> ""
+		  | (v, x) :: tail ->
+		       (Printf.sprintf "%i %s (%s) = %.4f RUR\n"
+			   x.nominal v x.name x.value) ^ cycle tail
+	    in
+	       list_curr :=
+		  "Котировки Центрального банка РФ (" ^ date ^ ")\n" ^
+		     cycle !curr
       else 
 	 curr := []
 
 let load_curr () =
    let callback data =
       match data with
-	 | OK content -> parse_content content
-	 | Exception exn -> ()
+	 | OK content -> 
+	      Logger.out "Plugin_currency: successfully fetched data";
+	      parse_content content;
+	 | Exception exn ->
+	      ()
    in
       Http_suck.http_get url callback
 
@@ -68,24 +84,11 @@ let _ =
    load_curr ();
    Scheduler.add_task load_curr (get_next_update ()) (fun () -> 86400.)
 
-let list_curr =
-   let sorted = List.sort (fun (v1, _) (v2, _) ->
-			      compare v1 v2
-			  ) !curr in
-   let rec cycle lst =
-      match lst with
-	 | [] -> ""
-	 | (v, x) :: tail ->
-	      (Printf.sprintf "%i %s (%s) = %.4f RUR\n"
-		  x.nominal v x.name x.value) ^ cycle tail
-
-   in
-      "Котировки Центрального банка РФ\n" ^ cycle sorted
-
-let rex = Pcre.regexp "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
+let rex = Pcre.regexp 
+   "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
 
 let currency text event from xml out =
-   if text = "list" then out (make_msg xml (list_curr))
+   if text = "list" then out (make_msg xml !list_curr)
    else
       try
 	 let r = Pcre.exec ~rex text in

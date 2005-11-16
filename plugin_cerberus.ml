@@ -71,6 +71,8 @@ let rec analyze = lexer
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cm ca cn cd cyrillic cyrillic ->
 	Good
+   | ci cp ct cr ->
+	Good
    | ci cp ca ct csoft_sign cie cv cs ck ->
 	Good
    | ci cp ca (ct | cn) ->

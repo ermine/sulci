@@ -32,7 +32,6 @@ type participant_t = {
 }
 
 type groupchat_t = {
-   room: Xmpp.jid;
    mynick: string;
    lang: string;
    nicks: participant_t Nicks.t;

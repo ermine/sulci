@@ -20,9 +20,9 @@ let commands = ref CommandMap.empty
 
 let onstart =
    let on_start out =
-      GroupchatMap.iter (fun room env ->
-			    out (Muc.join_room env.mynick 
-				    (string_of_jid env.room))) !groupchats
+      GroupchatMap.iter (fun (luser, lserver) env ->
+			    out (Muc.join_room env.mynick (luser, lserver)))
+	 !groupchats
    in
       ref [on_start]
 

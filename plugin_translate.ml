@@ -103,6 +103,8 @@ let translate text event from xml out =
 		       let lang = String.make 2 lg1.[0] in
 			  lang.[1] <- lg2.[0];
 			  do_request lang str xml out
+		    else
+		       raise Not_found
 	   with Not_found ->
               try
 		 let res = exec ~rex:rex1 ~pos:0 text in
@@ -110,8 +112,10 @@ let translate text event from xml out =
 		    and str = get_substring res 2 in
                        if List.mem_assoc lang languages then
 			  do_request lang str xml out
+		       else
+			  out (make_msg xml "unknown language, try another one")
 	      with Not_found ->
-		 out (make_msg xml "not found")
+		 out (make_msg xml "mmm?")
 		    
 let _ =
    Hooks.register_handle (Hooks.Command ("tr", translate))

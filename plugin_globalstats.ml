@@ -8,7 +8,7 @@ open Xml
 open Error
 open Types
 
-let stats_sum serverlist result out () =
+let stats_sum serverlist result out =
    Logger.out "Globalstats: Start polling";
    let totals = ref 0 in
    let onlines = ref 0 in
@@ -68,7 +68,9 @@ let cmd_stats text event from xml out =
 					 get_attr_s z "value"
 				      with Not_found -> "unknown" ) stats in
 		 o (make_msg xml 
-		       (Printf.sprintf "\nUsers Total: %s\nUsers Online: %s"
+		       (Printf.sprintf 
+			   "Stats for %s\nUsers Total: %s\nUsers Online: %s"
+			   server
 			   (List.assoc "users/total" data)
 			   (List.assoc "users/online" data)))
 	 | Iq (_, `Error, _) ->
@@ -138,7 +140,9 @@ let _ =
 		~path:["plugins"; "globalstats"; "store"] "interval") in
 	    
 	 let start_stats out =
-	    let _ = Scheduler.add_task (stats_sum serverlist result out)
+	    let _ = Scheduler.add_task 
+	       (fun () -> try stats_sum serverlist result out with exn ->
+		   Logger.print_exn "Plugin_globalstats" exn)
 	       (Unix.gettimeofday () +. 10.) (fun () -> interval)
 	    in ()
 	 in

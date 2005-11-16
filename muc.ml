@@ -78,8 +78,12 @@ let process_presence (from:jid) xml out =
 				   Nicks.remove luser 
 				      room_env.nicks} !groupchats;
 			  MUC_ban (reason, item)
-		  | "321" (* non-member *)
-		  | _ ->
+		  (* | "321" (* non-member *) *)
+		  | other ->
+		       if other = "" &&
+			  luser = (GroupchatMap.find room !groupchats).mynick
+		       then
+			  groupchats := GroupchatMap.remove room !groupchats;
 		       let item = Nicks.find luser 
 			  (GroupchatMap.find room !groupchats).nicks in
 		       let reason = 
@@ -154,10 +158,15 @@ let process_message (from:jid) xml out =
 	    with Not_found ->
 	       MUC_other
 
-let join_room nick room =
-   make_presence ~to_:(room ^ "/" ^ nick)
+let join_room nick (luser, lserver) =
+   make_presence ~to_:(luser ^ "@" ^ lserver ^ "/" ^ nick)
       ~subels:
       [Xmlelement ("x", ["xmlns", "http://jabber.org/protocol/muc"], [])] ()
+
+let leave_room ?reason (luser, lserver) =
+   let mynick = (GroupchatMap.find (luser, lserver) !groupchats).mynick in
+      make_presence ~to_:(luser ^ "@" ^ lserver ^ "/" ^ mynick) 
+	 ~type_:`Unavailable ?status:reason ()
 
 let kick id (room:jid) nick (reason, args) =
    let msg = 
@@ -179,17 +188,15 @@ let set_topic from subject =
 			   "type", "groupchat"],
 	       [make_simple_cdata "subject" subject])
 
-let register_room ?lang nick (room:string) =
-   let jid = jid_of_string room in
-      groupchats := GroupchatMap.add (jid.luser, jid.lserver)
-	 {
-	    room = jid;
-	    mynick = Stringprep.stringprep ~mode:Stringprep.Resourceprep nick;
-	    nicks = Nicks.empty;
-	    lang = match lang with
-	       | None -> Lang.deflang
-	       | Some l -> l } !groupchats
-
+let register_room ?lang nick (luser, lserver) =
+   groupchats := GroupchatMap.add (luser, lserver)
+      {
+	 mynick = Stringprep.stringprep ~mode:Stringprep.Resourceprep nick;
+	 nicks = Nicks.empty;
+	 lang = match lang with
+	    | None -> Lang.deflang
+	    | Some l -> l } !groupchats
+      
 let _ =
    let default_mynick = 
       trim (Xml.get_cdata Config.config ~path:["jabber"; "user"]) in
@@ -201,8 +208,9 @@ let _ =
 	     let mynick = try 
 		Stringprep.stringprep ~mode:Stringprep.Resourceprep
 		   (Xml.get_attr_s r "nick") with Not_found -> default_mynick
-	     and jid = Xml.get_attr_s r "jid"
+	     and jid_s = Xml.get_attr_s r "jid"
 	     and lang = try Xml.get_attr_s r "lang" with _ -> "ru" in
-		register_room ~lang mynick jid
+	     let jid = jid_of_string jid_s in
+		register_room ~lang mynick (jid.luser, jid.lserver)
 	 ) rconf
  

@@ -35,24 +35,52 @@ let quit text event from xml out =
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_quit_no_access" []))
 
+let join_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
+
 let join text event from xml out =
    if check_access from "admin" then
-      let room, nick =
-	 try
-	    let s = String.index text ' ' in
-	    let room = String.sub text 0 s in
-	    let nick = string_after text (s+1) in
-	       room, nick
-	 with Not_found ->
-	    text,
-	    trim (get_cdata Config.config ~path:["jabber"; "user"])
-      in
-	 Muc.register_room nick room;
-	 out (Muc.join_room nick room)
+      try
+	 let r = Pcre.exec ~rex:join_rex text in
+	 let room_s = Pcre.get_substring r 1
+	 and nick = try Pcre.get_substring r 3 with Not_found ->
+	    trim (get_cdata Config.config ~path:["jabber"; "user"]) in
+
+	 let room = jid_of_string room_s in
+	    if not (GroupchatMap.mem (room.luser, room.lserver) !groupchats) 
+	    then begin
+	       Muc.register_room nick (room.luser, room.lserver);
+	       out (Muc.join_room nick (room.luser, room.lserver))
+	    end
+	    else
+	       out (make_msg xml "again?")
+      with _ ->
+	 ()
    else
       out (make_msg xml 
 	      (Lang.get_msg ~xml "plugin_admin_join_no_access" []))
-	 
+
+let leave_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
+
+let leave text event from xml (out:element -> unit) =
+   if check_access from "admin" then
+      try
+	 let r = Pcre.exec ~rex:leave_rex text in
+	 let room_s = Pcre.get_substring r 1
+	 and reason = 
+	    try Some (Pcre.get_substring r 3) with Not_found -> None in
+
+	    print_endline room_s;
+	    flush Pervasives.stdout;
+	 let room = jid_of_string room_s in
+	    if GroupchatMap.mem (room.luser, room.lserver) !groupchats then
+	       out (Muc.leave_room (room.luser, room.lserver) ?reason)
+	    else
+	       raise Not_found
+      with exn ->
+	 Printf.printf "%s\n" (Printexc.to_string exn);
+	 flush Pervasives.stdout;
+	 out (make_msg xml "hmm?")
+
 let lang_update text event from xml out =
    if check_access from "admin" then
       if text = "" then
@@ -86,5 +114,6 @@ let _ =
    register_handle (Command ("msg", msg));
    register_handle (Command ("quit", quit));
    register_handle (Command ("join", join));
+   register_handle (Command ("leave", leave));
    register_handle (Command ("lang_update", lang_update));
    register_handle (Command ("sulci_set", sulci_set));

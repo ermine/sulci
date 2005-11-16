@@ -89,7 +89,10 @@ let add db words =
 		    cycle1 w2 tail
 	      end
    in
-      cycle1 "" words
+      try
+	 cycle1 "" words
+      with exn ->
+	 Logger.print_exn "Plugin_markov" exn
 
 let seek db (w1:string) =
    let sum = result_integer db
@@ -112,8 +115,12 @@ let seek db (w1:string) =
 	 in
 	    try
 	       cycle2 (Random.int sum + 1)
-	    with Sqlite_done -> 
-	       w1, ""
+	    with 
+	       | Sqlite_done -> 
+		    w1, ""
+	       | exn ->
+		    Logger.print_exn "Plugin_markov" exn;
+		    w1, ""
 
 let chain_limit = ref
    (try int_of_string (get_attr_s Config.config ~path:["plugin"; "markov"]
@@ -130,7 +137,11 @@ let generate db word =
 	    if w2 = "" then String.concat " " (List.rev acc)
 	    else cycle3 w2 (i+1) (w2::acc)
    in
-      cycle3 word 0 []
+      try
+	 cycle3 word 0 []
+      with exn ->
+	 Logger.print_exn "Plugin_markov: generate a phrase" exn;
+	 ""
 
 let split_words body =
    Pcre.split ~pat:"[ \t\n]+" body
@@ -165,21 +176,26 @@ let rec markov_thread (db, m) =
       | MMessage (event, from, xml, out) ->
 	   process_markov db event from xml out
       | MCount (from, xml, out) ->
-	   let result = result_integer db "SELECT COUNT(*) FROM words" in
-	      out (make_msg xml (string_of_int result))
+	   (try
+	       let result = result_integer db "SELECT COUNT(*) FROM words" in
+		  out (make_msg xml (string_of_int result))
+	    with exn ->
+	       Logger.print_exn "Plugin_markov !!!count" exn)
       | MTop (from, xml, out) ->
-	   let vm = compile_simple db 
-	"SELECT word1, word2, counter FROM words WHERE word1!='' AND word2!='' \
-       ORDER BY counter DESC LIMIT 10" in
-	   let rec cycle4 () =
-	      try 
-		 let data = step_simple vm in
-		    (Printf.sprintf "\n%s | %s | %s"
-			data.(0) data.(1) data.(2))
-		    ^ cycle4 ()
-	      with Sqlite_done -> ""
-	   in
-	      out (make_msg xml (cycle4 ()))
+	   (try
+	       let vm = compile_simple db 
+		  "SELECT word1, word2, counter FROM words WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10" in
+	       let rec cycle4 () =
+		  try 
+		     let data = step_simple vm in
+			(Printf.sprintf "\n%s | %s | %s"
+			    data.(0) data.(1) data.(2))
+			^ cycle4 ()
+		  with Sqlite_done -> ""
+	       in
+		  out (make_msg xml (cycle4 ()))
+	    with exn ->
+	       Logger.print_exn "Plugin_markov: !!!top" exn)
       | MStop -> Thread.exit ()
    end;
    markov_thread (db, m)
