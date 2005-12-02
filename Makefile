@@ -107,8 +107,6 @@ ifdef SQLITE
   OCAMLLDFLAGS += sqlite.cmxa sqlite_util.cmxa
 endif
 
-OCAMLLDFLAGS += -linkall -linkpkg
-
 USE_CAMLP4    = yes
 OCAMLDEP      = ocamldep -package ulex -syntax camlp4o
 OCAMLFLAGS    = -syntax camlp4o

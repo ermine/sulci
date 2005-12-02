@@ -97,10 +97,23 @@ let version_server text event from xml out =
 	    let proc event f x o =
 	       match event with
 		  | Iq (_, `Result, _) ->
-		       let client = get_cdata x ~path:["query"; "name"] in
-		       let version = get_cdata x ~path:["query"; "version"] in
-		       let os = get_cdata x ~path:["query"; "os"] in
-			  o (make_msg xml 
+(*
+		       let res = String.concat ", "
+			  (List.map (fun item ->
+					get_tagname item ^ ": " ^
+					   get_cdata item
+				    ) (get_subels x ~path:["query"])) in
+			  o (make_msg xml (server.server ^ " -- " ^ res))
+*)
+		       let client = 
+			  try get_cdata x ~path:["query"; "name"] with 
+				Not_found -> "n/a" in
+		       let version = 
+			  try get_cdata x ~path:["query"; "version"] with 
+				Not_found -> "n/a" in
+		       let os = try get_cdata x ~path:["query"; "os"] with 
+			     Not_found -> "n/a" in
+			     o (make_msg xml 
 				(Lang.get_msg ~xml 
 				    "plugin_userinfo_version_server"
 				    [server.server; client; version; os]))

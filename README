@@ -17,11 +17,11 @@ To compile, you need previously installed:
      It is strongly recomended to use version 0.7
 * ocamlfind
      http://www.ocaml-programming.de/packages/documentation/findlib/
-* ocamlnet
+* ocamlnet 1.1+
      http://sourceforge.net/projects/ocamlnet
 * pcre-ocaml
      http://www.ai.univie.ac.at/~markus/home/ocaml_sources.html
-* netclient
+* netclient 0.91.1+
      http://www.ocaml-programming.de/programming/netclient.html
 * sqlite 2.x
      www.sqlite.org

@@ -318,6 +318,10 @@ let cerberus event from xml out =
 		 (GroupchatMap.find room !groupchats).mynick then begin
 		    check from.resource from out;
 		    check item.status from out;
+		    match item.jid with
+		       | None -> ()
+		       | Some j ->
+			    check j.lresource from out;
 		 end
 	 | MUC_change_nick (nick, item) ->
 	      if nick <> (GroupchatMap.find room !groupchats).mynick then
