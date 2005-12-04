@@ -15,7 +15,7 @@ let msg text event from xml out =
       let to_ = jid_of_string (String.sub text 0 s) in
       let msg_body = string_after text (s+1) in
 	 out (Xmlelement ("message", 
-			  ["to", string_of_jid to_; 
+			  ["to", to_.string; 
 			   "type", 
 			   if GroupchatMap.mem (to_.luser, to_.lserver) 
 			      !groupchats then

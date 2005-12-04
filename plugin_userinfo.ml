@@ -26,7 +26,7 @@ let groupchat from xml out text xmlns myself common =
 	 out (make_msg xml myself)
       else
 	 let to_ = 
-	    if text = "" then string_of_jid from
+	    if text = "" then from.string
 	    else string_of_jid {from with resource = text} in
 	 let proc e f x o =
 	    match e with
@@ -120,7 +120,7 @@ let version_server text event from xml out =
 
 		  | Iq (_, `Error, _) ->
 		       let reply =
-			  let cond, type_, text = parse_error x in
+			  let cond, type_, _ = parse_error x in
 			     match cond with
 				| `ERR_FEATURE_NOT_IMPLEMENTED ->
 				     Lang.get_msg ~xml

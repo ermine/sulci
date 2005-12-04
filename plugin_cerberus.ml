@@ -260,7 +260,7 @@ let report word (from:jid) phrase out =
 					     from.resource
 					     (match item.jid with
 						 | None -> "unknown jid"
-						 | Some j -> string_of_jid j)
+						 | Some j -> j.string)
 					     phrase)]))
 		) notify_jids
 
