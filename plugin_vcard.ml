@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>                    *)
+(* (c) 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
 (*                                                                          *)
 
 open Xmpp
@@ -50,9 +50,9 @@ let _ =
 			     (try get_subels xml ~path:["vCard"] 
 			      with Not_found -> []) [] in
 			     
-			     out (make_msg origxml (result_vcard res))
+			     make_msg out origxml (result_vcard res)
 		     | `Error ->
-			  out (make_msg origxml "error getting vcard")
+			  make_msg out origxml "error getting vcard"
 		     | _ -> ())
 	    | _ -> ()
       in
@@ -85,7 +85,7 @@ let _ =
 				   (Hooks.Id (id, parse_vcard xml));
 				out (Jeps.iq_vcard_query ~id to_)
 			  with _ ->
-			     out (make_msg xml 
-				     "/me озирается в поисках дубинки")
+			     make_msg out xml 
+				"/me озирается в поисках дубинки"
    in
       Hooks.register_handle (Hooks.Command ("vcard", vsearch))

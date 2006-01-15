@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Unix
@@ -97,7 +97,7 @@ let _ =
 	 in
 	    fun text event from xml out ->
 	       if text = "" then
-		  out (make_msg xml "гы! Что бум переводить?")
+		  make_msg out xml "гы! Что бум переводить?"
 	       else
 		  let reply = 
 		     try
@@ -129,6 +129,6 @@ let _ =
 			   rsp5
 		     with Not_found -> "Не нашёл :("
 		  in
-		     out (make_msg xml reply)
+		     make_msg out xml reply
       in
 	 Hooks.register_handle (Hooks.Command ("mueller", mueller))

@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
@@ -53,7 +53,7 @@ let ping text event from xml (out:element -> unit) =
 			 )
 		    | _ -> "?!"
 	      in
-		 out (make_msg xml reply)
+		 make_msg out xml reply
 	   in
 	   let id = new_id () in
 	      Hooks.register_handle (Hooks.Id (id, proc));
@@ -63,17 +63,17 @@ let ping text event from xml (out:element -> unit) =
       | Message ->
 	   let now = Unix.gettimeofday () in
 	      if text <> "" then
-		 out (make_msg xml (Lang.get_msg ~xml
-				       "plugin_ping_cannot_ping" [text]))
+		 make_msg out xml (Lang.get_msg ~xml
+				      "plugin_ping_cannot_ping" [text])
 	      else
 		 let proc e f x out =
 		    match e with
 		       | Iq (_, `Result, _) ->
 			    let diff = Lang.float_seconds ~xml "ping" 
 			       (Unix.gettimeofday () -. now) in
-			       out (make_msg xml
-				       (Lang.get_msg ~xml 
-					   "plugin_ping_pong_from_you" [diff]))
+			       make_msg out xml
+				  (Lang.get_msg ~xml 
+				      "plugin_ping_pong_from_you" [diff])
 		       | Iq (_, `Error,_) ->
 			    let err_text =  
 			       try 
@@ -82,7 +82,7 @@ let ping text event from xml (out:element -> unit) =
 				  Lang.get_msg ~xml 
 				     "plugin_ping_you_error" []
 			    in
-			       out (make_msg xml err_text)
+			       make_msg out xml err_text
 		       | _ -> ()
 		 in
 		 let id = new_id () in

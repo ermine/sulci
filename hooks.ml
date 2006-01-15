@@ -1,11 +1,12 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
 open Xmpp
 open Common
 open Types
+open Nicks
 
 module IdMap = Map.Make(Id)
 let idmap = ref IdMap.empty
@@ -140,6 +141,7 @@ let process_message event from xml out =
       | _ -> ()
 
 exception Filtered
+exception Ignore
   
 let rec process_xml next_xml out =
    let xml = next_xml () in
@@ -154,10 +156,14 @@ let rec process_xml next_xml out =
 	      else
 		 Presence
 	 | "message" ->
-	      if GroupchatMap.mem room !groupchats then
-		 Muc.process_message from xml out
-	      else
-		 Message
+	      (try
+		  let room_env = GroupchatMap.find room !groupchats in
+		     if room_env.mynick = from.resource then
+			raise Ignore
+		     else
+			Muc.process_message from xml out
+	       with Not_found ->
+		  Message)
 	 | "iq" ->
 	      let id, type_, xmlns = iq_info xml in
 		 Iq (id, type_, xmlns)
@@ -181,6 +187,7 @@ let rec process_xml next_xml out =
 				) !catchset
 	     );
        with
+	  | Ignore -> ()
 	  | InvalidStanza as exn ->
 	       Logger.print_exn "hooks.ml" exn ~xml
 	  | Filtered -> ()

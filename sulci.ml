@@ -1,8 +1,9 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Types
+open Nicks
 open Common
 open Config
 open Hooks
@@ -80,7 +81,7 @@ let _ =
       presencemap := [];
       (* muc related; clean only nicks *)
       groupchats := 
-	 GroupchatMap.map (fun env -> {env with nicks = Nicks.empty;})
+	 GroupchatMap.map (fun env -> {env with nicks = [];})
 	    !groupchats
    in
    let rec reconnect times =

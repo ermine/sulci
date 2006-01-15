@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005 2006, Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Pcre
@@ -149,8 +149,8 @@ let rex2 = Pcre.regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
 
 let dict text event from xml out =
    if text = "" then
-      out (make_msg xml
-	      (Lang.get_msg ~xml "plugin_dict_invalid_syntax" []))
+      make_msg out xml
+	 (Lang.get_msg ~xml "plugin_dict_invalid_syntax" [])
    else
       if String.get text 0 = '-' then
 	 let proc () =
@@ -158,7 +158,7 @@ let dict text event from xml out =
 	       process_cmd_dict text
 	    with DictError error -> error
 	    in 
-	       out (make_msg xml (Xml.crypt response))
+	       make_msg out xml (Xml.encode response)
 	 in
 	    ignore (Thread.create proc ())
       else 
@@ -172,7 +172,7 @@ let dict text event from xml out =
 		     process_dict db word lang
 	       with (DictError error) -> error
 	       in
-		  out (make_msg xml (Xml.crypt response))
+		  make_msg out xml (Xml.encode response)
 	    in
 	       ignore (Thread.create proc ())
 	 with Not_found ->
@@ -185,12 +185,12 @@ let dict text event from xml out =
 			process_dict "*" word lang
 		  with (DictError error) -> error
 		  in
-		     out (make_msg xml (Xml.crypt response))
+		     make_msg out xml (Xml.encode response)
 	       in
 		  ignore (Thread.create proc ())
 	    with Not_found ->
-	       out (make_msg xml 
-		       (Lang.get_msg ~xml "plugin_dict_invalid_syntax" []))
+	       make_msg out xml 
+		  (Lang.get_msg ~xml "plugin_dict_invalid_syntax" [])
 
 let _ =
    Hooks.register_handle (Hooks.Command ("dict", dict))

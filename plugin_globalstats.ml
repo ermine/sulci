@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Common
@@ -57,41 +57,74 @@ let stats_sum serverlist result out =
       each_server server
 
 let cmd_stats text event from xml out =
-   let server = text in
+   (try
+       let sjid = jid_of_string text in
+	  if sjid.luser <> "" && sjid.lresource <> "" then
+	     make_msg out xml 
+		(Lang.get_msg ~xml "plugin_globalstats_stats_bad_servername"
+		    [text])
+    with _ ->
+       make_msg out xml 
+	  (Lang.get_msg ~xml "plugin_globalstats_stats_bad_servername" [text]));
+       
    let proc e f x o =
       match e with
 	 | Iq (_, `Result, _) ->
 	      let stats = get_subels ~path:["query"] ~tag:"stat" x in
-	      let data = List.map (fun z ->
-				      get_attr_s z "name",		 
-				      try 
-					 get_attr_s z "value"
-				      with Not_found -> "unknown" ) stats in
-		 o (make_msg xml 
-		       (Printf.sprintf 
-			   "Stats for %s\nUsers Total: %s\nUsers Online: %s"
-			   server
-			   (List.assoc "users/total" data)
-			   (List.assoc "users/online" data)))
+	      let data = List.map 
+		 (fun z -> get_attr_s z "name",		 
+		     try 
+			get_attr_s z "value"
+		     with Not_found -> "unknown" ) stats in
+		 make_msg o xml 
+		    (Printf.sprintf 
+			"Stats for %s\nUsers Total: %s\nUsers Online: %s"
+			text
+			(List.assoc "users/total" data)
+			(List.assoc "users/online" data))
 	 | Iq (_, `Error, _) ->
-	      o (make_msg xml 
-		    (Lang.get_msg ~xml "plugin_globalstats_stats_error" []))
+	      let reply =
+		 let cond, type_, _ = parse_error x in
+		    match cond with
+		       | `ERR_FEATURE_NOT_IMPLEMENTED ->
+			    Lang.get_msg ~xml
+			       "plugin_globalstats_stats_not_implemented"
+			       [text]
+		       | `ERR_REMOTE_SERVER_TIMEOUT ->
+			    Lang.get_msg ~xml
+			 "plugin_globalstats_stats_remote_server_timeout"
+			       [text]
+		       | `ERR_REMOTE_SERVER_NOT_FOUND ->
+			    Lang.get_msg ~xml 
+		       "plugin_globalstats_stats_remote_server_not_found"
+			       [text]
+		       | `ERR_SERVICE_UNAVAILABLE ->
+			    Lang.get_msg ~xml
+			       "plugin_globalstats_stats_service_unavailable"
+			       [text]
+		       | _ ->
+			    Lang.get_msg ~xml 
+			       "plugin_globalstats_stats_server_error" 
+			       [text]
+	      in
+		 make_msg o xml reply
 	 | _ -> ()
    in
    let id = new_id () in
       Hooks.register_handle (Hooks.Id (id, proc));
       out (Xmlelement 
-	      ("iq", ["to", server; "type", "get"; "id", id],
-	       [Xmlelement ("query", ["xmlns", 
-				      "http://jabber.org/protocol/stats"],
+	      ("iq", ["to", text; "type", "get"; "id", id],
+	       [Xmlelement ("query", 
+			    ["xmlns", 
+			     "http://jabber.org/protocol/stats"],
 			    [Xmlelement ("stat", ["name", "users/online"], []);
 			     Xmlelement ("stat", ["name", "users/total"], [])
 			    ])]))
 
 let uptime text event from xml out =
    if text = "" then 
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_globalstats_uptime_invalid_syntax" []))
+      make_msg out xml 
+	 (Lang.get_msg ~xml "plugin_globalstats_uptime_invalid_syntax" [])
    else
       let proc e f x o =
 	 match e with
@@ -99,9 +132,9 @@ let uptime text event from xml out =
 		 let seconds = get_attr_s x ~path:["query"] "seconds" in
 		 let last = 
 		    Lang.expand_time ~xml "uptime" (int_of_string seconds) in
-		    o (make_msg xml
-			  (Lang.get_msg ~xml "plugin_globalstats_uptime"
-			      [text; last]))
+		    make_msg o xml
+		       (Lang.get_msg ~xml "plugin_globalstats_uptime"
+			   [text; last])
 	    | Iq (_, `Error, _) ->
 		 let reply =
 		    let cond, type_, text = parse_error x in
@@ -120,7 +153,7 @@ let uptime text event from xml out =
 			       Lang.get_msg ~xml 
 				  "plugin_globalstats_uptime_error" []
 		 in
-		    o (make_msg xml reply)
+		    make_msg o xml reply
 	    | _ -> ()
       in
       let id = new_id () in

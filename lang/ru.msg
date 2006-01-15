@@ -8,15 +8,18 @@ muc_log_ban_reason                 %s запретили входить в ко�
 muc_log_change_nick                %s изменил(а) имя на %s
 muc_log_set_subject                %s изменил(а) тему: %s
 muc_log_subject                    Тема: %s
+
 plugin_calc_not_parsed             что это было?!
 plugin_calc_empty_command          ась?
 plugin_calc_divide_by_zero         Делим на нолик, да? :-/
 plugin_calc_number_too_big         Многовато... :(
 plugin_calc_cannot_float_fact Не, я не умею вычислять факториал нецелых чисел :(
 plugin_calc_negative_number        Так не бывает.
+
 plugin_markov_kick_reason          фильтруем базар
 plugin_markov_kick_error           Фиговый модератор!
 plugin_markov_phrase_is_ignored    Эта фраза игнорируется
+
 plugin_ping_pong_from_me           Скорость отклика сервера для меня составляет %s
 plugin_ping_pong_from_you          Понг от тебя %s
 plugin_ping_pong_from_somebody     Понг от %s: %s
@@ -54,17 +57,32 @@ plugin_globalstats_uptime_invalid_syntax Имя сервера, сестричк
 plugin_globalstats_uptime_error    Информация засекречена
 plugin_globalstats_uptime_not_implemented Сервер не считает свой аптайм
 plugin_globalstats_uptime_remote_server_not_found Скорее всего там не поднят джаббер-сервер
-plugin_globalstats_stats_error     Скорее всего, сервер не поддерживает stats
+plugin_globalstats_stats_bad_servername %s вряд ли является именем сервера
+plugin_globalstats_stats_not_implemented Сервер %s не поддерживает stats
+plugin_globalstats_stats_remote_server_timeout Сервер %s тормозит... таймаут.
+plugin_globalstats_stats_remote_server_not_found А есть ли такой сервер %s?
+plugin_globalstats_stats_service_unavailable Сервер %s не хочет показывать свою статистику.
+plugin_globalstats_stats_server_error Не удалось запросить статистику у сервера %s.
+
 plugin_google_invalid_syntax       ась?
 plugin_google_not_found            Не нашел :(
 plugin_google_adv_invalid_syntax   гы! Не угадал синтаксис.
+plugin_google_no_answer            [нет ответа]
+plugin_google_server_error         Гугль сломался.
+plugin_google_server_404           Хмм.. что-то с урлом. Гугль выдает 404.
+
 plugin_weather_invalid_syntax     гы! попробуй еще разок, сына!
+plugin_weather_server_error       Погода сломалась :(
+plugin_weather_404                Нет такого аэропорта.
+
 plugin_admin_quit_bye             Пока! Я ушел...
 plugin_admin_quit_no_access       Это ты мне? Quit? Фиг!
 plugin_admin_join_no_access       Не, с тобой я не пойду туда.
 plugin_dict_invalid_syntax        гы! Инвалид синтаксис.
 plugin_dict_db_not_found          Нет такой базы данных
 plugin_dict_word_not_found        Не найдено ничего подходящего
+
+plugin_seen_whom                  Кого?
 plugin_seen_is_here               Вглядись в комнату. %s здесь сидит.
 plugin_seen_changed_nick          %s скрывается под ником %s
 plugin_seen_is_not_same           %s сидит здесь, но это не тот самый %s, который мне известен.
@@ -77,9 +95,25 @@ plugin_seen_kicked_reason         %s был выпровожен отсюда %s
 plugin_seen_banned_reason         %s был забанён %sназад: %s: %s
 plugin_seen_never_seen            Я никогда здесь не видел %s.
 plugin_seen_not_in_room           Эта команда доступна только в конференциях
+plugin_seen_greet_updated         Обновил
+plugin_seen_greet_added           Добавил
+plugin_seen_greet_bad_syntax      Неправильный синтаксис команды
+
 plugin_talkers_top_header_man     Болтун
 plugin_talkers_top_header_words   Слов
 plugin_talkers_top_header_actions /me
 plugin_talkers_top_header_sentences Фраз
 plugin_talkers_top_header_average   Эфф.
 plugin_talkers_no_result          Нет таких болтунов.
+
+plugin_translate_not_parsed       Не могу понять ответ переводчика!
+plugin_translate_server_error     Переводчик сломался.
+plugin_translate_bad_language     Я не знаю такого языка, попробуй другой?
+plugin_translate_bad_syntax       Хммм?
+
+plugin_yandex_server_error        Яндекс сломался.
+plugin_yandex_404                 Яндексу не нравится такой запрос...
+plugin_yandex_bad_syntax          Чего?
+
+plugin_currency_no_currency       Нет такой валюты %s
+plugin_currency_too_big_number    Так не бывает!

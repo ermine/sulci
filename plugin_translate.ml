@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>                    *)
+(* (c) 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
 (*                                                                          *)
 
 (* wap.translate.ru/default.asp?cp=cyr&dir=er&source=hello *)
@@ -42,22 +42,18 @@ let do_list =
    let list = "\n" ^ String.concat "\n" 
       (List.map (fun (a,b) -> a ^ "\t" ^ b) languages)
    in
-      fun xml out -> out (make_msg xml list)
+      fun xml out -> make_msg out xml list
 
 let  do_map =
    let list = "\n" ^ String.concat "\n"
       ((List.map (fun (a, l) -> a ^ " [" ^ String.concat ", " l ^ "]") langmap))
    in
-      fun xml out -> out (make_msg xml list)
+      fun xml out -> make_msg out xml list
 
 let url lang text =
-   let text =
-      let lexbuf = Ulexing.from_utf8_string text in
-	 Xmlstring.decode_xml "" lexbuf
-   in
    Printf.sprintf 
       "http://wap.translate.ru/default.asp?cp=cyr&dir=%s&source=%s"
-      lang (Netencoding.Url.encode text)
+      lang (Netencoding.Url.encode (Xml.decode text))
 
 (* translate er text *)
 let rex1 = Pcre.regexp ~flags:[`DOTALL; `UTF8] "^([a-zA-Z]{2,2})\\s+(.+)"
@@ -77,12 +73,12 @@ let do_request lang text xml out =
 		 (match p with
 		     | Xmlelement (_, _, els) ->
 			  element_to_string (List.nth els 2)
-		     | _ -> 
-			  "bad result")
+		     | _ ->
+			  Lang.get_msg ~xml "plugin_translate_not_parsed" [])
 	 | Exception exn ->
-	      "some problems"
+	      Lang.get_msg ~xml "plugin_translate_server_error" []
       in
-	 out (make_msg xml resp)
+	 make_msg out xml resp
    in
       Http_suck.http_get (url lang text) callback
 
@@ -113,9 +109,12 @@ let translate text event from xml out =
                        if List.mem_assoc lang languages then
 			  do_request lang str xml out
 		       else
-			  out (make_msg xml "unknown language, try another one")
+			  make_msg out xml 
+			     (Lang.get_msg ~xml "plugin_translate_bad_language"
+				 [])
 	      with Not_found ->
-		 out (make_msg xml "mmm?")
+		 make_msg out xml 
+		    (Lang.get_msg ~xml "plugin_seen_bad_syntax" [])
 		    
 let _ =
    Hooks.register_handle (Hooks.Command ("tr", translate))

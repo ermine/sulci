@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Sqlite
@@ -9,6 +9,7 @@ open Xmpp
 open Common
 open Hooks
 open Types
+open Nicks
 
 exception Break
 
@@ -48,7 +49,8 @@ let add_greet text event from xml out =
 		     exec db ("UPDATE greeting SET msg=" ^ escape greet ^ 
 				 " WHERE jid=" ^ escape jid_s ^
 				 " AND room=" ^ escape room_s);
-		     out (make_msg xml "Updated")
+		     make_msg out xml
+			(Lang.get_msg ~xml "plugin_seen_greet_updated" [])
 		  end
 	       else
 		  begin
@@ -56,10 +58,12 @@ let add_greet text event from xml out =
 				 values [escape jid_s; 
 					 escape room_s; 
 					 escape greet]);
-		     out (make_msg xml "Added")
+		     make_msg out xml
+			(Lang.get_msg ~xml "plugin_seen_greet_added" [])
 		  end
 	 with Not_found ->
-	    out (make_msg xml "bad syntax")
+	    make_msg out xml 
+	       (Lang.get_msg ~xml "plugin_seen_greet_bad_syntax" [])
    end
    else ()
 
@@ -98,7 +102,8 @@ let catch_seen event from xml out =
 			 "jid=" ^ escape (j.luser ^ "@" ^ j.lserver)
 	      in
 	      let room_s = from.luser ^ "@" ^ from.lserver in
-	      let last = Int32.to_string (Int32.of_float (Unix.time ())) in
+	      let last = Int32.to_string (Int32.of_float 
+					     (Unix.gettimeofday ())) in
 	      let action = match action with
 		 | MUC_leave _ -> "left"
 		 | MUC_kick _ -> "kick"
@@ -126,7 +131,7 @@ let catch_seen event from xml out =
 
 let find_nick (jid:string) nicks =
    let result = ref [] in
-      Nicks.iter (fun nick item ->
+      Nicks.iter (fun (nick, item) ->
 		     match item.jid with
 			| None -> ()
 			| Some j ->
@@ -162,7 +167,7 @@ let verify_nick nick jid nicks xml =
 
 let seen text event from xml out =
    if text = "" then
-      out (make_msg xml "Whom?")
+      make_msg out xml (Lang.get_msg ~xml "plugin_seen_whom" [])
    else
       match event with
 	 | MUC_message (msg_type, _, _) ->
@@ -171,7 +176,8 @@ let seen text event from xml out =
 	      let vm = compile_simple db 
 		 ("SELECT jid, last, action, reason FROM users WHERE nick=" ^
 		     escape text ^ " AND room=" ^ escape 
-		     (from.luser ^ "@" ^ from.lserver)) in
+		     (from.luser ^ "@" ^ from.lserver) ^ 
+		     " ORDER BY last DESC LIMIT 1") in
 	      let reply = try
 		 let result = step_simple vm in
 		    finalize vm;
@@ -180,7 +186,7 @@ let seen text event from xml out =
 		       let stamp = float_of_string result.(1) in
 		       let diff = 
 			  Lang.expand_time ~xml "seen"
-			     (int_of_float (Unix.time () -. stamp)) in
+			    (int_of_float (Unix.gettimeofday () -. stamp)) in
 			  if result.(3) = "" then
 			     Lang.get_msg ~xml 
 				(match result.(2) with
@@ -200,7 +206,6 @@ let seen text event from xml out =
 				[text; diff; result.(3)]
 		    end
 	      with Sqlite_done -> begin
-print_endline "here";
 		 if Nicks.mem text nicks then
 		    if get_resource (get_attr_s xml "from") = text then
 		       Lang.get_msg ~xml "plugin_seen_you" []
@@ -210,7 +215,7 @@ print_endline "here";
 		    let result = ref "" in
 		    let orig_nick = ref "" in
 		       begin try
-			  Nicks.iter (fun nick item ->
+			  Nicks.iter (fun (nick, item) ->
 					 if item.orig_nick = text then begin
 					    result := nick;
 					    orig_nick := item.orig_nick;
@@ -230,10 +235,9 @@ print_endline "here";
 		 end
 	      end
 	      in
-		 out (make_msg xml reply)
+		 make_msg out xml reply
 	 | _ ->
-	      out (make_msg xml 
-				 (Lang.get_msg ~xml "plugin_seen_not_in_room" []))
+	      make_msg out xml (Lang.get_msg ~xml "plugin_seen_not_in_room" [])
 
 			   
 let _ =

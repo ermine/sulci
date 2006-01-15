@@ -1,6 +1,6 @@
 OCAMLMAKEFILE = ../OCamlMakefile
 
-VERSION=0.5-alpha-20051204
+VERSION=0.5-alpha-20060115
 
 include Makefile.conf
 
@@ -13,6 +13,10 @@ SOURCES = version.ml config.ml logger.ml common.ml types.ml lang.ml muc.ml \
 
 ifdef PLUGIN_GOOGLE
   SOURCES += plugin_google.ml
+endif
+ifdef PLUGIN_YANDEX
+   SOURCES += plugin_yandex.ml
+    DEHTML = yes
 endif
 ifdef PLUGIN_CALC
   SOURCES += math.ml pcalc.mly pcalc_lexer.mll icalc.mly icalc_ulex.ml plugin_calc.ml
@@ -86,25 +90,27 @@ LANGPACKS = lang/ru_time.ml lang/en_time.ml lang/es_time.ml
 SOURCES += $(LANGPACKS) sulci.ml
 
 THREADS = yes
-PACKS = ulex unix str netstring netclient $(DBM_LIB)
+PACKS = ulex unix netstring netclient $(DBM_LIB)
 
 INCDIRS = ../libs/getopt ../libs/xml ../xmpp ../libs/xmlstring ../libs/scheduler \
 	  ../libs/strftime
-
-ifdef SQLITE
-  INCDIRS += ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
-endif
 
 OCAMLLDFLAGS =  nums.cmxa cryptokit.cmxa \
 		getopt.cmxa xml.cmxa xmpp.cmxa xmlstring.cmxa strftime.cmxa \
 		scheduler.cmxa $(CURR_LIB)
 
-ifdef XMLSTRING_NETSTRING
-  OCAMLLDFLAGS += xmlstring_netstring.cmxa
+ifdef SQLITE
+  INCDIRS += ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
+  OCAMLLDFLAGS += sqlite.cmxa sqlite_util.cmxa
 endif
 
-ifdef SQLITE
-  OCAMLLDFLAGS += sqlite.cmxa sqlite_util.cmxa
+ifdef DEHTML
+   INCDIRS += ../libs/dehtml
+    OCAMLLDFLAGS += dehtml.cmxa
+endif
+
+ifdef XMLSTRING_NETSTRING
+  OCAMLLDFLAGS += xmlstring_netstring.cmxa
 endif
 
 USE_CAMLP4    = yes

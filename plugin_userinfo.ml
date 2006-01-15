@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
@@ -8,6 +8,7 @@ open Common
 open Unix
 open Hooks
 open Types
+open Nicks
 open Muc
 open Error
 
@@ -23,7 +24,7 @@ let groupchat from xml out text xmlns myself common =
       else Stringprep.resourceprep text in
    let r = GroupchatMap.find (from.luser, from.lserver) !groupchats in
       if victim = r.mynick then
-	 out (make_msg xml myself)
+	 make_msg out xml myself
       else
 	 let to_ = 
 	    if text = "" then from.string
@@ -31,11 +32,11 @@ let groupchat from xml out text xmlns myself common =
 	 let proc e f x o =
 	    match e with
 	       | Iq (_, `Result, _) ->
-		    o (make_msg xml (common x from.resource 
-					(if text = "" then
-					    from.resource else text)))
+		    make_msg o xml (common x from.resource 
+				       (if text = "" then
+					   from.resource else text))
 	       | Iq (_, `Error, _) ->
-		    o (make_msg xml (error x))
+		    make_msg o xml (error x)
 	       | _ -> ()
 	 in
 	 let id = new_id () in
@@ -67,21 +68,21 @@ let version text event from xml out =
 		 "jabber:iq:version" myself common
       | _ ->
 	   if text <> "" then 
-	      out (make_msg xml (Lang.get_msg ~xml 
-				    "plugin_userinfo_chat_syntax_error" 
-				    [text]));
+	      make_msg out xml (Lang.get_msg ~xml 
+				   "plugin_userinfo_chat_syntax_error" 
+				   [text]);
 	   let proc e f x o =
 	      match e with
 		 | Iq (_, `Result, _) ->
 		      let client = get_cdata x ~path:["query"; "name"] in
 		      let version = get_cdata x ~path:["query"; "version"] in
 		      let os = get_cdata x ~path:["query"; "os"] in
-			 o (make_msg xml
-			       (Lang.get_msg ~xml 
-				   "plugin_userinfo_version_you"
-				   [client; version; os]))
+			 make_msg o xml
+			    (Lang.get_msg ~xml 
+				"plugin_userinfo_version_you"
+				[client; version; os])
 		 | Iq (_, `Error, _) ->
-		      o (make_msg xml (error x))
+		      make_msg o xml (error x)
 		 | _ -> ()
 	   in
 	   let id = new_id () in
@@ -103,7 +104,7 @@ let version_server text event from xml out =
 					get_tagname item ^ ": " ^
 					   get_cdata item
 				    ) (get_subels x ~path:["query"])) in
-			  o (make_msg xml (server.server ^ " -- " ^ res))
+                          make_msg o xml (server.server ^ " -- " ^ res)
 *)
 		       let client = 
 			  try get_cdata x ~path:["query"; "name"] with 
@@ -113,10 +114,10 @@ let version_server text event from xml out =
 				Not_found -> "n/a" in
 		       let os = try get_cdata x ~path:["query"; "os"] with 
 			     Not_found -> "n/a" in
-			     o (make_msg xml 
-				(Lang.get_msg ~xml 
-				    "plugin_userinfo_version_server"
-				    [server.server; client; version; os]))
+			  make_msg o xml 
+			     (Lang.get_msg ~xml 
+				 "plugin_userinfo_version_server"
+				 [server.server; client; version; os])
 
 		  | Iq (_, `Error, _) ->
 		       let reply =
@@ -139,7 +140,7 @@ let version_server text event from xml out =
 					"plugin_userinfo_version_server_error" 
 					[]
 		       in
-			  o (make_msg xml reply)
+			  make_msg o xml reply
 		  | _ -> ()
 	    in
 	    let id = new_id () in
@@ -147,9 +148,9 @@ let version_server text event from xml out =
 	       out (iq_query ~to_:server.server ~id 
 		       ~xmlns:"jabber:iq:version" ~type_:`Get ())
 	 else
-	    out (make_msg xml "invalid server name")
+	    make_msg out xml "invalid server name"
    with _ ->
-      out (make_msg xml "invalid server name")
+      make_msg out xml "invalid server name"
 
 let idle text event from xml out =
    match event with
@@ -168,20 +169,20 @@ let idle text event from xml out =
 	      groupchat from xml out text "jabber:iq:last" myself common
       | _ ->
 	   if text <> "" then 
-	      out (make_msg xml (Lang.get_msg ~xml 
-				    "plugin_userinfo_chat_syntax_error"
-				    [text]));
+	      make_msg out xml (Lang.get_msg ~xml 
+				   "plugin_userinfo_chat_syntax_error"
+				   [text]);
 	   let proc e f x o =
 	      match e with
 		 | Iq (_, `Result,_) ->
 		      let seconds = get_attr_s x ~path:["query"] "seconds" in
 		      let idle = 
 			 Lang.expand_time ~xml "idle" (int_of_string seconds) in
-			 o (make_msg xml 
-			       (Lang.get_msg ~xml "plugin_userinfo_idle_you"
-				   [idle]))
+			 make_msg o xml 
+			    (Lang.get_msg ~xml "plugin_userinfo_idle_you"
+				[idle])
 		 | Iq (_, `Error, _) ->
-		      o (make_msg xml (error x))
+		      make_msg o xml (error x)
 		 | _ -> ()
 	   in
 	   let id = new_id () in
@@ -193,7 +194,7 @@ let time text event from xml out =
    match event with
       | MUC_message (msg_type, _, _) ->
 	   let myself = Lang.get_msg ~xml "plugin_userinfo_time_me"
-	      [Strftime.strftime ~tm:(localtime (time ())) "%H:%M"] in
+	      [Strftime.strftime ~tm:(localtime (gettimeofday ())) "%H:%M"] in
 	   let common x asker nick =
 	      let display = get_cdata x ~path:["query"; "display"] in
 		 if asker = nick then
@@ -206,18 +207,18 @@ let time text event from xml out =
 	      groupchat from xml out text "jabber:iq:time" myself common
       | _ ->
 	   if text <> "" then 
-	      out (make_msg xml (Lang.get_msg ~xml 
-				    "plugin_userinfo_chat_syntax_error"
-				    [text]));
+	      make_msg out xml (Lang.get_msg ~xml 
+				   "plugin_userinfo_chat_syntax_error"
+				   [text]);
 	   let proc e f x o =
 	      match e with
 		 | Iq (_, `Result, _) ->
 		      let display = get_cdata x ~path:["query"; "display"] in
-			 o (make_msg xml
-			       (Lang.get_msg ~xml "plugin_userinfo_time_you"
-				   [display]))
+			 make_msg o xml
+			    (Lang.get_msg ~xml "plugin_userinfo_time_you"
+				[display])
 		 | Iq (_, `Error, _) ->
-		      o (make_msg xml (error x))
+		      make_msg o xml (error x)
 		 | _ -> ()
 	   in
 	   let id = new_id () in
@@ -234,16 +235,16 @@ let status text event from xml out =
 		  let item = Nicks.find victim
 		     (GroupchatMap.find (from.luser, from.lserver) 
 			 !groupchats).nicks in
-		     out (make_msg xml ((if item.status = "" then ""
-					 else item.status ^ " ") ^
-					   "[" ^ (match item.show with
-						     | `Online -> "online"
-						     | `Away -> "away"
-						     | `DND -> "dnd"
-						     | `Chat -> "free for chat"
-						     | `XA -> "xa") ^ "]"))
+		     make_msg out xml ((if item.status = "" then ""
+					else item.status ^ " ") ^
+					  "[" ^ (match item.show with
+						    | `Online -> "online"
+						    | `Away -> "away"
+						    | `DND -> "dnd"
+						    | `Chat -> "free for chat"
+						    | `XA -> "xa") ^ "]")
 	       with _ ->
-		  out (make_msg xml "Whose status?"))
+		  make_msg out xml "Whose status?")
       | _ -> ()
 
 let _ =

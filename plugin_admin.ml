@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Common
@@ -8,6 +8,7 @@ open Xmpp
 open Muc
 open Hooks
 open Types
+open Nicks
 
 let msg text event from xml out =
    if check_access from "admin" then
@@ -23,17 +24,17 @@ let msg text event from xml out =
 			  ],
 			  [make_simple_cdata "body" msg_body]))
    else
-      out (make_msg xml ":-P")
+      make_msg out xml ":-P"
 	  
 let quit text event from xml out =
    if check_access from "admin" then begin
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_admin_quit_bye" []));
+      make_msg out xml 
+	 (Lang.get_msg ~xml "plugin_admin_quit_bye" []);
       Hooks.quit out
    end
    else
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_admin_quit_no_access" []))
+      make_msg out xml 
+	 (Lang.get_msg ~xml "plugin_admin_quit_no_access" [])
 
 let join_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
 
@@ -52,12 +53,12 @@ let join text event from xml out =
 	       out (Muc.join_room nick (room.luser, room.lserver))
 	    end
 	    else
-	       out (make_msg xml "again?")
+	       make_msg out xml "again?"
       with _ ->
 	 ()
    else
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_admin_join_no_access" []))
+      make_msg out xml 
+	 (Lang.get_msg ~xml "plugin_admin_join_no_access" [])
 
 let leave_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
 
@@ -68,25 +69,58 @@ let leave text event from xml (out:element -> unit) =
 	 let room_s = Pcre.get_substring r 1
 	 and reason = 
 	    try Some (Pcre.get_substring r 3) with Not_found -> None in
-
-	    print_endline room_s;
-	    flush Pervasives.stdout;
 	 let room = jid_of_string room_s in
 	    if GroupchatMap.mem (room.luser, room.lserver) !groupchats then
 	       out (Muc.leave_room (room.luser, room.lserver) ?reason)
 	    else
 	       raise Not_found
       with exn ->
-	 Printf.printf "%s\n" (Printexc.to_string exn);
-	 flush Pervasives.stdout;
-	 out (make_msg xml "hmm?")
+	 make_msg out xml "hmm?"
+
+
+let invite_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
+
+let invite text event from xml (out:element -> unit) =
+   if check_access from "admin" then
+      try
+	 let r = Pcre.exec ~rex:leave_rex text in
+	 let who = Pcre.get_substring r 1
+	 and room_dst = try Pcre.get_substring r 3 with Not_found -> "" in
+
+	    if room_dst = "" && 
+	       GroupchatMap.mem (from.luser, from.lserver) !groupchats then
+		  let who_jid = jid_of_string who in
+		     out (Muc.invite (from.luser, from.lserver) who)
+	    else
+	       let rjid = jid_of_string room_dst in
+		  if rjid.lresource = "" &&
+		     GroupchatMap.mem (rjid.luser, rjid.lserver) 
+		     !groupchats then
+			let room_env = GroupchatMap.find
+			   (from.luser, from.lserver) !groupchats in
+			   try
+			      match (Nicks.find who room_env.nicks).jid with
+				 | Some j ->
+				      out (Muc.invite (rjid.luser, rjid.lserver)
+					      (j.luser ^ "@" ^ j.lserver))
+				 | None ->
+				      raise Not_found
+			   with Not_found ->
+			      let who_jid = jid_of_string who in
+				 out (Muc.invite (rjid.luser, rjid.lserver) 
+					 who)
+		  else
+		     raise Not_found
+      with exn ->
+	 make_msg out xml "hmm?"
+   
 
 let lang_update text event from xml out =
    if check_access from "admin" then
       if text = "" then
-	 out (make_msg xml "What language?")
+	 make_msg out xml "What language?"
       else
-	 out (make_msg xml (Lang.update text))
+	 make_msg out xml (Lang.update text)
 
 
 (* TODO: it is scratch *)
@@ -104,16 +138,17 @@ let sulci_set text event from xml out =
 		  let newvalue = int_of_string value in
 		     Common.msg_limit := newvalue
 	       with _ ->
-		  out (make_msg xml "Bad value: must be integer")
+		  make_msg out xml "Bad value: must be integer"
 	    else
-	       out (make_msg xml "Unknown variable")
+	       make_msg out xml "Unknown variable"
       with Not_found ->
-	 out (make_msg xml "Hm?")
+	 make_msg out xml "Hm?"
 
 let _ =
    register_handle (Command ("msg", msg));
    register_handle (Command ("quit", quit));
    register_handle (Command ("join", join));
    register_handle (Command ("leave", leave));
+   register_handle (Command ("invite", invite));
    register_handle (Command ("lang_update", lang_update));
    register_handle (Command ("sulci_set", sulci_set));

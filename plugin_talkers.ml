@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Common
@@ -10,6 +10,7 @@ open Sqlite
 open Sqlite_util
 open Hooks
 open Types
+open Nicks
 
 let length s = Netconversion.ustring_length `Enc_utf8 s
 
@@ -133,15 +134,15 @@ let cmd_talkers text event from xml out =
 	   in
 	   let r = cycle data [] in
 	      if r <> "" then
-		 out (make_msg xml 
-			 ((Printf.sprintf "\n%s%s%s\t%s\t%s\t%s\n"
-			      header.(0)
-			      (String.sub tab 0 (tabs - (length header.(0)/8)))
-			      header.(1) header.(2) header.(3) header.(4)) ^ 
-			     r))
+		 make_msg out xml 
+		    ((Printf.sprintf "\n%s%s%s\t%s\t%s\t%s\n"
+			 header.(0)
+			 (String.sub tab 0 (tabs - (length header.(0)/8)))
+			 header.(1) header.(2) header.(3) header.(4)) ^ 
+			r)
 	      else
-		 out (make_msg xml
-			 (Lang.get_msg ~xml "plugin_talkers_no_result" []))
+		 make_msg out xml
+		    (Lang.get_msg ~xml "plugin_talkers_no_result" [])
       | _ -> ()
 		 
 let _ =

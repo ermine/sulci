@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>             *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Common
@@ -21,9 +21,9 @@ let pcalc text event from xml out =
 	    | _ ->
 		 Lang.get_msg ~xml "plugin_calc_not_parsed" []
       in
-	 out (make_msg xml reply)
+	 make_msg out xml reply
    else
-      out (make_msg xml (Lang.get_msg ~xml "plugin_calc_empty_command" []))
+      make_msg out xml (Lang.get_msg ~xml "plugin_calc_empty_command" [])
 
 let icalc text event from xml out =
    if text <> "" then
@@ -48,9 +48,9 @@ let icalc text event from xml out =
 	    | exn ->
 		 Lang.get_msg ~xml "plugin_calc_not_parsed" []
       in
-	 out (make_msg xml reply)
+	 make_msg out xml reply
    else
-      out (make_msg xml (Lang.get_msg ~xml "plugin_calc_empty_command" []))
+      make_msg out xml (Lang.get_msg ~xml "plugin_calc_empty_command" [])
 
 let _ =
    Hooks.register_handle (Hooks.Command ("rpn", pcalc));

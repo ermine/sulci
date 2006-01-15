@@ -6,6 +6,8 @@ open Xmpp
 
 let _ = Scheduler.init ()
 
+exception InvalidJID
+
 let new_id = 
    let my_id = ref 0 in
       fun () ->
@@ -19,22 +21,39 @@ struct
 end
 
 (* groupchat *)
-(* bad place here, but unfortunatelly... *)
-module Nicks = Map.Make(Id)
-
-type participant_t = {
-   jid: Xmpp.jid option;
-   status: string;
-   show: presence_show_t;
-   role: string;
-   orig_nick: string;
-   affiliation: string
-}
+module Nicks =
+struct
+   type participant_t = {
+      jid: Xmpp.jid option;
+      status: string;
+      show: presence_show_t;
+      role: string;
+      orig_nick: string;
+      affiliation: string
+   }
+   type t = (string * participant_t) list
+   let find nick nicks = List.assoc nick nicks
+   let add nick item nicks =
+      let len = String.length nick in
+      let rec aux_add tail acc =
+	 match tail with
+	    | [] -> List.rev ((nick, item) :: acc)
+	    | (nick1, item1) as x :: xs ->
+		 if String.length nick1 > len then
+		    aux_add xs (x :: acc)
+		 else
+		    List.rev ((nick, item) :: acc) @ tail
+      in
+	 aux_add nicks []
+   let remove nick nicks = List.remove_assoc nick nicks
+   let mem nick nicks = List.mem_assoc nick nicks
+   let iter = List.iter
+end
 
 type groupchat_t = {
    mynick: string;
    lang: string;
-   nicks: participant_t Nicks.t;
+   nicks: Nicks.t
 }
 
 type room = string * string
@@ -49,12 +68,12 @@ module GroupchatMap = Map.Make(GID)
 let groupchats = ref (GroupchatMap.empty:groupchat_t GroupchatMap.t)
 
 type xmpp_event = 
-   | MUC_join of participant_t
-   | MUC_leave of string * participant_t
-   | MUC_change_nick of string * participant_t
-   | MUC_kick of string * participant_t
-   | MUC_ban of string * participant_t
-   | MUC_presence of participant_t
+   | MUC_join of Nicks.participant_t
+   | MUC_leave of string * Nicks.participant_t
+   | MUC_change_nick of string * Nicks.participant_t
+   | MUC_kick of string * Nicks.participant_t
+   | MUC_ban of string * Nicks.participant_t
+   | MUC_presence of Nicks.participant_t
    | MUC_topic of string
    | MUC_message of message_type * string * string
    | MUC_other

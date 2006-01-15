@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
@@ -88,7 +88,8 @@ let rex = Pcre.regexp
    "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
 
 let currency text event from xml out =
-   if text = "list" then out (make_msg xml !list_curr)
+   if text = "list" then 
+      make_msg out xml !list_curr
    else
       try
 	 let r = Pcre.exec ~rex text in
@@ -99,23 +100,26 @@ let currency text event from xml out =
 	 let val1_x = 
 	    let x = try List.assoc (String.uppercase val1) !curr
 	    with Not_found ->
-	       out (make_msg xml ("Нет такой валюты - " ^ val1));
+	       make_msg out xml 
+		  (Lang.get_msg ~xml "plugin_currency_no_currency" [val1]);
 	       raise Not_found
 	    in x.value /. float_of_int x.nominal
 	 in
 	 let val2_x = 
 	    let x = try List.assoc (String.uppercase val2) !curr 
 	    with Not_found ->
-	       out (make_msg xml ("Нет такой валюты - " ^ val2));
+	       make_msg out xml 
+		  (Lang.get_msg ~xml "plugin_currency_no_currency" [val2]);
 	       raise Not_found
 	    in x.value /. float_of_int x.nominal
 	 in
 	 let result = amountf *. (val1_x /. val2_x) in
-	    out (make_msg xml (Printf.sprintf "%s %s = %.4f %s"
-				  amount val1 result val2))
+	    make_msg out xml (Printf.sprintf "%s %s = %.4f %s"
+				 amount val1 result val2)
       with
 	 | Failure "int_of_string" ->
-	      out (make_msg xml "Таких денег не бывает!")
+	      make_msg out xml 
+		 (Lang.get_msg ~xml "plugin_currency_toobig_number" [])
 	 | Not_found ->
 	      ()
 	 | exn ->

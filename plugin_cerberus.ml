@@ -1,13 +1,15 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
 open Xmpp
 open Common
 open Types
+open Nicks
 open Muc
 open Hooks
+
 
 let regexp ca          = 0x430 | 0x410 | 'a' | 'A'
 let regexp cb          = 0x431 | 0x411
@@ -15,7 +17,7 @@ let regexp cv          = 0x432 | 0x412 | 'B'
 let regexp cg          = 0x433 | 0x413
 let regexp cd          = 0x434 | 0x414
 let regexp cie         = 0x435 | 0x415 | 'e' | 'E'
-let regexp czh         = 0x436 | 0x416 | "}|{"
+let regexp czh         = 0x436 | 0x416 | "}|{" | ")|(" | "&gt;|&lt;"
 let regexp cz          = 0x437 | 0x417 | '3'
 let regexp ci          = 0x438 | 0x418 | "|/|"
 let regexp cj          = 0x439 | 0x419
@@ -30,7 +32,7 @@ let regexp cs          = 0x441 | 0x421 | 'c' | 'C'
 let regexp ct          = 0x442 | 0x422 | 'T'
 let regexp cu          = 0x443 | 0x423 | 'y' | 'Y'
 let regexp cf          = 0x444 | 0x424
-let regexp ch          = 0x445 | 0x425 | 'x' | 'X'
+let regexp ch          = 0x445 | 0x425 | 'x' | 'X' | "}{" | ")("| "&gt;&lt;"
 let regexp cts         = 0x446 | 0x426
 let regexp cch         = 0x447 | 0x427
 let regexp csh         = 0x448 | 0x428
@@ -45,15 +47,19 @@ let regexp cio         = 0x451 | 0x401 | ci co | cj co
 
 let regexp cyrillic = [0x410-0x44F 0x451 0x401 '0' '3' 'a''A' 'e' 'E' 'H' 
 			  'o' 'O' 'c' 'C' 'k' 'K' 'T' 'x' 'X' 'y' 'Y' 'p' 
-			  'P'] | "|/|" | "bl" | "bI"
+			  'P'] | "|/|" | "bl" | "bI" 
+
+let regexp vowel = ca | co | ce | cie | ci | cu | cy
 
 let regexp ci_ie_io = ci | cie | cio
+
 let regexp cie_io = cie | cio
 
 let regexp prefix = cn ca | cn cie | cn ci | cp co | co | ca | cv 
    | cp cr ci | cz ca | cd co | ci cs | cp ce cr ce | cr ca cs | cr ca cz
    | cp cr co | cp cie cr cie | cn cie cd co | cv cy
-   | cs chard_sign | cv chard_sign | cs csoft_sign | co ct chard_sign
+   | cs chard_sign | cv chard_sign | cn ce cv chard_sign 
+   | cs csoft_sign | co ct chard_sign
    | co cd cn co | cn ce cd co | cs cu cp cie cr | cg ci cp cie cr
 
 type t =
@@ -67,10 +73,12 @@ let rec analyze = lexer
 	drochit (Ulexing.utf8_lexeme lexbuf) lexbuf
    | cd co cl cb co cie_io cb (* cyrillic* *) ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
-   | cm ca cn cd cyrillic ->
+   | cm ca cn cd (vowel | co cj) ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cm ca cn cd cyrillic cyrillic ->
 	Good
+   | ci cp ct ca cb
+   | ci cp ct cie (ci | cj)
    | ci cp ct cr ->
 	Good
    | ci cp ca ct csoft_sign cie cv cs ck ->

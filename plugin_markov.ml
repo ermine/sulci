@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
@@ -156,14 +156,14 @@ let process_markov db event from xml out =
 		    if words = [] then begin
 		       if (msg_type = `Groupchat && nick = room_env.mynick) ||
 			  msg_type <> `Groupchat then
-			     out (make_msg xml "?")
+			     make_msg out xml "?"
 		    end
 		    else begin
 		       add db words;
 		       if (msg_type = `Groupchat && nick = room_env.mynick) ||
 			  msg_type <> `Groupchat then
 			     let chain = generate db "" in
-				out (make_msg xml chain)
+				make_msg out xml chain
 		       else
 			  ()
 		    end
@@ -178,7 +178,7 @@ let rec markov_thread (db, m) =
       | MCount (from, xml, out) ->
 	   (try
 	       let result = result_integer db "SELECT COUNT(*) FROM words" in
-		  out (make_msg xml (string_of_int result))
+		  make_msg out xml (string_of_int result)
 	    with exn ->
 	       Logger.print_exn "Plugin_markov !!!count" exn)
       | MTop (from, xml, out) ->
@@ -193,7 +193,7 @@ let rec markov_thread (db, m) =
 			^ cycle4 ()
 		  with Sqlite_done -> ""
 	       in
-		  out (make_msg xml (cycle4 ()))
+		  make_msg out xml (cycle4 ())
 	    with exn ->
 	       Logger.print_exn "Plugin_markov: !!!top" exn)
       | MStop -> Thread.exit ()

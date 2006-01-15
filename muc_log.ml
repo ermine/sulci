@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Common
@@ -18,7 +18,7 @@ module LogMap = Map.Make(GID)
 let logmap = ref LogMap.empty
 
 let open_log (user, host) =
-   let tm = localtime (time ()) in
+   let tm = localtime (gettimeofday ()) in
    let year = tm.tm_year + 1900 in
    let month = tm.tm_mon + 1 in
    let day = tm.tm_mday in
@@ -122,7 +122,8 @@ let make_message author nick body =
 let write (room:string * string) text =
    if text <> "" then
       let out_log = get_logfile room in
-      let curtime = Strftime.strftime ~tm:(localtime (time ())) "%H:%M" in
+      let curtime = 
+	 Strftime.strftime ~tm:(localtime (gettimeofday ())) "%H:%M" in
 	 output_string out_log 
 	    (Printf.sprintf 
 		"[%s] %s<br>\n"

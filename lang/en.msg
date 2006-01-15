@@ -8,12 +8,14 @@ muc_log_ban_reason             %s has been banned: %s
 muc_log_change_nick            %s is now known as %s
 muc_log_set_subject            %s has set the subject to: %s
 muc_log_subject                Theme: %s
+
 plugin_calc_not_parsed         I dont understand. 
 plugin_calc_empty_command      What?
 plugin_calc_divide_by_zero     Please dont divide by zero!
 plugin_calc_number_too_big         Too big number... :(
 plugin_calc_cannot_float_fact      No, I don't know how to calculate float factorial :(
 plugin_calc_negative_number        Impossible..
+
 plugin_markov_kick_reason      Filtering out badwords
 plugin_markov_kick_error       Bad moderator!
 plugin_markov_phrase_is_ignored Phrase is ignored
@@ -48,22 +50,38 @@ plugin_vocabulary_wrote            wrote.
 plugin_vocabulary_not_found        dunno
 plugin_misc_dns_invalid_syntax     what dns?
 plugin_misc_dns_not_resolved       cannot resolve
+
 plugin_globalstats_uptime          %s's uptime is %s
 plugin_globalstats_uptime_invalid_syntax Servername, dear sister!
 plugin_globalstats_uptime_error    Information is secret
 plugin_globalstats_uptime_not_implemented This server does not know how long it works
 plugin_globalstats_uptime_remote_server_not_found This server is not an jabber-server
-plugin_globalstats_stats_error     It seems that server does not support stats
+plugin_globalstats_stats_bad_servername It seems %s is not a server
+plugin_globalstats_stats_not_implemented %s does not support stats
+plugin_globalstats_stats_remote_server_timeout Сервер Cannot connect to %s - timeout.
+plugin_globalstats_stats_remote_server_not_found Are you sure if %s exists?
+plugin_globalstats_stats_service_unavailable Statistic from %s is temporarily unavailable
+plugin_globalstats_stats_server_error     Failed to ask %s's stats
+
 plugin_google_invalid_syntax       hm?
 plugin_google_not_found            Not found :(
 plugin_google_adv_invalid_syntax   He-he! You have not guessed the proper syntax
+plugin_google_no_answer            [no answer]
+plugin_google_server_error         Google is broken
+plugin_google_server_404           Probably Google is broken
+
 plugin_weather_invalid_syntax      Hmm... whose weather?
+plugin_weather_server_error        Weather Service is broken.
+plugin_weather_404                 No such airport.
+
 plugin_admin_quit_bye              Bye! I'm gone...
 plugin_admin_quit_no_access        Who should to quit?
 plugin_admin_join_no_access        Sorry, I dont want to go to there.
 plugin_dict_invalid_syntax         Invalid syntax, my dear.
 plugin_dict_db_not_found           No such db
 plugin_dict_word_not_found         Cannot found anything suitable
+
+plugin_seen_whom                  Whom?
 plugin_seen_is_here               Peer here, %s is sitting here.
 plugin_seen_changed_nick          %s is known as  %s
 plugin_seen_is_not_same           %s is here right now, but he is not the same %s which is known for me
@@ -76,9 +94,25 @@ plugin_seen_kicked_reason         %s has been kicked %sago: %s
 plugin_seen_banned_reason         %s has been banned %sago: %s
 plugin_seen_never_seen            I did not see %s here.
 plugin_seen_not_in_room           This command is available only in conferences
+plugin_seen_greet_updated         Updated
+plugin_seen_greet_added           Added
+plugin_seen_greet_bad_syntax      Bad syntax
+
 plugin_talkers_top_header_man     Man
 plugin_talkers_top_header_words   Words
 plugin_talkers_top_header_actions Actions
 plugin_talkers_top_header_sentences Phrs.
 plugin_talkers_top_header_average   Avg.
 plugin_talkers_no_result            No such guys
+
+plugin_translate_not_parsed       Cannot understand what the translator said.
+plugin_translate_server_error     The translator is broken.
+plugin_translate_bad_language     Unknown language, try another one.
+plugin_translate_bad_syntax       Hmm?
+
+plugin_yandex_server_error        Yandex.is broken.
+plugin_yandex_404                 Yandex cannot execute the query.
+plugin_yandex_bad_syntax          What?
+
+plugin_currency_no_currency       No such currency %s
+plugin_currency_too_big_number    it's impossible to have so much money

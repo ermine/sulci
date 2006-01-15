@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
@@ -11,8 +11,8 @@ let r = Random.self_init ()
 
 let roulette text event from xml out =
    if text <> "" then
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_roulette_syntax_error" []))
+      make_msg out xml 
+	 (Lang.get_msg ~xml "plugin_roulette_syntax_error" [])
    else
       match event with
 	 | MUC_message (msg_type, _, _) when msg_type = `Groupchat ->
@@ -34,12 +34,12 @@ let roulette text event from xml out =
 			       in
 				  err_text
 		       in
-			  o (make_msg xml reply)
+			  make_msg o xml reply
 		    in
 		       Hooks.register_handle (Hooks.Id (id, proc))
 	      else
-		 out (make_msg xml (Lang.get_msg ~xml 
-				       "plugin_roulette_next_time" []))
+		 make_msg out xml (Lang.get_msg ~xml 
+				      "plugin_roulette_next_time" [])
 	 | _ -> ()
 
 let _ =

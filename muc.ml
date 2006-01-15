@@ -1,11 +1,12 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Common
 open Xml
 open Xmpp
 open Types
+open Nicks
 
 let process_presence (from:jid) xml out =
    let room = from.luser, from.lserver in
@@ -97,38 +98,33 @@ let process_presence (from:jid) xml out =
 	 | _ -> MUC_other
 
 let split_nick_body room_env body =
-   let rec cycle pos =
-      try
-	 let colon = String.rindex_from body pos ':' in
-	    if String.length body > colon+1 then
-	       if body.[colon+1] = ' ' then 
-		  let nick = String.sub body 0 colon in
-		     if Nicks.mem nick room_env.nicks then
-			nick, string_after body (colon+2)
-		     else
-			cycle (colon-1)
-	       else
-		  cycle (colon-1)
-	    else
-	       let nick = String.sub body 0 colon in
-		  if Nicks.mem nick room_env.nicks then
-		     nick, ""
-		  else
-		     cycle (colon-1)
-      with Not_found ->
-	 "", body
+   let rec cycle nicks =
+      match nicks with
+	 | [] -> "", body
+	 | (nick, _) :: xs ->
+	      let len_nick = String.length nick in
+	      let len_body = String.length body in
+		 if len_nick = len_body && nick = body then
+		    body, ""
+		 else if len_body < len_nick then
+		    cycle xs
+		 else if String.sub body 0 len_nick = nick then
+		    if List.mem body.[len_nick] [':'; ','; '.'; '>'] then
+		       if len_nick + 1 = len_body then
+			  nick, ""
+		       else if body.[len_nick+1] = ' ' then
+			  nick, string_after body (len_nick+2)
+		       else
+			  cycle xs
+		    else if len_nick + 4 < len_body && 
+		       String.sub body len_nick 5 = "&gt; " then
+			  nick, string_after body (len_nick+5)
+		    else
+		       cycle xs
+		 else
+		    cycle xs
    in
-      if Nicks.mem body room_env.nicks then
-	 body, ""
-      else
-	 let rn, rt = cycle (String.length body - 1) in
-	    if rn = "" then
-	       if Nicks.mem rt room_env.nicks then
-		  rt, ""
-	       else
-		  "", rt
-	    else
-	       rn, rt
+      cycle room_env.nicks
 
 let process_message (from:jid) xml out = 
    let room = from.luser, from.lserver in
@@ -157,6 +153,17 @@ let process_message (from:jid) xml out =
 			  MUC_message (msg_type, "", body)
 	    with Not_found ->
 	       MUC_other
+
+let invite ?reason (luser, lserver) who =
+   make_message ~to_:(luser ^ "@" ^ lserver) 
+      ~subels:[Xmlelement ("x", 
+			   ["xmlns", "http://jabber.org/protocol/muc#user"],
+			   [Xmlelement ("invite", ["to", who], 
+					 (match reason with
+					     | None -> []
+					     | Some r -> 
+						  [make_simple_cdata "reason" r]
+					 ))])] ()
 
 let join_room nick (luser, lserver) =
    make_presence ~to_:(luser ^ "@" ^ lserver ^ "/" ^ nick)
@@ -192,7 +199,7 @@ let register_room ?lang nick (luser, lserver) =
    groupchats := GroupchatMap.add (luser, lserver)
       {
 	 mynick = Stringprep.stringprep ~mode:Stringprep.Resourceprep nick;
-	 nicks = Nicks.empty;
+	 nicks = [];
 	 lang = match lang with
 	    | None -> Lang.deflang
 	    | Some l -> l } !groupchats

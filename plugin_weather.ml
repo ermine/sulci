@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
@@ -92,21 +92,21 @@ let weather text event from xml out =
 	    | Exception exn ->
 		 match exn with 
 		    | ClientError ->
-			 "is there such airport?" (* TODO: lang *)
+			 Lang.get_msg ~xml "plugin_weather_404" []
 		    | ServerError ->
-			 "There are problems at NOAA server" (* TOTO: lang *)
+			 Lang.get_msg ~xml "plugin_weather_server_error" []
 		    | _ ->
-			 "some problem at my machine"
+			 Lang.get_msg ~xml "plugin_weather_server_error" []
 	 in
-	    out (make_msg xml resp)
+	    make_msg out xml resp
       in
 	 Http_suck.http_get
 	    ("http://weather.noaa.gov/pub/data/observations/metar/decoded/" ^
 		String.uppercase  text ^ ".TXT")
 	    callback
    else
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_weather_invalid_syntax" []))
+      make_msg out xml 
+	 (Lang.get_msg ~xml "plugin_weather_invalid_syntax" [])
 
 let _ =
    Hooks.register_handle (Hooks.Command ("wz", weather))

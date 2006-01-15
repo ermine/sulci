@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Xml
@@ -114,8 +114,7 @@ let xmldecl = "<?xml version='1.0' encoding='UTF-8' ?>\r\n"
 
 let gspell text event from xml out =
    if text = "" then
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_google_invalid_syntax" []))
+      make_msg out xml (Lang.get_msg ~xml "plugin_google_invalid_syntax" [])
    else
       let soap = 
 	 Xmlelement 
@@ -146,15 +145,18 @@ let gspell text event from xml out =
 			      "ns1:doSpellingSuggestionResponse";
 			      "return"] in
 		    if response = "" then 
-		       "[нет ответа]" 
+		       Lang.get_msg ~xml "plugin_google_no_answer" []
 		    else response
 	    | Exception exn ->
 		 match exn with
-		    | ClientError -> "not found"
-		    | ServerError -> "server broken"
-		    | _ -> "some problems"
+		    | ClientError ->
+			 Lang.get_msg ~xml "plugin_google_server_404" []
+		    | ServerError -> 
+			 Lang.get_msg ~xml "plugin_google_server_error" []
+		    | _ ->
+			 Lang.get_msg ~xml "plugin_google_server_error" []
 	 in
-	    out (make_msg xml resp)
+	    make_msg out xml resp
       in
 	 Http_suck.http_post "http://api.google.com/search/beta2"
 	    ["Content-Type", "text/xml; charset=utf-8"] 
@@ -162,8 +164,7 @@ let gspell text event from xml out =
 	    
 let google ?(start="0") ?(items="1") text event from xml out =
    if text = "" then
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_google_invalid_syntax" []))
+      make_msg out xml (Lang.get_msg ~xml "plugin_google_invalid_syntax" [])
    else
       let callback data =
 	 let resp = match data with
@@ -180,11 +181,14 @@ let google ?(start="0") ?(items="1") text event from xml out =
 		    else r
 	    | Exception exn ->
 		 match exn with
-		    | ClientError -> "not found"
-		    | ServerError -> "server broken"
-		    | _ -> "some problems"
+		    | ClientError ->
+			 Lang.get_msg ~xml "plugin_google_server_404" []
+		    | ServerError ->
+			 Lang.get_msg ~xml "plugin_google_server_error" []
+		    | _ ->
+			 Lang.get_msg ~xml "plugin_google_server_error" []
 	 in
-	    out (make_msg xml resp)
+	    make_msg out xml resp
       in
       let soap = make_query start items text in
 	 Http_suck.http_post "http://api.google.com/search/beta2"
@@ -204,8 +208,8 @@ let google_adv text event from xml out =
       let request = Pcre.get_substring r 3 in
 	 google ~start ~items request event from xml out
    with Not_found ->
-      out (make_msg xml 
-	      (Lang.get_msg ~xml "plugin_google_adv_invalid_syntax" []))
+      make_msg out xml 
+	 (Lang.get_msg ~xml "plugin_google_adv_invalid_syntax" [])
 
 let _ =
    Hooks.register_handle (Hooks.Command ("google", google));
