@@ -1,6 +1,6 @@
 OCAMLMAKEFILE = ../OCamlMakefile
 
-VERSION=0.5-alpha-20060115
+VERSION=0.5-alpha-20060126
 
 include Makefile.conf
 

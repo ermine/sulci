@@ -23,13 +23,15 @@ end
 (* groupchat *)
 module Nicks =
 struct
+   type role_t = [ | `Moderator | `Participant | `Visitor | `None ]
+   type affiliation_t = [ | `Owner | `Admin | `Member | `Outcast | `None ]
    type participant_t = {
       jid: Xmpp.jid option;
       status: string;
       show: presence_show_t;
-      role: string;
       orig_nick: string;
-      affiliation: string
+      role: role_t;
+      affiliation: affiliation_t
    }
    type t = (string * participant_t) list
    let find nick nicks = List.assoc nick nicks
@@ -41,6 +43,8 @@ struct
 	    | (nick1, item1) as x :: xs ->
 		 if String.length nick1 > len then
 		    aux_add xs (x :: acc)
+		 else if nick1 = nick then
+		    List.rev ((nick, item) :: acc) @ xs
 		 else
 		    List.rev ((nick, item) :: acc) @ tail
       in
@@ -67,17 +71,24 @@ end
 module GroupchatMap = Map.Make(GID)
 let groupchats = ref (GroupchatMap.empty:groupchat_t GroupchatMap.t)
 
+type leave_t = [
+| `Kick | `Ban | `UnMember | `Normal ]
+
 type xmpp_event = 
    | MUC_join of Nicks.participant_t
-   | MUC_leave of string * Nicks.participant_t
    | MUC_change_nick of string * Nicks.participant_t
+(*
+   | MUC_leave of string * Nicks.participant_t
    | MUC_kick of string * Nicks.participant_t
    | MUC_ban of string * Nicks.participant_t
+   | MUC_unmember of string * Nicks.participant_t
+*)
    | MUC_presence of Nicks.participant_t
    | MUC_topic of string
    | MUC_message of message_type * string * string
    | MUC_other
    | MUC_history
+   | MUC_leave of bool * leave_t * string * Nicks.participant_t
    | Message
    | Iq of string * iq_type * string
    | Presence

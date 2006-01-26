@@ -132,21 +132,22 @@ let write (room:string * string) text =
 
 let process_log event (from:jid) xml =
    let lang room = (GroupchatMap.find room !groupchats).lang in
+   let room = from.luser, from.lserver in
       match event with
 	 | MUC_history -> ()
 	 | MUC_topic subject ->
 	      if from.resource <> "" then
-		 write (from.luser, from.lserver) 
-		    (Lang.get_msg ~lang:(lang (from.luser, from.lserver)) 
+		 write room 
+		    (Lang.get_msg ~lang:(lang room)
 			"muc_log_set_subject" 
 			[from.resource;  html_url subject])
 	      else
-		 write (from.luser, from.lserver) 
-		    (Lang.get_msg ~lang:(lang (from.luser, from.lserver))
+		 write room 
+		    (Lang.get_msg ~lang:(lang room)
 			"muc_log_subject" [html_url subject])
 	 | MUC_message (msg_type, nick, body) when msg_type = `Groupchat  ->
 	      if body <> "" then
-		 write (from.luser, from.lserver) (
+		 write room (
 		    if nick = "" then
 		       if String.length body = 3 && body = "/me" then
 			  Printf.sprintf "* %s" from.resource
@@ -159,46 +160,40 @@ let process_log event (from:jid) xml =
 		    else
 		       make_message from.resource nick body)
 	 | MUC_join item ->
-	      write (from.luser, from.lserver)
-		 ("-- " ^ Lang.get_msg ~lang:(lang (from.luser, from.lserver)) 
+	      write room
+		 ("-- " ^ Lang.get_msg ~lang:(lang room) 
 		     "muc_log_join" 
 		     [from.resource])
-	 | MUC_leave (reason, item) ->
-	      write (from.luser, from.lserver)
+	 | MUC_leave (me, t, reason, item) ->
+	      write room
 		 ("-- " ^
 		     (if reason = "" then
-			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
-			    "muc_log_leave" 
+			 Lang.get_msg ~lang:(lang room)
+			    (match t with
+				| `Kick -> "muc_log_kick"
+				| `Ban -> "muc_log_ban"
+				| `UnMember -> "muc_log_unmember"
+				| `Normal -> "muc_log_leave")
 			    [from.resource]
 		      else
-			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
-			    "muc_log_leave_reason" 
-			    [from.resource; reason]))
-	 | MUC_kick (reason,item) ->
-	      write (from.luser, from.lserver)
-		 ("-- " ^
-		     (if reason = "" then
-			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
-			    "muc_log_kick" 
-			    [from.resource]
-		      else
-			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
-			    "muc_log_kick_reason" 
-			    [from.resource; reason]))
-	 | MUC_ban (reason, item) ->
-	      write (from.luser, from.lserver)
-		 ("-- " ^
-		     (if reason = "" then
-			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
-			    "muc_log_ban" 
-			    [from.resource]
-		      else
-			 Lang.get_msg ~lang:(lang (from.luser, from.lserver))
-			    "muc_log_ban_reason" [from.resource; reason]))
+			 Lang.get_msg ~lang:(lang room)
+			    (match t with
+				| `Kick -> "muc_log_kick_reason"
+				| `Ban -> "muc_log_ban_reason"
+				| `UnMember -> "muc_log_unmember_reason"
+				| `Normal -> "muc_log_leave_reason")
+			    [from.resource; reason]));
+	      if me then
+		 let lf = LogMap.find room !logmap in
+		    output_string lf "</body>\n</html>";
+		    flush lf;
+		    close_out lf;
+		    logmap := LogMap.remove room !logmap
+
 	 | MUC_change_nick (newnick, item) ->
-	      write (from.luser, from.lserver)
+	      write room
 		 ("-- " ^
-		     (Lang.get_msg ~lang:(lang (from.luser, from.lserver)) 
+		     (Lang.get_msg ~lang:(lang room) 
 			 "muc_log_change_nick" [from.resource; newnick]))
 (*
 	 | MUC_presence (room, user, item) ->

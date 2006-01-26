@@ -196,7 +196,9 @@ let rec markov_thread (db, m) =
 		  make_msg out xml (cycle4 ())
 	    with exn ->
 	       Logger.print_exn "Plugin_markov: !!!top" exn)
-      | MStop -> Thread.exit ()
+      | MStop -> 
+	   Sqlite.db_close db;
+	   Thread.exit ()
    end;
    markov_thread (db, m)
 
@@ -214,28 +216,36 @@ let get_markov_queue room =
 let markov_chain event from xml out =
    match event with
       | MUC_message _ ->
-	   begin try
-	      let m = get_markov_queue (from.luser, from.lserver) in
-		 add_queue m (MMessage (event, from, xml, out))
-	   with _ -> ()
-	   end
+	   (try
+	       let m = get_markov_queue (from.luser, from.lserver) in
+		  add_queue m (MMessage (event, from, xml, out))
+	    with _ -> ())
+      | MUC_leave (true, _, _, _) ->
+	   (try
+	       let m = get_markov_queue (from.luser, from.lserver) in
+		  add_queue m MStop;
+		  markovrooms := MarkovMap.remove (from.luser, from.lserver) 
+		     !markovrooms;
+	    with _ -> ())
       | _ -> ()
 
 let markov_count text event from xml out =
    match event with
       | MUC_message _ ->
-	   try
-	      let m = get_markov_queue (from.luser, from.lserver) in
-		 add_queue m (MCount (from, xml, out))
-	   with _ -> ()
+	   (try
+	       let m = get_markov_queue (from.luser, from.lserver) in
+		  add_queue m (MCount (from, xml, out))
+	    with _ -> ())
+      | _ -> ()
 
 let markov_top text event from xml out =
    match event with
       | MUC_message _ ->
-	   try
-	      let m = get_markov_queue (from.luser, from.lserver) in
-		 add_queue m (MTop (from, xml, out))
-	   with _ -> ()
+	   (try
+	       let m = get_markov_queue (from.luser, from.lserver) in
+		  add_queue m (MTop (from, xml, out))
+	    with _ -> ())
+      | _ -> ()
    
 let _ =
    register_handle (Catch markov_chain);

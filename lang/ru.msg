@@ -5,6 +5,8 @@ muc_log_kick                       %s выгнали из комнаты
 muc_log_kick_reason                %s выгнали из комнаты: %s
 muc_log_ban                        %s запретили входить в комнату
 muc_log_ban_reason                 %s запретили входить в комнату: %s
+muc_log_unmember                   %s лишили членства и изгнали из комнаты
+muc_log_unmember_reason            %s лишили членства и изгнали из комнаты: %s
 muc_log_change_nick                %s изменил(а) имя на %s
 muc_log_set_subject                %s изменил(а) тему: %s
 muc_log_subject                    Тема: %s
@@ -41,14 +43,24 @@ plugin_userinfo_chat_syntax_error  "%s" игнорируется
 plugin_userinfo_time_me            Щас у меня в компе %s
 plugin_userinfo_time_you           У тебя в компе показываются %s
 plugin_userinfo_time_somebody      У %s в компе показываются %s
+
 plugin_roulette_syntax_error       Возьми у отца ружье и попробуй...
 plugin_roulette_kick_reason        Пшиииик!
 plugin_roulette_bye                Адью.
 plugin_roulette_kick_failed        Ыыыы... у тебя наверное иммунитет....
 plugin_roulette_next_time          Как-нить в следующий раз...
+plugin_roulette_not_allowed        Прав не имею.
+
 plugin_vocabulary_invalid_syntax   ну?
-plugin_vocabulary_wrote            записал.
+plugin_vocabulary_recorded         записал.
+plugin_vocabulary_dfn_again        это уже было
+plugin_vocabulary_removed          стёр
+plugin_vocabulary_replaced         переписал
+plugin_vocabulary_answer           %s сказал(а), что %s - %s
+plugin_vocabulary_db_is_empty      база знаний пуста
 plugin_vocabulary_not_found        хз
+plugin_vocabulary_records          записей
+
 plugin_misc_dns_invalid_syntax     ась?
 plugin_misc_dns_not_resolved       не резолвится
 
@@ -78,6 +90,7 @@ plugin_weather_404                Нет такого аэропорта.
 plugin_admin_quit_bye             Пока! Я ушел...
 plugin_admin_quit_no_access       Это ты мне? Quit? Фиг!
 plugin_admin_join_no_access       Не, с тобой я не пойду туда.
+
 plugin_dict_invalid_syntax        гы! Инвалид синтаксис.
 plugin_dict_db_not_found          Нет такой базы данных
 plugin_dict_word_not_found        Не найдено ничего подходящего
@@ -89,10 +102,12 @@ plugin_seen_is_not_same           %s сидит здесь, но это не т�
 plugin_seen_you                   Посмотри на себя в зеркало!
 plugin_seen_left                  %s был здесь %sназад
 plugin_seen_kicked                %s был выпровожен отсюда %sназад
-plugin_seen_banned                %s был забанён %sназад: %s
+plugin_seen_banned                %s был забанён %sназад
+plugin_seen_unmembered            %s был лишен членства и изгран из комнаты %sназад
 plugin_seen_left_reason           %s был здесь %sназад: %s
 plugin_seen_kicked_reason         %s был выпровожен отсюда %sназад: %s
 plugin_seen_banned_reason         %s был забанён %sназад: %s: %s
+plugin_seen_unmembered_reason     %s был лишен членства и изгран из комнаты %sназад: %s
 plugin_seen_never_seen            Я никогда здесь не видел %s.
 plugin_seen_not_in_room           Эта команда доступна только в конференциях
 plugin_seen_greet_updated         Обновил
@@ -114,6 +129,7 @@ plugin_translate_bad_syntax       Хммм?
 plugin_yandex_server_error        Яндекс сломался.
 plugin_yandex_404                 Яндексу не нравится такой запрос...
 plugin_yandex_bad_syntax          Чего?
+plugin_yandex_not_found           Не нашёл. :(
 
 plugin_currency_no_currency       Нет такой валюты %s
 plugin_currency_too_big_number    Так не бывает!

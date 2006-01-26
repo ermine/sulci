@@ -75,11 +75,13 @@ let dfn text event from xml out =
 	    let result = step_simple vm in
 	       finalize vm;
 	       if value = result.(0) then
-		  make_msg out xml "это уже было"
+		  make_msg out xml 
+		     (Lang.get_msg ~xml "plugin_vocabulary_dfn_again" [])
 	       else if value = "" then begin
 		  exec db ("DELETE FROM wtf WHERE key=" ^ escape key ^ cond);
 		  decr total;
-		  make_msg out xml "стёр"
+		  make_msg out xml 
+		     (Lang.get_msg ~xml "plugin_vocabulary_removed" [])
 	       end
 	       else
 		  let stamp = Int32.to_string (Int32.of_float 
@@ -88,7 +90,8 @@ let dfn text event from xml out =
 				 ", nick=" ^ escape nick ^
 				 ", value=" ^ escape value ^
 				 " WHERE key=" ^ escape key ^ cond);
-		     make_msg out xml "перезаписал"
+		     make_msg out xml 
+			(Lang.get_msg ~xml "plugin_vocabulary_replaced" [])
 	 with Sqlite_done ->
 	    if value <> "" then
 	       let stamp = Int32.to_string (Int32.of_float 
@@ -100,7 +103,8 @@ let dfn text event from xml out =
 				 escape luser; escape lserver;
 				 escape key; escape value]);
 		  incr total;
-		  make_msg out xml "записал"
+		  make_msg out xml 
+		     (Lang.get_msg ~xml "plugin_vocabulary_recorded" [])
    with Not_found ->
       make_msg out xml 
          (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
@@ -121,8 +125,9 @@ let wtf text event from xml out =
 	 try
 	    let result = step_simple vm in
 	       finalize vm;
-	       make_msg out xml (Printf.sprintf "%s сказал, что %s - %s"
-				    result.(0) key result.(1))
+	       make_msg out xml 
+		  (Lang.get_msg ~xml "plugin_vocabulary_answer"
+		      [result.(0); key; result.(1)])
 	 with Sqlite_done ->
 	    make_msg out xml 
 	       (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
@@ -144,8 +149,10 @@ let wtfall text event from xml out =
 	 let result = try Some (step_simple vm) with Sqlite_done -> None in
 	    match result with
 	       | Some r ->
-		    let str = Printf.sprintf "%d) %s сказал(а), что %s - %s"
-		       i r.(0) key r.(1) in
+		    let str = 
+		       string_of_int i ^ ") " ^
+			  Lang.get_msg ~xml "plugin_vocabulary_answer"
+			  [r.(0); key; r.(1)] in
 		       aux_acc (i+1) (str :: acc)
 	       | None -> 
 		    if acc = [] then "" else
@@ -167,10 +174,12 @@ let wtfrand text event from xml out =
 	    try 
 	       let r = step_simple vm in 
 		  finalize vm;
-		  make_msg out xml (Printf.sprintf "%s сказал(а), что %s - %s"
-				       r.(0) r.(1) r.(2))
+		  make_msg out xml 
+		     (Lang.get_msg ~xml "plugin_vocabulary_answer"
+			 [r.(0); r.(1); r.(2)])
 	    with Sqlite_done ->
-	       make_msg out xml "база пустая!"
+	       make_msg out xml 
+		  (Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" [])
       else
 	 let vm = compile_simple db ("SELECT count(*) FROM wtf WHERE key=" ^
 					escape key) in
@@ -184,8 +193,8 @@ let wtfrand text event from xml out =
 		  let r' = step_simple vm' in
 		     finalize vm';
 		     make_msg out xml 
-			(Printf.sprintf "%s сказал(а), что %s - %s"
-			    r'.(0) key r'.(1))
+			(Lang.get_msg ~xml "plugin_vocabulary_answer"
+			    [r'.(0); key; r'.(1)])
 	    with Sqlite_done ->
 	       make_msg out xml 
 		  (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
@@ -203,9 +212,11 @@ let wtfcount text event from xml out =
 	    finalize vm;
 	    if key = "" then
 	       total := int_of_string r.(0);
-	    make_msg out xml (r.(0) ^ " записей")
+	    make_msg out xml 
+	       (Lang.get_msg ~xml "plugin_vocabulary_records" [r.(0)])
       with Sqlite_done ->
-	 make_msg out xml "пусто"
+	 make_msg out xml 
+	    (Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" [])
 
 let _ =
    Hooks.register_handle (Hooks.Command ("wtf", wtf));

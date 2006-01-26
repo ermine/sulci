@@ -96,7 +96,7 @@ let get_msg ?xml ?(lang="") msgid args =
       with Not_found ->
 	 Logger.out
 	    (Printf.sprintf "lang not found: [%s]\n" msgid);
-	 "[not found in lang pack"
+	 "[not found in lang pack: " ^ msgid ^ "]"
    in
       process str args
 

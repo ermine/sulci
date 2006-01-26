@@ -253,56 +253,60 @@ let do_kick =
       "true" then true else false
    with _ -> true
 
-let report word (from:jid) phrase out =
+let report word (from:jid) phrase msg_type out =
    let item = Nicks.find from.lresource 
       (GroupchatMap.find (from.luser, from.lserver) 
 	  !groupchats).nicks in
       List.iter (fun jid ->
-		    out (Xmlelement ("message", ["type", "chat";
-						 "to", jid],
-				     [make_simple_cdata "body"
-					 (Printf.sprintf 
-					     "Мат: %s\n%s@%s %s (%s)\n%s" 
-					     word 
-					     from.user from.server
-					     from.resource
-					     (match item.jid with
-						 | None -> "unknown jid"
-						 | Some j -> j.string)
-					     phrase)]))
+		    out (make_message ~to_:jid ~type_:`Chat
+			    ~body:(Printf.sprintf 
+				      "Censor: %s
+Room: %s@%s
+Nick: %s (%s)
+[%s] %s"
+				      word
+				      from.luser from.lserver
+				      from.resource
+				      (match item.jid with
+					  | None -> "unknown jid"
+					  | Some j -> j.string)
+				      msg_type phrase) ())
 		) notify_jids
 
 let kill (from:jid) out =
    if from.resource = "" then ()
    else
+      let proc event f x o = 
+	 match event with
+	    | Iq (_, `Error, _) ->
+		 let err_text = try
+		    get_error_semantic x
+		 with Not_found -> 
+		    (*
+		      Lang.get_msg ~xml 
+		      "plugin_markov_kick_error" []
+		    *)
+		    "hmm.."
+		 in
+		    out (Xmlelement ("message", 
+				     ["type", "groupchat";
+				      "to", from.user ^ "@" ^ from.server],
+				     [make_simple_cdata "body" err_text]))
+	    | _ -> ()
+      in
       let id = new_id () in
-	 out (Muc.kick id from from.resource ("plugin_markov_kick_reason", []));
-	 let proc event f x o = 
-	    match event with
-	       | Iq (_, `Error, _) ->
-		    let err_text = try
-		       get_error_semantic x
-		    with Not_found -> 
-		       (*
-			 Lang.get_msg ~xml 
-			 "plugin_markov_kick_error" []
-		       *)
-		       "hmm.."
-		    in
-		       out (Xmlelement ("message", 
-					["type", "groupchat";
-					 "to", from.user ^ "@" ^ from.server],
-					[make_simple_cdata "body" err_text]))
-	       | _ -> ()
-	 in
-	    Hooks.register_handle (Hooks.Id (id, proc))
+      let room = from.luser, from.lserver in
+      let lang = (GroupchatMap.find room !groupchats).lang in
+      let reason = Lang.get_msg ~lang "plugin_markov_kick_reason" [] in
+	 Hooks.register_handle (Hooks.Id (id, proc));
+	 out (Muc.kick ~reason id room from.resource)
 		       
-let check text from out =
+let check text from msg_type out =
    let lexbuf = Ulexing.from_utf8_string text in
       try match analyze lexbuf with
 	 | Good -> ()
 	 | Bad word ->
-	      report word from text out;
+	      report word from text msg_type out;
 	      if do_kick then
 		 kill from out;
 	      (* out (Xmlelement ("message", ["to", room;
@@ -324,24 +328,24 @@ let cerberus event from xml out =
 	 | MUC_join item ->
 	      if from.lresource <> 
 		 (GroupchatMap.find room !groupchats).mynick then begin
-		    check from.resource from out;
-		    check item.status from out;
+		    check from.resource from "resource" out;
+		    check item.status from "status" out;
 		    match item.jid with
 		       | None -> ()
 		       | Some j ->
-			    check j.lresource from out;
+			    check j.lresource from "jid" out;
 		 end
 	 | MUC_change_nick (nick, item) ->
 	      if nick <> (GroupchatMap.find room !groupchats).mynick then
-		 check nick from out
+		 check nick from "nick" out
 	 | MUC_presence item ->
 	      if from.lresource <> 
 		 (GroupchatMap.find room !groupchats).mynick then
-		 check item.status from out
+		    check item.status from "presence" out
 	 | MUC_topic subject ->
 	      if from.lresource <> 
 		 (GroupchatMap.find room !groupchats).mynick then begin
-		    try check subject from out;
+		    try check subject from "topic" out;
 		       topic := subject
 		    with Hooks.Filtered ->
 		       out (Muc.set_topic from !topic);
@@ -352,7 +356,11 @@ let cerberus event from xml out =
 		 if from.lresource <> 
 		    (GroupchatMap.find room !groupchats).mynick &&
 		    body <> "" then
-		       check body from out
+		       check body from (match msg_type with
+					   | `Groupchat -> 
+						"groupchat public"
+					   | _ ->
+						"groupchat private") out
 	 | MUC_history ->
 	      if get_tagname xml = "message" then begin
 		 try

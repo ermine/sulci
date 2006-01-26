@@ -40,14 +40,24 @@ plugin_userinfo_chat_syntax_error  "%s" is ignored
 plugin_userinfo_time_me            it's %s here
 plugin_userinfo_time_you           It's %s on your watch
 plugin_userinfo_time_somebody      It's %s on %s's watch
+
 plugin_roulette_syntax_error       Take a gun from father and try...
 plugin_roulette_kick_reason        Pops!
 plugin_roulette_bye                Adi?s!
 plugin_roulette_kick_failed        Hmmm... Probably you have an immunity....
 plugin_roulette_next_time          Try again....
+plugin_roulette_not_allowed        Sorry, I dont have rights.
+
 plugin_vocabulary_invalid_syntax   hm?
-plugin_vocabulary_wrote            wrote.
+plugin_vocabulary_recorded         wrote
+plugin_vocabulary_dfn_again        it already was done
+plugin_vocabulary_removed          removed
+plugin_vocabulary_replaced         replaced
+plugin_vocabulary_answer           %s said that %s - %s
+plugin_vocabulary_db_is_empty      data base is empty
 plugin_vocabulary_not_found        dunno
+plugin_vocabulary_records          records
+
 plugin_misc_dns_invalid_syntax     what dns?
 plugin_misc_dns_not_resolved       cannot resolve
 
@@ -113,6 +123,7 @@ plugin_translate_bad_syntax       Hmm?
 plugin_yandex_server_error        Yandex.is broken.
 plugin_yandex_404                 Yandex cannot execute the query.
 plugin_yandex_bad_syntax          What?
+plugin_yandex_not_found           not found
 
 plugin_currency_no_currency       No such currency %s
 plugin_currency_too_big_number    it's impossible to have so much money

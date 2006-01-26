@@ -91,9 +91,7 @@ let catch_seen event from xml out =
 				       ))
 		 with _ -> ()
 		 end
-	 | MUC_leave (reason, item)
-	 | MUC_kick (reason, item)
-	 | MUC_ban (reason, item) as action ->
+	 | MUC_leave (_, t, reason, item) ->
 	      let cond =
 		 match item.jid with
 		    | None -> 
@@ -104,10 +102,11 @@ let catch_seen event from xml out =
 	      let room_s = from.luser ^ "@" ^ from.lserver in
 	      let last = Int32.to_string (Int32.of_float 
 					     (Unix.gettimeofday ())) in
-	      let action = match action with
-		 | MUC_leave _ -> "left"
-		 | MUC_kick _ -> "kick"
-		 | MUC_ban _ -> "ban"
+	      let action = match t with
+		 | `Normal -> "left"
+		 | `Kick -> "kick"
+		 | `Ban -> "ban"
+		 | `UnMember -> "unmember"
 	      in
 		 if result_bool db 
 		    ("SELECT last FROM users where " ^ cond ^
@@ -171,75 +170,79 @@ let seen text event from xml out =
    else
       match event with
 	 | MUC_message (msg_type, _, _) ->
-	      let room  = from.luser, from.lserver in
-	      let nicks = (GroupchatMap.find room !groupchats).nicks in
-	      let vm = compile_simple db 
-		 ("SELECT jid, last, action, reason FROM users WHERE nick=" ^
-		     escape text ^ " AND room=" ^ escape 
-		     (from.luser ^ "@" ^ from.lserver) ^ 
-		     " ORDER BY last DESC LIMIT 1") in
-	      let reply = try
-		 let result = step_simple vm in
-		    finalize vm;
-		    try verify_nick text result.(0) nicks xml
-		    with Not_found -> begin
-		       let stamp = float_of_string result.(1) in
-		       let diff = 
-			  Lang.expand_time ~xml "seen"
-			    (int_of_float (Unix.gettimeofday () -. stamp)) in
-			  if result.(3) = "" then
-			     Lang.get_msg ~xml 
-				(match result.(2) with
-				    | "kick" -> "plugin_seen_kicked"
-				    | "ban" -> "plugin_seen_banned"
-				    | _ -> "plugin_seen_left")
-				[text; diff]
-			  else
-			     Lang.get_msg ~xml 
-				(match result.(2) with
-				    | "kick" -> 
-					 "plugin_seen_kicked_reason"
-				    | "ban" -> 
-					 "plugin_seen_banned_reason"
-				    | _ -> 
-					 "plugin_seen_left_reason")
-				[text; diff; result.(3)]
-		    end
-	      with Sqlite_done -> begin
-		 if Nicks.mem text nicks then
-		    if get_resource (get_attr_s xml "from") = text then
-		       Lang.get_msg ~xml "plugin_seen_you" []
-		    else
+	      if text = from.resource then
+		 make_msg out xml (Lang.get_msg ~xml "plugin_seen_you" [])
+	      else
+		 let room  = from.luser, from.lserver in
+		 let nicks = (GroupchatMap.find room !groupchats).nicks in
+		 let vm = compile_simple db 
+		    ("SELECT jid, last, action, reason FROM users WHERE nick=" ^
+			escape text ^ " AND room=" ^ escape 
+			(from.luser ^ "@" ^ from.lserver) ^ 
+			" ORDER BY last DESC LIMIT 1") in
+		 let reply = try
+		    let result = step_simple vm in
+		       finalize vm;
+		       try 
+			  verify_nick text result.(0) nicks xml
+		       with Not_found -> begin
+			  let stamp = float_of_string result.(1) in
+			  let diff = 
+			     Lang.expand_time ~xml "seen"
+				(int_of_float 
+				    (Unix.gettimeofday () -. stamp)) in
+			     if result.(3) = "" then
+				Lang.get_msg ~xml 
+				   (match result.(2) with
+				       | "kick" -> "plugin_seen_kicked"
+				       | "ban" -> "plugin_seen_banned"
+				       | "unmember" -> "plugin_seen_unmembered"
+				       | _ -> "plugin_seen_left")
+				   [text; diff]
+			     else
+				Lang.get_msg ~xml 
+				   (match result.(2) with
+				       | "kick" -> 
+					    "plugin_seen_kicked_reason"
+				       | "ban" -> 
+					    "plugin_seen_banned_reason"
+				       | "unmember" ->
+					    "plugin_seen_unmembered_reason"
+				       | _ -> 
+					    "plugin_seen_left_reason")
+				   [text; diff; result.(3)]
+		       end
+		 with Sqlite_done -> begin
+		    if Nicks.mem text nicks then
 		       Lang.get_msg ~xml "plugin_seen_is_here" [text]
-		 else begin
-		    let result = ref "" in
-		    let orig_nick = ref "" in
-		       begin try
-			  Nicks.iter (fun (nick, item) ->
-					 if item.orig_nick = text then begin
-					    result := nick;
-					    orig_nick := item.orig_nick;
-					    raise Break
-					 end
-				     ) nicks;
-		       with Break -> ()
-		       end;
-		       if !result <> "" then
-			  if !orig_nick = text then
-			     Lang.get_msg ~xml "plugin_seen_you" []
+		    else begin
+		       let result = ref "" in
+		       let orig_nick = ref "" in
+			  begin try
+			     Nicks.iter (fun (nick, item) ->
+					    if item.orig_nick = text then begin
+					       result := nick;
+					       orig_nick := item.orig_nick;
+					       raise Break
+					    end
+					) nicks;
+			  with Break -> ()
+			  end;
+			  if !result <> "" then
+			     if !orig_nick = text then
+				Lang.get_msg ~xml "plugin_seen_you" []
+			     else
+				Lang.get_msg ~xml "plugin_seen_changed_nick"
+				   [text; !result]
 			  else
-			     Lang.get_msg ~xml "plugin_seen_changed_nick"
-				[text; !result]
-		       else
-			  Lang.get_msg ~xml "plugin_seen_never_seen" [text]
+			     Lang.get_msg ~xml "plugin_seen_never_seen" [text]
+		    end
 		 end
-	      end
-	      in
-		 make_msg out xml reply
+		 in
+		    make_msg out xml reply
 	 | _ ->
 	      make_msg out xml (Lang.get_msg ~xml "plugin_seen_not_in_room" [])
 
-			   
 let _ =
    Hooks.register_handle (Command ("greet", add_greet));
    Hooks.register_handle (Command ("seen", seen));

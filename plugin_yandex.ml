@@ -27,7 +27,7 @@ let blogs text event from xml out =
 			   Printf.sprintf "%s\n%s\n%s\n%s"
 			      (trim title) (trim descr) link pubdate
 		     with Not_found ->
-			"что-то не нашёл...")
+			Lang.get_msg ~xml "plugin_yandex_not_found" [])
 	    | Exception exn ->
 		 match exn with
 		    | ClientError ->

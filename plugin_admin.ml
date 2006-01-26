@@ -9,6 +9,7 @@ open Muc
 open Hooks
 open Types
 open Nicks
+open Error
 
 let msg text event from xml out =
    if check_access from "admin" then
@@ -89,7 +90,7 @@ let invite text event from xml (out:element -> unit) =
 
 	    if room_dst = "" && 
 	       GroupchatMap.mem (from.luser, from.lserver) !groupchats then
-		  let who_jid = jid_of_string who in
+		  let _ = jid_of_string who in
 		     out (Muc.invite (from.luser, from.lserver) who)
 	    else
 	       let rjid = jid_of_string room_dst in
@@ -106,7 +107,7 @@ let invite text event from xml (out:element -> unit) =
 				 | None ->
 				      raise Not_found
 			   with Not_found ->
-			      let who_jid = jid_of_string who in
+			      let _ = jid_of_string who in
 				 out (Muc.invite (rjid.luser, rjid.lserver) 
 					 who)
 		  else
