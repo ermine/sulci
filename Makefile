@@ -13,10 +13,11 @@ SOURCES = version.ml config.ml logger.ml common.ml types.ml lang.ml muc.ml \
 
 ifdef PLUGIN_GOOGLE
   SOURCES += plugin_google.ml
+  DEHTML = yes
 endif
 ifdef PLUGIN_YANDEX
    SOURCES += plugin_yandex.ml
-    DEHTML = yes
+   DEHTML = yes
 endif
 ifdef PLUGIN_CALC
   SOURCES += math.ml pcalc.mly pcalc_lexer.mll icalc.mly icalc_ulex.ml plugin_calc.ml
@@ -136,6 +137,7 @@ tarball::
 	cp -Rp ../libs/strftime $(SDIR)/libs
 	cp -Rp ../libs/xmlstring $(SDIR)/libs
 	cp -Rp ../libs/getopt $(SDIR)/libs
+	cp -Rp ../libs/dehtml $(SDIR)/libs
 	mkdir $(SDIR)/docs
 	cp -Rp ../doc/sulci $(SDIR)/docs/
 	cp README $(SDIR)/

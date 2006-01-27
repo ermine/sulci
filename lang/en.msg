@@ -25,9 +25,11 @@ plugin_ping_pong_from_somebody Pong from %s: %s
 plugin_ping_error              n/a [%s]
 plugin_ping_cannot_ping            Sorry, I cannot ping %s
 plugin_ping_you_error              The information about you is secret
+
 plugin_userinfo_error              The information is secret
 plugin_userinfo_version_you        your client is %s %s - %s
 plugin_userinfo_version_somebody   %s's client is %s %s - %s
+plugin_userinfo_version_server_invalid_jid Invalid server's name
 plugin_userinfo_version_server     %s is running %s %s (%s)
 plugin_userinfo_version_server_not_implemented  %s does not know anything about its version
 plugin_userinfo_version_server_remote_server_timeout Timeout...
@@ -40,6 +42,7 @@ plugin_userinfo_chat_syntax_error  "%s" is ignored
 plugin_userinfo_time_me            it's %s here
 plugin_userinfo_time_you           It's %s on your watch
 plugin_userinfo_time_somebody      It's %s on %s's watch
+plugin_userinfo_status_whose       Whose status?
 
 plugin_roulette_syntax_error       Take a gun from father and try...
 plugin_roulette_kick_reason        Pops!

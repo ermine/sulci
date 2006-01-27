@@ -28,9 +28,11 @@ plugin_ping_pong_from_somebody     Понг от %s: %s
 plugin_ping_error                  Информация у %s засекречена
 plugin_ping_cannot_ping            Не могу пинговать %s
 plugin_ping_you_error              Информация о тебе засекречена
+
 plugin_userinfo_error              Информация засекречена
 plugin_userinfo_version_you        у тебя клиент %s %s - %s
 plugin_userinfo_version_somebody   у %s клиент %s %s - %s
+plugin_userinfo_version_server_invalid_jid  %s не подходит как имя сервера
 plugin_userinfo_version_server     на %s запущен %s %s (%s)
 plugin_userinfo_version_server_not_implemented  Сервер %s ничего не знает о себе
 plugin_userinfo_version_server_remote_server_timeout Сервер %s отвалился по таймауту
@@ -43,6 +45,7 @@ plugin_userinfo_chat_syntax_error  "%s" игнорируется
 plugin_userinfo_time_me            Щас у меня в компе %s
 plugin_userinfo_time_you           У тебя в компе показываются %s
 plugin_userinfo_time_somebody      У %s в компе показываются %s
+plugin_userinfo_status_whose       Чей статус?
 
 plugin_roulette_syntax_error       Возьми у отца ружье и попробуй...
 plugin_roulette_kick_reason        Пшиииик!

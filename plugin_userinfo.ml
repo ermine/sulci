@@ -148,7 +148,10 @@ let version_server text event from xml out =
 	       out (iq_query ~to_:server.server ~id 
 		       ~xmlns:"jabber:iq:version" ~type_:`Get ())
 	 else
-	    make_msg out xml "invalid server name"
+	    make_msg out xml 
+	       (Lang.get_msg ~xml 
+		   "plugin_userinfo_version_server_invalid_jid"
+		   [text])
    with _ ->
       make_msg out xml "invalid server name"
 
@@ -244,7 +247,8 @@ let status text event from xml out =
 						    | `Chat -> "free for chat"
 						    | `XA -> "xa") ^ "]")
 	       with _ ->
-		  make_msg out xml "Whose status?")
+		  make_msg out xml 
+		     (Lang.get_msg "plugin_userinfo_statuse_whose" []))
       | _ -> ()
 
 let _ =

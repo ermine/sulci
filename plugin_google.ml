@@ -70,6 +70,7 @@ let make_query start maxResults query =
 				      [])
 			 ])])])
 
+(*
 let html_ent = Pcre.regexp "&amp;#([0-9]+);"
 let html = Pcre.regexp "&lt;/?(b|i|p|br)&gt;"
 let amp = Pcre.regexp "&amp;(lt|gt|quot|apos|amp);"
@@ -86,6 +87,9 @@ let strip_html text =
    let r3 = Pcre.substitute_substrings ~rex:amp
 	       ~subst:(fun x -> "&" ^ (Pcre.get_substring x 1) ^ ";") r2
    in r3
+*)
+
+let strip_html = Dehtml.html2text
 
 let message result =
    let text item tag = strip_html (get_cdata item ~path:[tag]) in
