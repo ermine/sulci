@@ -136,3 +136,6 @@ plugin_yandex_not_found           Не нашёл. :(
 
 plugin_currency_no_currency       Нет такой валюты %s
 plugin_currency_too_big_number    Так не бывает!
+
+plugin_hostip_bad_syntax          Какой адрес?
+plugin_hostip_failed              Не удалось сделать запрос.

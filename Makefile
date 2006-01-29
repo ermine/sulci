@@ -85,13 +85,20 @@ endif
 ifdef PLUGIN_XMLRPC
   SOURCES += plugin_xmlrpc.ml
 endif
+ifdef PLUGIN_HOSTIP
+   SOURCES += plugin_hostip.ml
+endif
 
 LANGPACKS = lang/ru_time.ml lang/en_time.ml lang/es_time.ml
 
 SOURCES += $(LANGPACKS) sulci.ml
 
 THREADS = yes
+
 PACKS = ulex unix netstring netclient $(DBM_LIB)
+ifdef EXTLIB
+  PACKS += extlib
+endif
 
 INCDIRS = ../libs/getopt ../libs/xml ../xmpp ../libs/xmlstring ../libs/scheduler \
 	  ../libs/strftime
@@ -104,7 +111,10 @@ ifdef SQLITE
   INCDIRS += ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
   OCAMLLDFLAGS += sqlite.cmxa sqlite_util.cmxa
 endif
-
+ifdef HOSTIP
+   INCDIRS += +hostip
+   OCAMLLDFLAGS += hostip.cmxa
+endif
 ifdef DEHTML
    INCDIRS += ../libs/dehtml
     OCAMLLDFLAGS += dehtml.cmxa

@@ -16,14 +16,18 @@ let dns text event from xml out =
 		s.h_name ^ " " ^
 		   (String.concat " "
 		       (Array.to_list s.h_aliases))
-	  with Failure _ ->
-	     try 
-		let h = gethostbyname text in
-		let hl = Array.to_list h.h_addr_list in
-		   String.concat " "
-		      (List.map (fun addr -> string_of_inet_addr addr) hl)
-	     with Not_found ->  
-		Lang.get_msg ~xml "plugin_misc_dns_not_resolved" [])
+	  with 
+	     | Failure _ ->
+		  (try 
+		      let h = gethostbyname text in
+		      let hl = Array.to_list h.h_addr_list in
+			 String.concat " "
+			    (List.map (fun addr -> string_of_inet_addr addr) hl)
+		   with Not_found ->  
+		      Lang.get_msg ~xml "plugin_misc_dns_not_resolved" []
+		  ) 
+	     | Not_found ->
+		  Lang.get_msg ~xml "plugin_misc_dns_not_resolved" [])
 
 let _ =
    Hooks.register_handle (Hooks.Command ("dns", dns))

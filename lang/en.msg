@@ -130,3 +130,6 @@ plugin_yandex_not_found           not found
 
 plugin_currency_no_currency       No such currency %s
 plugin_currency_too_big_number    it's impossible to have so much money
+
+plugin_hostip_bad_syntax          Please giva an address.
+plugin_hostip_failed              Failed to make a request
