@@ -133,3 +133,6 @@ plugin_currency_too_big_number    it's impossible to have so much money
 
 plugin_hostip_bad_syntax          Please giva an address.
 plugin_hostip_failed              Failed to make a request
+
+plugin_vcard_bad_syntax           Whose vCard?
+plugin_vcard_error                Failed to request a vCard

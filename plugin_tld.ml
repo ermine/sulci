@@ -3,9 +3,18 @@
 (*                                                                          *)
 
 open Common
+open Xml
 open Dbm
 
-let tlds = opendbm "tlds" [Dbm_rdonly] 0o666
+let tlds = 
+   let name = try
+      get_attr_s Config.config ~path:["plugins"; "tld"] "db"
+   with Not_found -> "tlds" in
+      try
+	 opendbm name [Dbm_rdonly] 0o666
+      with Dbm_error _ ->
+	 Printf.printf "Cannot open db file %s for plugin_tlds\n" name;
+	 Pervasives.exit 127
 
 let tld text event from xml out =
    if text = "" then
@@ -18,5 +27,5 @@ let tld text event from xml out =
 	    make_msg out xml (try Dbm.find tlds tld with Not_found -> 
 				 "неизвестный домен")
 
-let _ =
+let _ =   
    Hooks.register_handle (Hooks.Command ("tld", tld))

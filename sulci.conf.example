@@ -57,6 +57,8 @@
          <server>dict.org</server>
       </dict>
 
+      <tld db="./tlds/tlds"/>
+
       <talkers db="talkers.db"/>
 
       <cerberus kick="true">

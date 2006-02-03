@@ -139,3 +139,6 @@ plugin_currency_too_big_number    Так не бывает!
 
 plugin_hostip_bad_syntax          Какой адрес?
 plugin_hostip_failed              Не удалось сделать запрос.
+
+plugin_vcard_bad_syntax           Чей вкард?
+plugin_vcard_error                Не удалось вытащить вкард.

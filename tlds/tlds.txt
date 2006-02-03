@@ -1,0 +1,244 @@
+ag Antigua and Barbuda
+ao Angola
+aw Aruba
+bf Burkina Faso
+bn Brunei Darussalam
+bv Bouvet Island
+cm Cameroon
+cu Cuba
+ec Ecuador
+es Spain
+fj Fiji
+fr France
+ga Gabon
+gi Gibraltar
+gq Equatorial Guinea
+gy Guyana
+io British Indian Ocean Territory
+ke Kenya
+km Comoros
+lt Lithuania
+mc Monaco
+mk Macedonia, Former Yugoslav Republic
+ms Montserrat
+nr Nauru
+nz New Zealand
+ph Philippines
+se Sweden
+sm San Marino
+su USSR
+td Chad
+tt Trinidad and Tobago
+uk United Kingdom
+us United States
+bg Bulgaria
+bo Bolivia
+bw Botswana
+cf Central African Republic
+cn China
+cv Cap Verde
+de Germany
+dm Dominica
+et Ethiopia
+fk Falkland Islands (Malvina)
+gr Greece
+jo Jordan
+kn Saint Kitts and Nevis
+lu Luxembourg
+md Moldova, Republic of
+ml Mali
+mt Malta
+nc New Caledonia
+pa Panama
+py Paraguay
+ro Romania
+rw Rwanda
+sn Senegal
+sv El Salvador
+tm Turkmenistan
+vc Saint Vincent and the Grenadines
+zw Zimbabwe
+ae United Arab Emirates
+ai Anguilla
+am Armenia
+aq Antarctica
+au Australia
+bd Bangladesh
+bh Bahrain
+bt Bhutan
+cc Cocos (Keeling) Islands
+cg Congo, Republic of
+ck Cook Islands
+co Colombia
+dj Djibouti
+dz Algeria
+ee Estonia
+gg Guernsey
+gs South Georgia and the South Sandwich Islands
+gw Guinea-Bissau
+hn Honduras
+hr Croatia/Hrvatska
+ie Ireland
+im Isle of Man
+iq Iraq
+jp Japan
+kg Kyrgyzstan
+kw Kuwait
+lb Lebanon
+lr Liberia
+lv Latvia
+ma Morocco
+mm Myanmar
+mq Martinique
+mu Mauritius
+my Malaysia
+nl Netherlands
+np Nepal
+pf French Polynesia
+pn Pitcairn Island
+pr Puerto Rico
+qa Qatar
+sc Seychelles
+sg Singapore
+sk Slovak Republic
+so Somalia
+tf French Southern Territories
+tj Tajikistan
+tn Tunisia
+tr Turkey
+tv Tuvalu
+tz Tanzania
+ua Ukraine
+um US Minor Outlying Islands
+uy Uruguay
+ws Western Samoa
+ye Yemen
+yu Yugoslavia
+af Afghanistan
+an Netherlands Antilles
+ar Argentina
+az Azerbaijan
+ba Bosnia and Herzegovina
+be Belgium
+bi Burundi
+bm Bermuda
+by Belarus
+cd Congo, Democratic Republic of the
+ch Switzerland
+cl Chile
+cx Christmas Island
+dk Denmark
+do Dominican Republic
+er Eritrea
+fi Finland
+fm Micronesia, Federal State of
+gd Grenada
+gh Ghana
+gl Greenland
+gp Guadeloupe
+gt Guatemala
+hk Hong Kong
+in India
+ir Iran (Islamic Republic of)
+je Jersey
+jm Jamaica
+kh Cambodia
+kp Korea, Democratic People's Republic
+lc Saint Lucia
+lk Sri Lanka
+ls Lesotho
+mn Mongolia
+mr Mauritania
+mv Maldives
+mz Mozambique
+na Namibia
+ne Niger
+ni Nicaragua
+nu Niue
+pg Papua New Guinea
+pk Pakistan
+ps Palestinian Territories
+pw Palau
+re Reunion Island
+ru Russian Federation
+sd Sudan
+sh St. Helena
+sl Sierra Leone
+st Sao Tome and Principe
+tc Turks and Caicos Islands
+tg Togo
+tk Tokelau
+to Tonga
+tw Taiwan
+uz Uzbekistan
+va Holy See (City Vatican State)
+ve Venezuela
+vi Virgin Islands (USA)
+vu Vanuatu
+za South Africa
+zm Zambia
+ac Ascension Island
+as American Samoa
+bb Barbados
+bj Benin
+br Brazil
+bz Belize
+ca Canada
+ci Cote d'Ivoire
+cy Cyprus
+eg Egypt
+ge Georgia
+gm Gambia
+gu Guam
+ht Haiti
+is Iceland
+ki Kiribati
+ky Cayman Islands
+mg Madagascar
+mo Macau
+mw Malawi
+nf Norfolk Island
+om Oman
+pl Poland
+pt Portugal
+sa Saudi Arabia
+si Slovenia
+sy Syrian Arab Republic
+th Thailand
+tp East Timor
+ug Uganda
+vn Vietnam
+ad Andorra
+al Albania
+at Austria
+bs Bahamas
+cr Costa Rica
+cz Czech Republic
+eh Western Sahara
+fo Faroe Islands
+gf French Guiana
+gn Guinea
+hm Heard and McDonald Islands
+hu Hungary
+id Indonesia
+il Israel
+it Italy
+kr Korea, Republic of
+kz Kazakhstan
+la Lao People's Democratic Republic
+li Liechtenstein
+ly Libyan Arab Jamahiriya
+mh Marshall Islands
+mp Northern Mariana Islands
+mx Mexico
+ng Nigeria
+no Norway
+pe Peru
+pm St. Pierre and Miquelon
+sb Solomon Islands
+sj Svalbard and Jan Mayen Islands
+sr Suriname
+sz Swaziland
+vg Virgin Islands (British)
+wf Wallis and Futuna Islands
+yt Mayotte

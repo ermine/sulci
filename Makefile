@@ -1,11 +1,13 @@
 OCAMLMAKEFILE = ../OCamlMakefile
 
-VERSION=0.5-alpha-20060130
+VERSION=0.5-alpha-20060203
 
 include Makefile.conf
 
 SOURCES = version.ml config.ml logger.ml common.ml types.ml lang.ml muc.ml \
 	  find_url.ml muc_log.ml hooks.ml iq.ml http_suck.ml
+
+SUBDIRS = lang
 
 #ifdef MUC_LOG
 #  SOURCES += muc_log.ml
@@ -34,7 +36,6 @@ ifdef PLUGIN_VOCABULARY
 endif
 ifdef PLUGIN_PING
   SOURCES += plugin_ping.ml
-  DBM_LIB = dbm
 endif
 ifdef PLUGIN_USERINFO
   SOURCES += plugin_userinfo.ml
@@ -56,11 +57,12 @@ ifdef PLUGIN_GLOBALSTATS
 endif
 ifdef PLUGIN_CURRENCY
   SOURCES += plugin_currency.ml
-  XMLSTRING_NETSTRING =  yes
+  XMLSTRING_NETSTRING = yes
 endif
 ifdef PLUGIN_TLD
   SOURCES += plugin_tld.ml
-  DBM_LIB =  dbm
+  DBM_LIB =  yes
+  SUBDIRS += tlds
 endif
 ifdef PLUGIN_ROULETTE
   SOURCES += plugin_roulette.ml
@@ -95,15 +97,18 @@ SOURCES += $(LANGPACKS) sulci.ml
 
 THREADS = yes
 
-PACKS = ulex unix netstring netclient $(DBM_LIB)
+PACKS = ulex unix netstring netclient
 
-INCDIRS = ../libs/getopt ../libs/xml ../xmpp ../libs/xmlstring ../libs/scheduler \
-	  ../libs/strftime
+INCDIRS = ../libs/getopt ../libs/xml ../xmpp ../libs/xmlstring \
+	  ../libs/scheduler ../libs/strftime
 
 OCAMLLDFLAGS =  nums.cmxa cryptokit.cmxa \
 		getopt.cmxa xml.cmxa xmpp.cmxa xmlstring.cmxa strftime.cmxa \
 		scheduler.cmxa $(CURR_LIB)
 
+ifdef DBM_LIB
+  PACKS += dbm
+endif
 ifdef SQLITE
   INCDIRS += ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
   OCAMLLDFLAGS += sqlite.cmxa sqlite_util.cmxa
@@ -123,7 +128,14 @@ OCAMLFLAGS    = -syntax camlp4o
 
 RESULT = sulci
 
-all: nc langcompile
+.PHONY: subdirs $(SUBDIRS)
+
+all: nc subdirs
+
+subdirs: $(SUBDIRS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@
 
 SDIR=/tmp/sulci-$(VERSION)
 
@@ -134,6 +146,7 @@ tarball::
 	cp -Rp ../xmpp $(SDIR)
 	cp -Rp ../sulci $(SDIR)
 	mkdir $(SDIR)/libs
+	cp ../libs/Makefile $(SDIR)/libs
 	cp -Rp ../libs/xml $(SDIR)/libs
 	cp -Rp ../libs/scheduler $(SDIR)/libs
 	cp -Rp ../libs/sqlite_util $(SDIR)/libs
@@ -149,12 +162,17 @@ tarball::
 	cp ../COPYING $(SDIR)/
 	cp ../ChangeLog $(SDIR)/
 	find -d $(SDIR) -name ".svn" -print0 | xargs -0 -- rm -rf
-	find $(SDIR) -name *.cm* -delete
 	tar jcf sulci-$(VERSION).tar.bz2 -C /tmp sulci-$(VERSION)
 	tar zcf sulci-$(VERSION).tar.gz -C /tmp sulci-$(VERSION)
 
-langcompile: langcompile.ml
-	ocamlopt langcompile.ml -o langcompile
-
 include $(OCAMLMAKEFILE)
+
+.PHONY: clean
+clean::
+	rm -f $(TARGETS) $(TRASH)
+	rm -rf $(BCDIDIR) $(NCDIDIR) $(MLDEPDIR)
+	$(shell unexport TARGETS TRASH BCDIDIR NCDIDIR MLDEPDIR)
+	for dir in $(SUBDIRS); do \
+	   $(MAKE) -C $$dir clean; \
+	done
 

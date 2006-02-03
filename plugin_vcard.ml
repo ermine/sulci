@@ -7,6 +7,8 @@ open Xml
 open Types
 open Common
 
+exception BadJID
+
 let _ =
    let result_vcard alist =
       if alist = [] then
@@ -52,23 +54,55 @@ let _ =
 			     
 			     make_msg out origxml (result_vcard res)
 		     | `Error ->
-			  make_msg out origxml "error getting vcard"
+			  make_msg out origxml
+			     (Lang.get_msg ~xml "plugin_vcard_error" [])
 		     | _ -> ())
 	    | _ -> ()
       in
 	 fun text event from xml out ->
 	    match event with
+	       | Message ->
+		    (try
+			let to_ =
+			   let jid = jid_of_string text in
+			      if jid.luser = "" && jid.lresource = "" then
+				 begin
+				    dnsprep jid.lserver;
+				    jid.server
+				 end
+			      else if jid.user <> "" then
+				 jid.user ^ "@" ^ jid.server
+			      else
+				 raise BadJID
+			in
+			let jid = jid_of_string text in
+			   if jid.user = "" then
+			      raise BadJID;
+			let id = new_id () in
+			   Hooks.register_handle (Hooks.Id 
+						     (id, parse_vcard xml));
+			   out (Jeps.iq_vcard_query ~id to_)
+		     with _ ->
+			make_msg out xml
+			   (Lang.get_msg ~xml "plugin_vcard_bad_syntax" []))
+
 	       | MUC_message _ ->
-		    let room = from.luser, from.lserver in
-		    let room_env = GroupchatMap.find room !groupchats in
-		       if Nicks.mem text room_env.nicks then
-			  let id = new_id () in
-			     Hooks.register_handle (Hooks.Id 
-						       (id, parse_vcard xml));
-			     out (Jeps.iq_vcard_query ~id 
-				     (from.user ^ "@" ^ from.server ^ "/"
+		    if text = "" then
+		       let id = new_id () in
+			  Hooks.register_handle (Hooks.Id 
+						    (id, parse_vcard xml));
+			  out (Jeps.iq_vcard_query ~id from.string)
+		    else
+		       let room = from.luser, from.lserver in
+		       let room_env = GroupchatMap.find room !groupchats in
+			  if Nicks.mem text room_env.nicks then
+			     let id = new_id () in
+				Hooks.register_handle (Hooks.Id 
+							 (id, parse_vcard xml));
+				out (Jeps.iq_vcard_query ~id 
+					(from.user ^ "@" ^ from.server ^ "/"
 					 ^ text))
-		       else 
+			  else begin
 			  try
 			     let to_ =
 				let jid = jid_of_string text in
@@ -77,8 +111,10 @@ let _ =
 					 dnsprep jid.lserver;
 					 jid.server
 				      end
-				   else
+				   else if jid.user <> "" then
 				      jid.user ^ "@" ^ jid.server
+				   else
+				      raise BadJID
 			     in
 			     let id = new_id () in
 				Hooks.register_handle 
@@ -86,6 +122,8 @@ let _ =
 				out (Jeps.iq_vcard_query ~id to_)
 			  with _ ->
 			     make_msg out xml 
-				"/me озирается в поисках дубинки"
+				(Lang.get_msg ~xml "plugin_vcard_bad_syntax" [])
+		       end
+	       | _ -> ()
    in
       Hooks.register_handle (Hooks.Command ("vcard", vsearch))
