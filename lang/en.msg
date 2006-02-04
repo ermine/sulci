@@ -59,7 +59,7 @@ plugin_vocabulary_replaced         replaced
 plugin_vocabulary_answer           %s said that %s - %s
 plugin_vocabulary_db_is_empty      data base is empty
 plugin_vocabulary_not_found        dunno
-plugin_vocabulary_records          records
+plugin_vocabulary_records          %s records
 
 plugin_misc_dns_invalid_syntax     what dns?
 plugin_misc_dns_not_resolved       cannot resolve

@@ -62,7 +62,7 @@ plugin_vocabulary_replaced         переписал
 plugin_vocabulary_answer           %s сказал(а), что %s - %s
 plugin_vocabulary_db_is_empty      база знаний пуста
 plugin_vocabulary_not_found        хз
-plugin_vocabulary_records          записей
+plugin_vocabulary_records          %s записей
 
 plugin_misc_dns_invalid_syntax     ась?
 plugin_misc_dns_not_resolved       не резолвится
