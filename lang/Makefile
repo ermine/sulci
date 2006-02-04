@@ -1,7 +1,6 @@
 OCAMLMAKEFILE = ../../OCamlMakefile
 
 SOURCES = langcompile.ml
-USE_CAMLP4 =
 INCDIRS =
 OCAMLLDFLAGS =
 OCAMLDEP =

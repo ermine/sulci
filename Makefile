@@ -122,7 +122,6 @@ ifdef XMLSTRING_NETSTRING
   OCAMLLDFLAGS += xmlstring_netstring.cmxa
 endif
 
-USE_CAMLP4    = yes
 OCAMLDEP      = ocamldep -package ulex -syntax camlp4o
 OCAMLFLAGS    = -syntax camlp4o
 

@@ -6,7 +6,6 @@ INCDIRS		=
 OCAMLLDFLAGS	=
 OCAMLFLAGS	=
 OCAMLDEP	=
-USE_CAMLP4	=
 RESULT		= createtlds
 TRASH		= tlds.db tlds.dir tlds.pag
 

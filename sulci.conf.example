@@ -38,7 +38,7 @@
    <key>00000000000000000000000000000</key>
   </google>
 
-  <vocabulary name="vocabulary"/>
+  <vocabulary db="vocabulary.db"/>
 
   <mueller file="/path/to/Mueller24.koi" hashext=".hash" />
 
