@@ -60,7 +60,7 @@ let dfn text event from xml out =
 			| None ->
 			     let cond = " AND nick=" ^ escape from.lresource ^
 				" AND luser=" ^ from.luser ^
-				" AMD ;server=" ^ from.lserver in
+				" AND lserver=" ^ from.lserver in
 				from.lresource, from.luser, from.lserver, cond
 		    )
 	    | _ ->
@@ -105,6 +105,9 @@ let dfn text event from xml out =
 		  incr total;
 		  make_msg out xml 
 		     (Lang.get_msg ~xml "plugin_vocabulary_recorded" [])
+	    else
+	       make_msg out xml
+		  (Lang.get_msg ~xml "plugin_vocabulary_nothing_to_remove" [])
    with Not_found ->
       make_msg out xml 
          (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])

@@ -14,7 +14,11 @@ open Nicks
 exception Break
 
 let db =
-   let dbf = Sqlite.db_open "./sulci_users.db" in
+   let file = 
+      try trim (Xml.get_attr_s Config.config 
+                   ~path:["plugins"; "seen"] "db")
+      with Not_found -> "sulci_users.db" in
+   let dbf = Sqlite.db_open file in
       if not (result_bool dbf
 	"SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='users'")
       then begin

@@ -57,7 +57,8 @@ plugin_roulette_not_allowed        Прав не имею.
 plugin_vocabulary_invalid_syntax   ну?
 plugin_vocabulary_recorded         записал.
 plugin_vocabulary_dfn_again        это уже было
-plugin_vocabulary_removed          стёр
+plugin_vocabulary_removed          стё
+plugin_vocabulary_nothing_to_remove а был ли мальчик?
 plugin_vocabulary_replaced         переписал
 plugin_vocabulary_answer           %s сказал(а), что %s - %s
 plugin_vocabulary_db_is_empty      база знаний пуста
