@@ -36,15 +36,16 @@ struct
    type t = (string * participant_t) list
    let find nick nicks = List.assoc nick nicks
    let add nick item nicks =
-      let len = String.length nick in
       let rec aux_add tail acc =
 	 match tail with
 	    | [] -> List.rev ((nick, item) :: acc)
 	    | (nick1, item1) as x :: xs ->
-		 if String.length nick1 > len then
+		 if String.length nick1 > String.length nick then
 		    aux_add xs (x :: acc)
-		 else if nick1 = nick then
+		 else if compare nick nick1 = 0 then
 		    List.rev ((nick, item) :: acc) @ xs
+		 else if compare nick nick1  = -1 then
+		    aux_add xs (x :: acc)
 		 else
 		    List.rev ((nick, item) :: acc) @ tail
       in

@@ -121,7 +121,7 @@ let version_server text event from xml out =
 
 		  | Iq (_, `Error, _) ->
 		       let reply =
-			  let cond, type_, _ = parse_error x in
+			  let cond, type_, _, _ = parse_error x in
 			     match cond with
 				| `ERR_FEATURE_NOT_IMPLEMENTED ->
 				     Lang.get_msg ~xml

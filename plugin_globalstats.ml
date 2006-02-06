@@ -84,7 +84,7 @@ let cmd_stats text event from xml out =
 			(List.assoc "users/online" data))
 	 | Iq (_, `Error, _) ->
 	      let reply =
-		 let cond, type_, _ = parse_error x in
+		 let cond, type_, _, _ = parse_error x in
 		    match cond with
 		       | `ERR_FEATURE_NOT_IMPLEMENTED ->
 			    Lang.get_msg ~xml
@@ -137,7 +137,7 @@ let uptime text event from xml out =
 			   [text; last])
 	    | Iq (_, `Error, _) ->
 		 let reply =
-		    let cond, type_, text = parse_error x in
+		    let cond, type_, text, _ = parse_error x in
 		       match cond with
 			  | `ERR_FEATURE_NOT_IMPLEMENTED ->
 			       Lang.get_msg ~xml

@@ -8,6 +8,7 @@ open Common
 open Config
 open Hooks
 open Xmpp
+open Error
 
 let _ = 
    let server = try 
@@ -110,11 +111,18 @@ let _ =
 	      cleanup_for_reconnect ();
 	      reconnect count
 	 | Xmpp.XMPPStreamError els ->
-	      (* todo: analyze els *)
-	      Logger.out 
-		 "The server reject us because we used invalid protocol.";
-	      Logger.out "Please send me a bugreport";
-	      Pervasives.exit 127
+	      let cond, text, _ = parse_stream_error els in
+		 (match cond with
+		     | `ERR_CONFLICT ->
+			  Logger.out 
+			     (Printf.sprintf 
+				 "Connection to the server closed: %s" text)
+		     | _ ->
+			  Logger.out 
+			     (Printf.sprintf 
+				 "The server reject us: %s" text)
+		 );
+		 Pervasives.exit 127
 	 | exn ->
 	      Logger.print_exn "sulci.ml" exn;
 	      Logger.out "Probably it is a bug, please send me a bugreport"

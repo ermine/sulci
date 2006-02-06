@@ -37,7 +37,7 @@ let ping text event from xml (out:element -> unit) =
 			 success now lang victim lvictim 
 			    roomenv.mynick from  x o
 		    | Iq (_, `Error, _) ->
-			 (let cond,_,_ = Error.parse_error x in
+			 (let cond,_,_,_ = Error.parse_error x in
 			     match cond with
 				| `ERR_FEATURE_NOT_IMPLEMENTED ->
 				     success now lang victim
