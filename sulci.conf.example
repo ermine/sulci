@@ -65,5 +65,7 @@
          <notify jid="jid@jabber.server"/>
       </cerberus>
 
+      <seen db="./sulci_users.db"/>
+
    </plugins>
 </sulci>
