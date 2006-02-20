@@ -100,7 +100,7 @@ open Find_url
 let html_url text =
    find_url make_hyperlink text
 
-let make_message author nick body =
+let make_message author body =
    let text =
       Pcre.substitute_substrings ~pat:"\n( *)"
 	 ~subst:(fun s ->
@@ -115,10 +115,7 @@ let make_message author nick body =
 		    with _ -> "<br>"
 		) body
    in
-      if nick <> "" then
-	 Printf.sprintf "&lt;%s&gt; %s: %s" author nick  (html_url text)
-      else
-	 Printf.sprintf "&lt;%s&gt; %s" author (html_url text)
+      Printf.sprintf "&lt;%s&gt; %s" author (html_url text)
 
 let write (room:string * string) text =
    if text <> "" then
@@ -146,10 +143,10 @@ let process_log event (from:jid) xml =
 		 write room 
 		    (Lang.get_msg ~lang:(lang room)
 			"muc_log_subject" [html_url subject])
-	 | MUC_message (msg_type, nick, body) when msg_type = `Groupchat  ->
-	      if nick <> "" || body <> "" then
-		 write room (
-		    if nick = "" then
+	 | MUC_message (msg_type, _, _) when msg_type = `Groupchat  ->
+	      let body = Xml.get_cdata xml ~path:["body"] in
+		 if body <> "" then
+		    write room (
 		       if String.length body = 3 && body = "/me" then
 			  Printf.sprintf "* %s" from.resource
 		       else if String.length body > 3 && 
@@ -157,9 +154,7 @@ let process_log event (from:jid) xml =
 			     Printf.sprintf "* %s %s" from.resource
 				(html_url (string_after body 4))
 		       else
-			  make_message from.resource nick body
-		    else
-		       make_message from.resource nick body)
+			  make_message from.resource body)
 	 | MUC_join item ->
 	      write room
 		 ("-- " ^ Lang.get_msg ~lang:(lang room) 
