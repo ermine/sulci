@@ -36,6 +36,7 @@ let open_log (user, host) =
 	       (Printf.sprintf 
 		   "<html><head>
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />
+<meta name='all' content='nofollow' />
 <title>%s@%s - %0.2d/%0.2d/%d</title></head>\n
 <body><h1>%s@%s - %0.2d/%0.2d/%d</h1>\n"
 		   user host day month year user host day month year);
@@ -146,7 +147,7 @@ let process_log event (from:jid) xml =
 		    (Lang.get_msg ~lang:(lang room)
 			"muc_log_subject" [html_url subject])
 	 | MUC_message (msg_type, nick, body) when msg_type = `Groupchat  ->
-	      if body <> "" then
+	      if nick <> "" || body <> "" then
 		 write room (
 		    if nick = "" then
 		       if String.length body = 3 && body = "/me" then
