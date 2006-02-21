@@ -220,24 +220,17 @@ let seen text event from xml out =
 		    if Nicks.mem text nicks then
 		       Lang.get_msg ~xml "plugin_seen_is_here" [text]
 		    else begin
-		       let result = ref "" in
-		       let orig_nick = ref "" in
-			  begin try
-			     Nicks.iter (fun (nick, item) ->
-					    if item.orig_nick = text then begin
-					       result := nick;
-					       orig_nick := item.orig_nick;
-					       raise Break
-					    end
-					) nicks;
-			  with Break -> ()
-			  end;
-			  if !result <> "" then
-			     if !orig_nick = text then
+		       let result = ref [] in
+			  Nicks.iter (fun (nick, item) ->
+					 if item.orig_nick = text then
+					    result := nick :: !result
+				     ) nicks;
+			  if !result <> [] then
+			     if List.mem from.resource !result then
 				Lang.get_msg ~xml "plugin_seen_you" []
 			     else
 				Lang.get_msg ~xml "plugin_seen_changed_nick"
-				   [text; !result]
+				   [text; String.concat ", " !result]
 			  else
 			     Lang.get_msg ~xml "plugin_seen_never_seen" [text]
 		    end

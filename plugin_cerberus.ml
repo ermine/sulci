@@ -148,16 +148,17 @@ let rec analyze = lexer
 	pizda (Ulexing.utf8_lexeme lexbuf) lexbuf
    | cyrillic+ ch cu (cj | ci) cs ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
-   | prefix* cg cr cie cb cu cch ->
+   | prefix* cg cr cie cb cu cch
+   | prefix* cch cie cb cu cch ->
 	Good
    | cyrillic+ cie_io cb cu cch ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cyrillic ->
 	skip lexbuf
-   | eof ->
-	Good
    | cs cu cp cie cr cd
    | cg ci cp cie cr cd ->
+	Good
+   | eof ->
 	Good
    | _ -> 
 	analyze lexbuf
