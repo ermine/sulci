@@ -59,8 +59,8 @@ let dfn text event from xml out =
 				from.lresource, jid.luser, jid.lserver, cond
 			| None ->
 			     let cond = " AND nick=" ^ escape from.lresource ^
-				" AND luser=" ^ from.luser ^
-				" AND lserver=" ^ from.lserver in
+				" AND luser=" ^ escape from.luser ^
+				" AND lserver=" ^ escape from.lserver in
 				from.lresource, from.luser, from.lserver, cond
 		    )
 	    | _ ->
@@ -68,9 +68,9 @@ let dfn text event from xml out =
 		    " AND lserver=" ^ escape from.lserver in
 		    from.luser, from.luser, from.lserver, cond
       in
+      let sql = ("SELECT value FROM wtf WHERE key=" ^ escape key ^ cond) in
       let vm = compile_simple db 
 	 ("SELECT value FROM wtf WHERE key=" ^ escape key ^ cond) in
-
 	 try
 	    let result = step_simple vm in
 	       finalize vm;
