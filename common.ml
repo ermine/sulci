@@ -61,6 +61,20 @@ let sub_utf8_string text count =
    in
       aux_sub 0 0
 
+let clean_tail str =
+   if str = "" then str
+   else
+      let rec cycle i =
+	 if i = -1 then ""
+	 else
+	    if List.mem str.[i] [' '; '\n'; '\t'; '\r'; ','; '.'; ':'; ';'] then
+	       String.sub str 0 (i+1)
+	    else
+	       cycle (pred i)
+      in
+	 cycle (pred (String.length str))
+
+   
 let make_msg out xml response =
    let from = Xml.get_attr_s xml "from" in
    let nick = Xmpp.get_resource from in
@@ -69,7 +83,7 @@ let make_msg out xml response =
 	      let resp = sub_utf8_string response !msg_limit in
 	      let cutted, respo =
 		 if String.length resp < String.length response then
-		    true, resp ^ "[...]"
+		    true, clean_tail resp ^ "[...]"
 		 else 
 		    false, resp
 	      in
