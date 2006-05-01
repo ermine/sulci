@@ -45,6 +45,8 @@ let regexp cyu         = 0x44E | 0x42E
 let regexp cya         = 0x44F | 0x42F
 let regexp cio         = 0x451 | 0x401 | ci co | cj co
 
+let regexp pi = '3' ('.' | ',') ['0'-'9']+
+
 let regexp cyrillic = [0x410-0x44F 0x451 0x401 '0' '3' 'a''A' 'e' 'E' 'H' 
 			  'o' 'O' 'c' 'C' 'k' 'K' 'T' 'x' 'X' 'y' 'Y' 'p' 
 			  'P'] | "|/|" | "bl" | "bI" 
@@ -143,6 +145,8 @@ let rec analyze = lexer
    | cv? ch cu ci cz ->
 	Good
    | cyrillic* ch cu cie_io cv (* cyrillic* *) ->
+	Bad (Ulexing.utf8_lexeme lexbuf)
+   | pi cz cd ->
 	Bad (Ulexing.utf8_lexeme lexbuf)
    | cyrillic* cp ->
 	pizda (Ulexing.utf8_lexeme lexbuf) lexbuf
@@ -274,7 +278,7 @@ Nick: %s (%s)
 				      msg_type phrase) ())
 		) notify_jids
 
-let kill (from:jid) out =
+let kill (from:jid) xml out =
    if from.resource = "" then ()
    else
       let proc event f x o = 
@@ -283,11 +287,8 @@ let kill (from:jid) out =
 		 let err_text = try
 		    get_error_semantic x
 		 with Not_found -> 
-		    (*
-		      Lang.get_msg ~xml 
-		      "plugin_markov_kick_error" []
-		    *)
-		    "hmm.."
+		    Lang.get_msg ~xml "plugin_cerberus_cannot_kick_admin"
+		       [from.resource]
 		 in
 		    out (Xmlelement ("message", 
 				     ["type", "groupchat";
@@ -302,51 +303,46 @@ let kill (from:jid) out =
 	 Hooks.register_handle (Hooks.Id (id, proc));
 	 out (Muc.kick ~reason id room from.resource)
 		       
-let check text from msg_type out =
-   let lexbuf = Ulexing.from_utf8_string text in
-      try match analyze lexbuf with
-	 | Good -> ()
-	 | Bad word ->
-	      report word from text msg_type out;
-	      if do_kick then
-		 kill from out;
-	      (* out (Xmlelement ("message", ["to", room;
-		 "type", "groupchat"],
-		 [make_simple_cdata "body" nick]))
-	      *)
-	      raise Hooks.Filtered
-      with
-	 | Ulexing.Error ->
-	      Logger.out (Printf.sprintf
-			     "cerberus: Lexing error at offset %i"
-			     (Ulexing.lexeme_end lexbuf))
-
 let topic = ref " "
 
 let cerberus event from xml out =
+   let check text msg_type =
+      let lexbuf = Ulexing.from_utf8_string text in
+	 try match analyze lexbuf with
+	    | Good -> ()
+	    | Bad word ->
+		 report word from text msg_type out;
+		 if do_kick then
+		    kill from xml out;
+	 with
+	    | Ulexing.Error ->
+		 Logger.out (Printf.sprintf
+				"cerberus: Lexing error at offset %i"
+				(Ulexing.lexeme_end lexbuf))
+   in
    let room = from.luser, from.lserver in
       match event with
 	 | MUC_join item ->
 	      if from.lresource <> 
 		 (GroupchatMap.find room !groupchats).mynick then begin
-		    check from.resource from "resource" out;
-		    check item.status from "status" out;
+		    check from.resource "resource";
+		    check item.status "status";
 		    match item.jid with
 		       | None -> ()
 		       | Some j ->
-			    check j.lresource from "jid" out;
+			    check j.lresource "jid";
 		 end
 	 | MUC_change_nick (nick, item) ->
 	      if nick <> (GroupchatMap.find room !groupchats).mynick then
-		 check nick from "nick" out
+		 check nick "nick"
 	 | MUC_presence item ->
 	      if from.lresource <> 
 		 (GroupchatMap.find room !groupchats).mynick then
-		    check item.status from "presence" out
+		    check item.status "presence"
 	 | MUC_topic subject ->
 	      if from.lresource <> 
 		 (GroupchatMap.find room !groupchats).mynick then begin
-		    try check subject from "topic" out;
+		    try check subject "topic";
 		       topic := subject
 		    with Hooks.Filtered ->
 		       out (Muc.set_topic from !topic);
@@ -357,11 +353,11 @@ let cerberus event from xml out =
 		 if from.lresource <> 
 		    (GroupchatMap.find room !groupchats).mynick &&
 		    body <> "" then
-		       check body from (match msg_type with
-					   | `Groupchat -> 
-						"groupchat public"
-					   | _ ->
-						"groupchat private") out
+		       check body (match msg_type with
+				      | `Groupchat -> 
+					   "groupchat public"
+				      | _ ->
+					   "groupchat private")
 	 | MUC_history ->
 	      if get_tagname xml = "message" then begin
 		 try

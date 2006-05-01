@@ -47,7 +47,7 @@ let open_markovdb (luser, lserver) =
    let path = 
       try trim (Xml.get_attr_s Config.config 
 		   ~path:["plugins"; "markov"] "dir")
-      with Not_found -> "./markov_db/" in
+      with Not_found -> "./markov_db" in
       if not (Sys.file_exists path) then Unix.mkdir path 0o755;
       let db = Sqlite.db_open (Filename.concat path (luser ^ "@" ^ lserver)) in
 	 if not (result_bool db

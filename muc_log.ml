@@ -178,7 +178,7 @@ let process_log event (from:jid) xml =
 				| `Ban -> "muc_log_ban_reason"
 				| `UnMember -> "muc_log_unmember_reason"
 				| `Normal -> "muc_log_leave_reason")
-			    [from.resource; reason]));
+			    [from.resource; html_url reason]));
 	      if me then
 		 let lf = LogMap.find room !logmap in
 		    output_string lf "</body>\n</html>";
@@ -196,7 +196,8 @@ let process_log event (from:jid) xml =
 	   (* Lang.get_msg ~lang:(lang room) "muc_log_presence" 
 	      [user; item.show; item.status] *)
 	      write room
-		 (Printf.sprintf "-- %s [%s] %s" user item.show item.status)
+		 (Printf.sprintf "-- %s [%s] %s" user item.show 
+                  html_url item.status)
 *)
 	 | _ -> ()
 

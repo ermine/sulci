@@ -13,6 +13,7 @@ let blogs text event from xml out =
 	 (Lang.get_msg ~xml "plugin_yandex_bad_syntax" [])
    else
       let callback data =
+	 let response_tail = ref None in
 	 let resp = match data with
 	    | OK content ->
 		 let parsed = Xmlstring_netstring.parse_string content in
@@ -24,8 +25,8 @@ let blogs text event from xml out =
 			let link = Xml.get_cdata item ~path:["link"] in
 			let descr = Dehtml.html2text 
 			   (Xml.get_cdata item ~path:["description"]) in
-			   Printf.sprintf "%s\n%s\n%s\n%s"
-			      (trim title) (trim descr) link pubdate
+			   response_tail := Some (link ^ "\n" ^ pubdate);
+			   Printf.sprintf "%s\n%s" (trim title) (trim descr)
 		     with Not_found ->
 			Lang.get_msg ~xml "plugin_yandex_not_found" [])
 	    | Exception exn ->
@@ -37,7 +38,7 @@ let blogs text event from xml out =
 		    | _ ->
 			 Lang.get_msg ~xml "plugin_yandex_server_error" []
 	 in
-	    make_msg out xml resp
+	    make_msg out xml ?response_tail:!response_tail resp
       in
       let url = 
   "http://blogs.yandex.ru/search.rss?how=tm&rd=2&charset=UTF-8&numdoc=1&text=" ^

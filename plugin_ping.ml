@@ -7,90 +7,73 @@ open Xmpp
 open Common
 open Types
 open Xmpp
-
-let success starttime lang victim lvictim mynick from xml out =
-   let diff = Lang.float_seconds ~lang "ping" 
-      (Unix.gettimeofday () -. starttime) in
-      if lvictim = mynick then
-	 Lang.get_msg ~lang "plugin_ping_pong_from_me" [diff]
-      else
-	 if from.lresource = lvictim then
-	    Lang.get_msg ~lang "plugin_ping_pong_from_you" [diff]
-	 else
-	    Lang.get_msg ~lang "plugin_ping_pong_from_somebody"[victim; diff]
-	
+open Hooks
 
 let ping text event from xml (out:element -> unit) =
-   match event with
-      | MUC_message (`Groupchat, _, _) ->
-	   let now = Unix.gettimeofday () in
-	   let roomenv = GroupchatMap.find (from.luser, from.lserver)
-	      !groupchats in
-	   let lang = roomenv.lang in
-	   let lvictim = if text = "" then from.lresource
-	   else Stringprep.resourceprep text in
-	   let victim = if text = "" then from.resource else text in
-	   let proc e f x o =
-	      let reply =
-		 match e with
-		    | Iq (_, `Result, _) ->
-			 success now lang victim lvictim 
-			    roomenv.mynick from  x o
-		    | Iq (_, `Error, _) ->
-			 (let cond,_,_,_ = Error.parse_error x in
-			     match cond with
-				| `ERR_FEATURE_NOT_IMPLEMENTED ->
-				     success now lang victim
-					lvictim roomenv.mynick
-					from x o
-				| _ ->
-				     try get_cdata 
-					~path:["error"; "text"] x 
-				     with _ ->
-					Lang.get_msg ~lang
-					   "plugin_ping_error"
-					   [victim]
-			 )
-		    | _ -> "?!"
-	      in
-		 make_msg out xml reply
-	   in
-	   let id = new_id () in
-	      Hooks.register_handle (Hooks.Id (id, proc));
-	      out (iq_query ~to_:(string_of_jid {from with resource = victim})
-		      ~xmlns:"jabber:iq:version" ~id ~type_:`Get ())
-      | MUC_message _
-      | Message ->
-	   let now = Unix.gettimeofday () in
-	      if text <> "" then
-		 make_msg out xml (Lang.get_msg ~xml
-				      "plugin_ping_cannot_ping" [text])
-	      else
-		 let proc e f x out =
-		    match e with
-		       | Iq (_, `Result, _) ->
-			    let diff = Lang.float_seconds ~xml "ping" 
-			       (Unix.gettimeofday () -. now) in
-			       make_msg out xml
-				  (Lang.get_msg ~xml 
-				      "plugin_ping_pong_from_you" [diff])
-		       | Iq (_, `Error,_) ->
-			    let err_text =  
-			       try 
-				  get_cdata ~path:["error"; "text"] x 
-			       with _ -> 
-				  Lang.get_msg ~xml 
-				     "plugin_ping_you_error" []
-			    in
-			       make_msg out xml err_text
-		       | _ -> ()
-		 in
-		 let id = new_id () in
-		 let from = get_attr_s xml "from" in
-		    Hooks.register_handle (Hooks.Id (id, proc));
-		    out (iq_query ~xmlns:"jabber:iq:version" ~id ~to_:from 
-			    ~type_:`Get ())
-      | _ -> ()
+   try
+      let entity = get_entity text event from in
+      let to_ =
+	 match entity with
+	    | `Mynick nick
+	    | `Nick nick ->
+		 string_of_jid {from with resource = nick}
+	    | `You ->
+		 string_of_jid from
+	    | `User user ->
+		 if user.lresource = "" then
+		    raise BadEntity
+		 else
+		    user.string
+	    | `Host host ->
+		 host.server
+	    | _ ->
+		 raise BadEntity
+      in
+      let success starttime =
+	 let diff = Lang.float_seconds ~xml "ping" 
+	    (Unix.gettimeofday () -. starttime) in
+	    (match entity with
+		| `Mynick _ ->
+		     Lang.get_msg ~xml "plugin_ping_pong_from_me" 
+			[diff]
+		| `You ->
+		     Lang.get_msg ~xml "plugin_ping_pong_from_you" 
+			[diff]
+		| _ ->
+		     Lang.get_msg ~xml "plugin_ping_pong_from_somebody"
+			[text; diff])
+      in
+      let starttime = Unix.gettimeofday () in
+      let proc e f x _ =
+	 let reply = match e with
+	    | Iq (_, `Result, _) ->
+		 success starttime
+	    | Iq (_, `Error, _) ->
+		 (let cond,_,_,_ = Error.parse_error x in
+		     match cond with
+			| `ERR_FEATURE_NOT_IMPLEMENTED ->
+			     success starttime
+			| _ ->
+			     Iq.process_error x (Lang.get_lang xml) 
+				entity f 
+				(if text = "" then
+				    match event, entity with
+				       | MUC_message _, `You ->
+					    f.resource
+				       | _ ->
+					    f.string
+				 else
+				    text)
+		 )
+	    | _ -> "?!"
+	 in
+	    make_msg out xml reply
+      in
+      let id = new_id () in
+	 register_handle (Id (id, proc));
+	 out (iq_query ~to_ ~xmlns:"jabber:iq:version" ~id ~type_:`Get ())
+   with _ ->
+      make_msg out xml (Lang.get_msg ~xml "invalid_entity" [])
 		  
 let _ =
-   Hooks.register_handle (Hooks.Command ("ping", ping))
+   register_handle (Command ("ping", ping))

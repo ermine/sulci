@@ -3,7 +3,7 @@ open Config
 
 let logfile = 
    (try 
-       Xml.get_cdata config ~path:["lifelog"]
+       Xml.get_cdata config ~path:["log"; "report"]
     with Not_found -> 
        "sulci_life.log")
 

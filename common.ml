@@ -35,7 +35,7 @@ let trim str =
       rskip_ws r1
 
 let msg_limit = ref 
-   (try int_of_string (get_attr_s Config.config ~path:["muc"] "limit")
+   (try int_of_string (get_attr_s Config.config ~path:["muc"] "msg_limit")
     with Not_found -> 450)
 
 exception InvalidUTF8
@@ -73,19 +73,25 @@ let clean_tail str =
 	       cycle (pred i)
       in
 	 cycle (pred (String.length str))
-
    
-let make_msg out xml response =
+let make_msg out xml ?response_tail response =
    let from = Xml.get_attr_s xml "from" in
    let nick = Xmpp.get_resource from in
+   let tail = match response_tail with
+      | None -> ""
+      | Some t -> "\n" ^ t
+   in
       match safe_get_attr_s xml "type" with
 	 | "groupchat" ->
-	      let resp = sub_utf8_string response !msg_limit in
+	      let limit = 
+		 let l = !msg_limit - String.length tail in
+		    if l < 0 then 0 else l in
+	      let resp = sub_utf8_string response limit in
 	      let cutted, respo =
 		 if String.length resp < String.length response then
-		    true, clean_tail resp ^ "[...]"
+		    true, clean_tail resp ^ "[...]" ^ tail
 		 else 
-		    false, resp
+		    false, resp ^ tail
 	      in
 		 out (Xmlelement ("message", ["to", Xmpp.get_bare_jid from;
 					      "type", "groupchat"],
@@ -98,13 +104,14 @@ let make_msg out xml response =
 				      )]));
 		 if cutted then
 		    out (Xmlelement ("message", ["to", from; "type", "chat"],
-				     [make_simple_cdata "body" response]))
+				     [make_simple_cdata "body" 
+					 (response ^ tail)]))
  	 | other ->
 	      out (Xmlelement ("message", 
 			       (match other with
 				   | "" -> ["to", from]
 				   | o -> ["to", from; "type", other]),
-			       [make_simple_cdata "body" response]))
+			       [make_simple_cdata "body" (response ^ tail)]))
 
 
 let get_error_semantic xml =

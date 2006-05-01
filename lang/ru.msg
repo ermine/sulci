@@ -1,3 +1,16 @@
+error_server_feature_not_implemented   Сервер %s не поддерживает эту фичу
+error_client_feature_not_implemented   У %s'клиент не поддерживает эту фичу
+error_remote_server_timeout    Сервер %s отвалился по таймауту
+error_remote_server_not_found  %s не существует!
+error_server_service_unavailable   Запрошенный сервис у %s сдох.
+error_your_service_unavailable   Запрошенный у вас сервис отключен.
+error_client_service_unavailable   Запрошенный сервис у %s отключен.
+error_recipient_unavailable        %s временно недоступен
+error_not_allowed                  Никто не разрешил запрашивать информацию у %s
+error_any_error                    Не удалось запросить информацию у %s.
+
+invalid_entity                     А? Кого?
+
 muc_log_join                       %s вошел(а) в комнату
 muc_log_leave                      %s вышел(а) из комнаты
 muc_log_leave_reason               %s вышел(а) из комнаты: %s
@@ -25,23 +38,15 @@ plugin_markov_phrase_is_ignored    Эта фраза игнорируется
 plugin_ping_pong_from_me           Скорость отклика сервера для меня составляет %s
 plugin_ping_pong_from_you          Понг от тебя %s
 plugin_ping_pong_from_somebody     Понг от %s: %s
-plugin_ping_error                  Информация у %s засекречена
-plugin_ping_cannot_ping            Не могу пинговать %s
-plugin_ping_you_error              Информация о тебе засекречена
 
-plugin_userinfo_error              Информация засекречена
-plugin_userinfo_version_you        у тебя клиент %s %s - %s
-plugin_userinfo_version_somebody   у %s клиент %s %s - %s
-plugin_userinfo_version_server_invalid_jid  %s не подходит как имя сервера
-plugin_userinfo_version_server     на %s запущен %s %s (%s)
-plugin_userinfo_version_server_not_implemented  Сервер %s ничего не знает о себе
-plugin_userinfo_version_server_remote_server_timeout Сервер %s отвалился по таймауту
-plugin_userinfo_version_server_remote_server_not_found Скорее всего, на %s не поднят джаббер сервер
-plugin_userinfo_version_server_error Информация засекречена
+plugin_userinfo_status_whose       Чей статус?
 plugin_userinfo_idle_me            я вообще не молчу!
 plugin_userinfo_idle_you           Молчишь %s
 plugin_userinfo_idle_somebody      %s молчит %s
-plugin_userinfo_chat_syntax_error  "%s" игнорируется
+plugin_userinfo_uptime             %s работает без остановок %s
+plugin_userinfo_version_you        у тебя клиент %s %s - %s
+plugin_userinfo_version_somebody   у %s клиент %s %s - %s
+plugin_userinfo_version_server     на %s запущен %s %s (%s)
 plugin_userinfo_time_me            Щас у меня в компе %s
 plugin_userinfo_time_you           У тебя в компе показываются %s
 plugin_userinfo_time_somebody      У %s в компе показываются %s
@@ -67,18 +72,6 @@ plugin_vocabulary_records          %s записей
 
 plugin_misc_dns_invalid_syntax     ась?
 plugin_misc_dns_not_resolved       не резолвится
-
-plugin_globalstats_uptime          Сервер %s работает без остановок %s
-plugin_globalstats_uptime_invalid_syntax Имя сервера, сестричка!
-plugin_globalstats_uptime_error    Информация засекречена
-plugin_globalstats_uptime_not_implemented Сервер не считает свой аптайм
-plugin_globalstats_uptime_remote_server_not_found Скорее всего там не поднят джаббер-сервер
-plugin_globalstats_stats_bad_servername %s вряд ли является именем сервера
-plugin_globalstats_stats_not_implemented Сервер %s не поддерживает stats
-plugin_globalstats_stats_remote_server_timeout Сервер %s тормозит... таймаут.
-plugin_globalstats_stats_remote_server_not_found А есть ли такой сервер %s?
-plugin_globalstats_stats_service_unavailable Сервер %s не хочет показывать свою статистику.
-plugin_globalstats_stats_server_error Не удалось запросить статистику у сервера %s.
 
 plugin_google_invalid_syntax       ась?
 plugin_google_not_found            Не нашел :(
@@ -141,5 +134,4 @@ plugin_currency_too_big_number    Так не бывает!
 plugin_hostip_bad_syntax          Какой адрес?
 plugin_hostip_failed              Не удалось сделать запрос.
 
-plugin_vcard_bad_syntax           Чей вкард?
-plugin_vcard_error                Не удалось вытащить вкард.
+plugin_cerberus_cannot_kick_admin %s, не болтай глупостей как малолетка!

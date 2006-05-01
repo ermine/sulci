@@ -236,3 +236,60 @@ let check_access (jid:jid) classname =
       with Not_found ->
 	 find_acl jid
 	      
+
+type entity = [
+| `User of Xmpp.jid
+| `Nick of string
+| `Mynick of string
+| `You
+| `Host of jid
+]
+
+exception BadEntity
+
+let get_entity text event from =
+   match event with
+      | Message ->
+	   if text = "" then
+	      `You
+	   else begin
+	      try
+		 let jid = jid_of_string text in
+		    if jid.luser = "" then begin
+		       dnsprep jid.lserver;
+		       `Host jid
+		    end
+		    else if from.string = jid.string then
+		       `You
+		    else
+		       `User jid
+	      with _ ->
+		 raise BadEntity
+	   end
+      | MUC_message _ ->
+	   if text = "" then
+	      `You
+	   else
+	      let room = from.luser, from.lserver in
+	      let room_env = GroupchatMap.find room !groupchats in
+		 if room_env.mynick = text then
+		    `Mynick text
+		 else if Nicks.mem text room_env.nicks then
+		    if from.resource = text then
+		       `You
+		    else
+		       `Nick text
+		 else begin
+		    try
+		       let jid = jid_of_string text in
+			  if jid.luser = "" then begin
+			     dnsprep jid.lserver;
+			     `Host jid
+			  end
+			  else
+			     `User jid
+		    with _ ->
+		       raise BadEntity
+		 end
+      | _ ->
+	   raise BadEntity

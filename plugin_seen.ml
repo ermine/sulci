@@ -192,7 +192,7 @@ let seen text event from xml out =
 		       with Not_found -> begin
 			  let stamp = float_of_string result.(1) in
 			  let diff = 
-			     Lang.expand_time ~xml "seen"
+			     Lang.expand_time ~lang:(Lang.get_lang xml) "seen"
 				(int_of_float 
 				    (Unix.gettimeofday () -. stamp)) in
 			     if result.(3) = "" then

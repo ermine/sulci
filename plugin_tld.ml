@@ -13,7 +13,7 @@ let tlds =
       try
 	 opendbm name [Dbm_rdonly] 0o666
       with Dbm_error _ ->
-	 Printf.printf "Cannot open db file %s for plugin_tlds\n" name;
+	 Printf.eprintf "Cannot open db file %s for plugin_tlds\n" name;
 	 Pervasives.exit 127
 
 let tld text event from xml out =

@@ -1,11 +1,13 @@
 OCAMLMAKEFILE = ../OCamlMakefile
 
-VERSION=0.5-alpha-20060331
+include ../Makefile.global
+
+VERSION=0.5-alpha-20060501
 
 include Makefile.conf
 
 SOURCES = version.ml config.ml logger.ml common.ml types.ml lang.ml muc.ml \
-	  find_url.ml muc_log.ml hooks.ml iq.ml http_suck.ml
+	  find_url.ml muc_log.ml hooks.ml iq.ml 
 
 SUBDIRS = lang
 
@@ -14,112 +16,124 @@ SUBDIRS = lang
 #endif
 
 ifdef PLUGIN_GOOGLE
-  SOURCES += plugin_google.ml
+  SOURCES1 += plugin_google.ml
   DEHTML = yes
+  HTTP_SUCK = yes
 endif
 ifdef PLUGIN_YANDEX
-   SOURCES += plugin_yandex.ml
+   SOURCES1 += plugin_yandex.ml
    DEHTML = yes
+   HTTP_SUCK = yes
 endif
 ifdef PLUGIN_CALC
-  SOURCES += math.ml pcalc.mly pcalc_lexer.mll icalc.mly icalc_ulex.ml plugin_calc.ml
+  SOURCES1 += math.ml pcalc.mly pcalc_lexer.mll icalc.mly icalc_ulex.ml plugin_calc.ml
 endif
 ifdef PLUGIN_MUELLER
-  SOURCES += plugin_mueller.ml
+  SOURCES1 += plugin_mueller.ml
+  NETSTRING = yes
 endif
 ifdef PLUGIN_MARKOV
-  SOURCES += plugin_markov.ml
+  SOURCES1 += plugin_markov.ml
   SQLITE = yes
 endif
 ifdef PLUGIN_VOCABULARY
-  SOURCES += plugin_vocabulary.ml
+  SOURCES1 += plugin_vocabulary.ml
 endif
 ifdef PLUGIN_PING
-  SOURCES += plugin_ping.ml
+  SOURCES1 += plugin_ping.ml
 endif
 ifdef PLUGIN_USERINFO
-  SOURCES += plugin_userinfo.ml
+  SOURCES1 += plugin_userinfo.ml
+  NETSTRING = yes
 endif
 ifdef PLUGIN_MISC
-  SOURCES += plugin_misc.ml
+  SOURCES1 += plugin_misc.ml
 endif
 ifdef PLUGIN_ADMIN
-  SOURCES += plugin_admin.ml
+  SOURCES1 += plugin_admin.ml
 endif
 ifdef PLUGIN_DICT
-  SOURCES += plugin_dict.ml
+  SOURCES1 += plugin_dict.ml
 endif 
 ifdef PLUGIN_WEATHER
-  SOURCES += plugin_weather.ml
+  SOURCES1 += plugin_weather.ml
+  HTTP_SUCK = yes
 endif
 ifdef PLUGIN_GLOBALSTATS
-  SOURCES += plugin_globalstats.ml
+  SOURCES1 += plugin_globalstats.ml
 endif
 ifdef PLUGIN_CURRENCY
-  SOURCES += plugin_currency.ml
+  SOURCES1 += plugin_currency.ml
   XMLSTRING_NETSTRING = yes
+  HTTP_SUCK = yes
 endif
 ifdef PLUGIN_TLD
-  SOURCES += plugin_tld.ml
+  SOURCES1 += plugin_tld.ml
   DBM_LIB =  yes
   SUBDIRS += tlds
 endif
 ifdef PLUGIN_ROULETTE
-  SOURCES += plugin_roulette.ml
+  SOURCES1 += plugin_roulette.ml
 endif
 ifdef PLUGIN_SEEN
-  SOURCES += plugin_seen.ml
+  SOURCES1 += plugin_seen.ml
   SQLITE = yes
 endif
 ifdef PLUGIN_TALKERS
-  SOURCES += plugin_talkers.ml
+  SOURCES1 += plugin_talkers.ml
   SQLITE = yes
 endif
 ifdef PLUGIN_CERBERUS
-  SOURCES += plugin_cerberus.ml
+  SOURCES1 += plugin_cerberus.ml
 endif
 ifdef PLUGIN_TRANSLATE
-  SOURCES += plugin_translate.ml
+  SOURCES1 += plugin_translate.ml
+  HTTP_SUCK = yes
 endif
 ifdef PLUGIN_VCARD
-  SOURCES += plugin_vcard.ml
+  SOURCES1 += plugin_vcard.ml
 endif
 ifdef PLUGIN_XMLRPC
-  SOURCES += plugin_xmlrpc.ml
+  SOURCES1 += plugin_xmlrpc.ml
 endif
 ifdef PLUGIN_HOSTIP
-   SOURCES += plugin_hostip.ml
+   SOURCES1 += plugin_hostip.ml
+   HTTP_SUCK = yes
 endif
 
 LANGPACKS = lang/ru_time.ml lang/en_time.ml lang/es_time.ml
 
-SOURCES += $(LANGPACKS) sulci.ml
+ifdef HTTP_SUCK
+   SOURCES += http_suck.ml
+   NETCLIENT = yes
+endif
+
+SOURCES += $(SOURCES1) $(LANGPACKS) sulci.ml
 
 THREADS = yes
 
-PACKS = ulex unix netstring netclient
+PACKS = ulex unix xmpp getopt xmlstring strftime scheduler pcre
 
-INCDIRS = ../libs/getopt ../libs/xml ../xmpp ../libs/xmlstring \
-	  ../libs/scheduler ../libs/strftime
-
-OCAMLLDFLAGS =  nums.cmxa cryptokit.cmxa \
-		getopt.cmxa xml.cmxa xmpp.cmxa xmlstring.cmxa strftime.cmxa \
-		scheduler.cmxa $(CURR_LIB)
-
+ifdef XMLSTRING_NETSTRING
+   NETSTRING = yes
+endif
+ifdef NETSTRING
+   PACKS += netstring
+endif
+ifdef NETCLIENT
+   PACKS += netclient
+endif
 ifdef DBM_LIB
   PACKS += dbm
 endif
 ifdef SQLITE
-  INCDIRS += ../packages/ocaml-sqlite-0.3.5 ../libs/sqlite_util
-  OCAMLLDFLAGS += sqlite.cmxa sqlite_util.cmxa
+  PACKS += sqlite_util
 endif
 ifdef DEHTML
-   INCDIRS += ../libs/dehtml
-    OCAMLLDFLAGS += dehtml.cmxa
+   PACKS += dehtml
 endif
-
 ifdef XMLSTRING_NETSTRING
-  OCAMLLDFLAGS += xmlstring_netstring.cmxa
+   PACKS += xmlstring_netstring
 endif
 
 OCAMLDEP      = ocamldep -package ulex -syntax camlp4o
@@ -129,6 +143,8 @@ RESULT = sulci
 
 .PHONY: subdirs $(SUBDIRS)
 
+include ../Makefile.global
+
 all: nc subdirs
 
 subdirs: $(SUBDIRS)
@@ -137,22 +153,19 @@ $(SUBDIRS):
 	$(MAKE) -C $@
 
 SDIR=/tmp/sulci-$(VERSION)
+LIB_PROJECTS = Makefile.inc xmpp xml xmlstring xmlstring_netstring getopt dehtml cryptokit sqlite sqlite_util scheduler strftime
 
 tarball::
 	rm -rf $(SDIR)
 	mkdir $(SDIR)
 	cp -Rp ../packages $(SDIR)
-	cp -Rp ../xmpp $(SDIR)
-	cp -Rp ../sulci $(SDIR)
+	mkdir $(SDIR)/sulci
+	cp *.ml *.mll *.mly *.mli Makefile Makefile.conf $(SDIR)/sulci
+	cp -Rp tlds fcgi lang utils $(SDIR)/sulci
 	mkdir $(SDIR)/libs
-	cp ../libs/Makefile $(SDIR)/libs
-	cp -Rp ../libs/xml $(SDIR)/libs
-	cp -Rp ../libs/scheduler $(SDIR)/libs
-	cp -Rp ../libs/sqlite_util $(SDIR)/libs
-	cp -Rp ../libs/strftime $(SDIR)/libs
-	cp -Rp ../libs/xmlstring $(SDIR)/libs
-	cp -Rp ../libs/getopt $(SDIR)/libs
-	cp -Rp ../libs/dehtml $(SDIR)/libs
+	for i in $(LIB_PROJECTS); do \
+	   cp -Rp ../libs/$$i $(SDIR)/libs/; \
+	done
 	mkdir $(SDIR)/docs
 	cp -Rp ../doc/sulci $(SDIR)/docs/
 	cp README $(SDIR)/
@@ -161,6 +174,7 @@ tarball::
 	cp ../COPYING $(SDIR)/
 	cp ../ChangeLog $(SDIR)/
 	find -d $(SDIR) -name ".svn" -print0 | xargs -0 -- rm -rf
+	find $(SDIR) -name "*~" -print0 | xargs -0 -- rm -rf
 	tar jcf sulci-$(VERSION).tar.bz2 -C /tmp sulci-$(VERSION)
 	tar zcf sulci-$(VERSION).tar.gz -C /tmp sulci-$(VERSION)
 
@@ -170,7 +184,6 @@ include $(OCAMLMAKEFILE)
 clean::
 	rm -f $(TARGETS) $(TRASH)
 	rm -rf $(BCDIDIR) $(NCDIDIR) $(MLDEPDIR)
-	$(shell unexport TARGETS TRASH BCDIDIR NCDIDIR MLDEPDIR)
 	for dir in $(SUBDIRS); do \
 	   $(MAKE) -C $$dir clean; \
 	done

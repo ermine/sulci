@@ -14,7 +14,7 @@ let _ =
    let server = try 
       trim (Xml.get_cdata config ~path:["jabber"; "server"]) 
    with Not_found ->
-      print_endline "Cannot find servername in config file";
+      Printf.eprintf "Cannot find servername in config file";
       flush stdout;
       Pervasives.exit 127
    in
@@ -25,31 +25,32 @@ let _ =
    let username = try
       trim (Xml.get_cdata config ~path:["jabber"; "user"]) 
    with Not_found ->
-      print_endline "Cannot find username in config file";
+      Printf.eprintf "Cannot find username in config file";
       flush stdout;
       Pervasives.exit 127
    in
    let password = try
       trim (Xml.get_cdata config ~path:["jabber"; "password"])
    with Not_found ->
-      print_endline "Cannot find password in config file";
+      Printf.eprintf "Cannot find password in config file";
       flush stdout;
       Pervasives.exit 127
    in
    let resource = try
       trim (Xml.get_cdata config ~path:["jabber"; "resource"])
    with Not_found ->
-      print_endline "Cannot find resource name in config file";
+      Printf.eprintf "Cannot find resource name in config file";
       flush stdout;
       Pervasives.exit 127
    in
-   let logfile = 
-      try Some (trim (Xml.get_cdata config ~path:["debug"; "logfile"]))
-      with Not_found -> None in
-
+   let rawxml_log = 
+      try Some (trim (Xml.get_cdata config ~path:["log"; "rawxml"]))
+      with Not_found -> None 
+   in
    let run () =
       let jid, out, next_xml = 
-	 Xmpp.client ~username ~password ~resource ?logfile ~server ~port () in
+	 Xmpp.client ~username ~password ~resource ~server ~port 
+	    ?rawxml_log () in
 
 	 Logger.out (Printf.sprintf "Connected to %s!" server);
 

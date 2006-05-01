@@ -1,11 +1,11 @@
 OCAMLMAKEFILE = ../../OCamlMakefile
 
-SOURCES = langcompile.ml
-INCDIRS =
-OCAMLLDFLAGS =
-OCAMLDEP =
-RESULT  = langcompile
-TRASH   = *.htbl
+SOURCES		= langcompile.ml
+INCDIRS		=
+OCAMLLDFLAGS	=
+OCAMLDEP	=
+RESULT		= langcompile
+TRASH		= *.htbl
 
 all: nc langmsgs
 

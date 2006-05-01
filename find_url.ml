@@ -1,114 +1,92 @@
 (* 
- * (c) 2005 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2005, 2006 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *
  * Searches potentional url in text and replace it into hyperlink 
  * 
  * TODO: validate query
  *) 
 
-let regexp port = ":" xml_digit+
+let regexp alpha = ['a'-'z' 'A'-'Z']
+let regexp digit = ['0'-'9']
+let regexp alphadigit = alpha | digit
 
-let regexp schema = ['h''H']['t''T']['t''T']['p''P']['s''S']? 
-   | ['f''F']['t''T']['p''P']
+let regexp safe = "$" | "-" | "_" | "." | "+"
+let regexp extra = "!" | "*" | "'" | "(" | ")" | ","
 
-let regexp space = [' ' '\n' '\r' '\t']
+let regexp national = "{" | "}" | "|" | "\\" | "^" | "~" | "[" | "]" | "`"
+let regexp punctuation = "<" | ">" | "#" | "%" | "\""
 
-let regexp subdomain =
-   (xml_letter | xml_digit) 
-      (xml_letter | xml_digit | '-')* 
-      (xml_letter | xml_digit)
+let regexp unreserved = alpha | digit | safe | extra
+let regexp reserved = [';' '/' '?' ':' '@' '&' '=']
 
-let regexp tld = 
-   subdomain '.'
-      (['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z'] 
-      | ['c''C'] ['o''O'] ['m''M']                           (* com *)
-      | ['n''N'] ['e''E'] ['t''T']                           (* net *)
-      | ['o''O'] ['r''R'] ['g''G']                           (* org *)
-      | ['e''E'] ['d''D'] ['u''U']                           (* edu *)
-      | ['b''B'] ['i''I'] ['z''Z']                           (* biz *)
-      | ['m''M'] ['l''L'] ['i''I']                           (* mil *)
-      | ['x''X'] ['x''X'] ['x''X']                           (* xxx *)
-      | ['i''I'] ['n''N'] ['t''T']                           (* int *)
-      | ['g''G'] ['o''O'] ['v''V']                           (* gov *)
-      | ['i''I'] ['n''N'] ['f''F'] ['o''O']                  (* info *)
-      | ['m''M'] ['u''U'] ['s''S'] ['e''E'] ['u''U'] ['m''M']) (* museum *)
-      
+let regexp hex = ['A' - 'F' 'a'-'f' '0'-'9']
+let regexp escape = "%" hex hex
+
+let regexp uchar = unreserved | escape                                       
+let regexp xchar = unreserved | reserved | escape
+
+let regexp hostnumber = digit "." digit "." digit "." digit
+let regexp toplabel = alpha | alpha (alphadigit | "-")* alphadigit
+let regexp domainlabel = alphadigit | alphadigit (alphadigit | "-")* alphadigit
+let regexp hostname = (domainlabel ".")+ toplabel
+let regexp host = hostname | hostnumber
+
+let regexp port = digit+
+let regexp hostport = host (":" port)?
+
+let regexp wwwhost = ['w''W']['w''W']['w''W'] "."? (domainlabel ".")* toplabel 
+let regexp ftphost = ['f''F']['t''T']['p''P'] "."? (domainlabel ".")* toplabel 
+
+let regexp user = (uchar | ":" | "?" | "&" | "=")*
+let regexp password = (uchar | ":" | "?" | "&" | "=")*
+let regexp urlpath = xchar* 
+let regexp login = (user (":" password)? "@")? hostport
+
+let regexp ftptype = "A" | "I" | "D" | "a" | "i" | "d"
+let regexp fsegment = ( uchar | "?" | ":" | "@" | "&" | "=" )*
+let regexp fpath = fsegment ( "/" fsegment )*
+
+let regexp search = (uchar | ";" | ":" | "@" | "&" | "=")*
+let regexp hsegment = (uchar | ";" | ":" | "@" | "&" | "=")*
+let regexp hpath = hsegment ("/" hsegment)*
+
+let regexp httpurl =
+   "http" "s"? "://" hostport ( "/" hpath ( "?" search )?)?
+   | host ":" port ("/" hpath ("?" search)?)?
+   | hostport "/" hpath ("?" search)?
+   | wwwhost (":" port)? ( "/" hpath ( "?" search )?)?
+
+let enclosed lexbuf offset_begin offset_end =
+   let len = Ulexing.lexeme_length lexbuf in
+      Ulexing.utf8_sub_lexeme lexbuf offset_begin
+         (len - (offset_end + offset_begin))
+
 let rec do_find_url (callback:string -> string) acc = lexer
-   | schema "://" ->
-	let proto = Ulexing.utf8_lexeme lexbuf in
-	let host = host lexbuf in
-	   if host = "" then
-	      let skip = skip lexbuf in
-		 do_find_url callback (acc ^ proto ^ skip) lexbuf
-	   else
-	      let path = query lexbuf in
-	      let url = proto ^ host ^ path in
-		 if url_end lexbuf then
-		    do_find_url callback (acc ^ callback url) lexbuf
-		 else
-		    do_find_url callback (acc ^ url ^ skip lexbuf) lexbuf
-   | ['w''W']['w''W']['w''W'] | ['f''F']['t''T']['p''P'] ->
-	Ulexing.rollback lexbuf;
-	let host = host lexbuf in
-	   if host = "" then
-	      let skip = skip lexbuf in
-		 do_find_url callback (acc ^ skip) lexbuf
-	   else
-	      let query = query lexbuf in
-	      let url = host ^ query in
-		 do_find_url callback (acc ^ callback url) lexbuf
-   | eof -> 
+   | httpurl ->
+	let url = Ulexing.utf8_lexeme lexbuf in
+	   do_find_url callback (acc ^ callback url) lexbuf
+
+   | "(" httpurl ")" ->
+	let url = enclosed lexbuf 1 1 in
+	   do_find_url callback (acc ^ "(" ^ callback url ^ ")") lexbuf	
+
+   | "ftp://" login ( "/" fpath ( ";type=" ftptype )?)?
+   | ftphost ( "/" fpath ( ";type=" ftptype )?)? ->
+	let url = Ulexing.utf8_lexeme lexbuf in
+	   do_find_url callback (acc ^ callback url) lexbuf
+
+   | eof ->
 	acc
-   | _ ->
+
+   | punctuation
+   | national
+   | "(" ->
 	do_find_url callback (acc ^ Ulexing.utf8_lexeme lexbuf) lexbuf
 
-and url_end = lexer
-   | xml_letter | xml_digit ->
-	Ulexing.rollback lexbuf;
-	false
-   | eof ->
-	Ulexing.rollback lexbuf;
-	true
-   | _ -> 
-	Ulexing.rollback lexbuf;
-	true
-
-and host = lexer
-   | (subdomain '.')* tld port? ->
-	Ulexing.utf8_lexeme lexbuf
-   | eof ->
-	Ulexing.rollback lexbuf;
-	""
    | _ ->
 	Ulexing.rollback lexbuf;
-	""
-
-and query = lexer
-   | "/" ->
-	let path = "/" ^ path "" lexbuf in
-	   path
-   | eof -> 
-	Ulexing.rollback lexbuf;
-	""
-   | _ ->   
-	Ulexing.rollback lexbuf;
-	""
-
-and path acc = lexer
-   | ['.' ',' '?' '!' ':' ';' '(' ')' '-''|']+ (space | eof) ->
-	Ulexing.rollback lexbuf;
-	acc
-   | [ '<' '>'] | "&lt;" | "&gt;"  ->
-	Ulexing.rollback lexbuf;
-	acc
-   | space ->
-	Ulexing.rollback lexbuf;
-	acc
-   | eof ->
-	Ulexing.rollback lexbuf;
-	acc
-   | _ ->
-	path (acc ^ Ulexing.utf8_lexeme lexbuf) lexbuf
+	let skip = skip lexbuf in
+	   do_find_url callback (acc ^ skip) lexbuf
 
 and skip = lexer
    | [^ ' ' '\r' '\n' '\t' '.' ',' '|' ';']+ ->
@@ -118,6 +96,35 @@ and skip = lexer
 	""
    | _ ->
 	Ulexing.utf8_lexeme lexbuf
+
+
+(*
+let valid_tld =
+   [ "aero";
+     "biz";
+     "cat";
+     "com";
+     "coop";
+     "edu";
+     "eu";
+     "gov";
+     "info";
+     "int";
+     "jobs";
+     "mil";
+     "mobi";
+     "museum";
+     "name";
+     "net";
+     "org";
+     "pro";
+     "travel";
+     "asia";
+     "post";
+     "tel";
+     "xxx"
+   ]
+*)
 
 let find_url callback text =
    let lexbuf = Ulexing.from_utf8_string text in
@@ -147,10 +154,15 @@ let _ =
       match list with
 	 | [] -> ()
 	 | text :: s ->
-	      print_endline (find_url make_hyperlink text);
+	      Printf.printf "Orig: %s\n" text;
+	      Printf.printf "Result: %s\n\n"
+		 (find_url make_hyperlink text);
 	      scan s
    in
       scan ["www.ytro.ru";
+	    "(www.jabber.ru/index.html)";
+	    "[www.jabber.ru/index.html]";
+	    "{www.jabber.ru/index.htm}";
 	    "http://www.ytro.ru";
 	    "abc http://http://www.ytro.ru. - 20 k";
 	   " def: www.jabber.ru, ftp.jabber.ru i dr.";
@@ -159,5 +171,5 @@ let _ =
 	   "http://";
 	   "http://internet.rumus www.jabber.ru - 20k";
 	   "http://abc.MuSeUm/def.php";
-	   "ftp.i.ru"]
+	   "(ftp.ir.ru)"]
 *)

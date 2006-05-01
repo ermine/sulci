@@ -1,3 +1,17 @@
+error_server_feature_not_implemented   The server %s does not implement this feature
+error_client_feature_not_implemented   %s's client does not implement this feature
+error_remote_server_timeout    The server %s is not available
+error_remote_server_not_found  Does the server %s exist?
+
+error_server_service_unavailable      Currently this service at %s is unavailable
+error_your_service_unavailable      Currently your service is unavailable
+error_client_service_unavailable    Currently %s's service is unavailable
+error_recipient_unavailable         %s is temporaly unavailable 
+error_not_allowed                 Nobody allows me to ask %s
+error_any_error                   Failed to ask %s.
+
+invalid_entity                 What? Whom?
+
 muc_log_join                   %s has become available
 muc_log_leave                  %s has left
 muc_log_leave_reason           %s has left: %s
@@ -19,30 +33,23 @@ plugin_calc_negative_number        Impossible..
 plugin_markov_kick_reason      Filtering out badwords
 plugin_markov_kick_error       Bad moderator!
 plugin_markov_phrase_is_ignored Phrase is ignored
+
 plugin_ping_pong_from_me       For me pong from the server is %s
 plugin_ping_pong_from_you      Pong from you: %s
 plugin_ping_pong_from_somebody Pong from %s: %s
-plugin_ping_error              n/a [%s]
-plugin_ping_cannot_ping            Sorry, I cannot ping %s
-plugin_ping_you_error              The information about you is secret
 
-plugin_userinfo_error              The information is secret
-plugin_userinfo_version_you        your client is %s %s - %s
-plugin_userinfo_version_somebody   %s's client is %s %s - %s
-plugin_userinfo_version_server_invalid_jid Invalid server's name
-plugin_userinfo_version_server     %s is running %s %s (%s)
-plugin_userinfo_version_server_not_implemented  %s does not know anything about its version
-plugin_userinfo_version_server_remote_server_timeout Timeout...
-plugin_userinfo_version_server_remote_server_not_found It seems on %s there is no jabber server
-plugin_userinfo_version_server_error The information is secret
+plugin_userinfo_status_whose       Whose status?
 plugin_userinfo_idle_me            I am not silent at all!
 plugin_userinfo_idle_you           You are silent %s
 plugin_userinfo_idle_somebody      %s is silent %s
-plugin_userinfo_chat_syntax_error  "%s" is ignored
+plugin_userinfo_uptime             %s's uptime is %s
+plugin_userinfo_version_you        your client is %s %s - %s
+plugin_userinfo_version_somebody   %s's client is %s %s - %s
+plugin_userinfo_version_server     %s is running %s %s (%s)
 plugin_userinfo_time_me            it's %s here
 plugin_userinfo_time_you           It's %s on your watch
 plugin_userinfo_time_somebody      It's %s on %s's watch
-plugin_userinfo_status_whose       Whose status?
+plugin_userinfo_time_server        at %s there is %s
 
 plugin_roulette_syntax_error       Take a gun from father and try...
 plugin_roulette_kick_reason        Pops!
@@ -64,18 +71,6 @@ plugin_vocabulary_records          %s records
 
 plugin_misc_dns_invalid_syntax     what dns?
 plugin_misc_dns_not_resolved       cannot resolve
-
-plugin_globalstats_uptime          %s's uptime is %s
-plugin_globalstats_uptime_invalid_syntax Servername, dear sister!
-plugin_globalstats_uptime_error    Information is secret
-plugin_globalstats_uptime_not_implemented This server does not know how long it works
-plugin_globalstats_uptime_remote_server_not_found This server is not an jabber-server
-plugin_globalstats_stats_bad_servername It seems %s is not a server
-plugin_globalstats_stats_not_implemented %s does not support stats
-plugin_globalstats_stats_remote_server_timeout Сервер Cannot connect to %s - timeout.
-plugin_globalstats_stats_remote_server_not_found Are you sure if %s exists?
-plugin_globalstats_stats_service_unavailable Statistic from %s is temporarily unavailable
-plugin_globalstats_stats_server_error     Failed to ask %s's stats
 
 plugin_google_invalid_syntax       hm?
 plugin_google_not_found            Not found :(
@@ -135,5 +130,4 @@ plugin_currency_too_big_number    it's impossible to have so much money
 plugin_hostip_bad_syntax          Please give an address.
 plugin_hostip_failed              Failed to make a request
 
-plugin_vcard_bad_syntax           Whose vCard?
-plugin_vcard_error                Failed to request a vCard
+plugin_cerberus_cannot_kick_admin %s, what do you say?

@@ -115,7 +115,6 @@ let invite text event from xml (out:element -> unit) =
       with exn ->
 	 make_msg out xml "hmm?"
    
-
 let lang_update text event from xml out =
    if check_access from "admin" then
       if text = "" then
@@ -123,6 +122,27 @@ let lang_update text event from xml out =
       else
 	 make_msg out xml (Lang.update text)
 
+
+let lr = Pcre.regexp "([a-z][a-z])\\s+(\\w+)(\\s+(.+))?"
+
+let lang_admin text event from xml out =
+   if check_access from "admin" then
+      if text = "" then
+	 make_msg out xml "en msgid string"
+      else
+	 try
+	    let r = Pcre.exec ~rex:lr text in
+	    let lang = Pcre.get_substring r 1
+	    and msgid = Pcre.get_substring r 2
+	    and str = try Some (Pcre.get_substring r 4) with Not_found -> None 
+	    in
+	       try
+		  Lang.update_msgid lang msgid str;
+		  make_msg out xml "done"
+	       with _ ->
+		  make_msg out xml "problems"
+	 with _ ->
+	    make_msg out xml "invalid syntax"
 
 (* TODO: it is scratch *)
 
@@ -152,4 +172,5 @@ let _ =
    register_handle (Command ("leave", leave));
    register_handle (Command ("invite", invite));
    register_handle (Command ("lang_update", lang_update));
+   register_handle (Command ("lang_msgid", lang_admin));
    register_handle (Command ("sulci_set", sulci_set));

@@ -1,5 +1,5 @@
 (*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
+(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
 (*                                                                          *)
 
 open Common
@@ -112,8 +112,7 @@ let update lang =
    with exn ->
       Printexc.to_string exn
 
-let expand_time ~xml cause seconds =
-   let lang = get_lang xml in
+let expand_time ~lang cause seconds =
    let year, month, day, hour, min, sec = Strftime.seconds_to_string seconds in
    let f =
       try
@@ -139,3 +138,19 @@ let float_seconds ?xml ?lang cause seconds =
 	 (LangTime.find deflang !langtime).float_seconds
    in
       f cause seconds
+
+let update_msgid (lang:string) (msgid:string) (str:string option) =
+   let htbl = LangMap.find lang !langmsgs in
+      begin match str with
+	 | None -> Hashtbl.remove htbl msgid
+	 | Some data ->
+	      if Hashtbl.mem htbl msgid then
+		 Hashtbl.replace htbl msgid data
+	      else
+		 Hashtbl.add htbl msgid data;
+      end;
+      let dir = 
+	 try trim (get_attr_s Config.config ~path:["lang"] "dir")
+	 with Not_found -> "" in
+      let mout = open_out_bin (Filename.concat dir (lang ^ ext)) in
+	 Marshal.to_channel mout htbl []

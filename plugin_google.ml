@@ -21,11 +21,14 @@ open Http_suck
    "oe"         (output encoding). 
 *)
 
-let google_key = trim (Xml.get_cdata Config.config 
-			  ~path:["plugins"; "google"; "key"])
+let google_key = 
+   try trim (Xml.get_cdata Config.config 
+		~path:["plugins"; "google"; "key"]) with Not_found ->
+      Printf.eprintf "Cannot find an google key in config file\n";
+      Pervasives.exit 127
 
 let make_query start maxResults query =
-   let filter = "true" in
+   let filter = "false" in
    Xmlelement
       ("SOAP-ENV:Envelope",
        ["xmlns:SOAP-ENV", "http://schemas.xmlsoap.org/soap/envelope/";
@@ -91,7 +94,8 @@ let strip_html text =
 
 let strip_html = Dehtml.html2text
 
-let message result =
+let message items =
+   let count = ref 0 in
    let text item tag = strip_html (get_cdata item ~path:[tag]) in
    let rec cycle lst acc = 
       if lst = [] then acc
@@ -99,7 +103,9 @@ let message result =
 	 let item = List.hd lst in
 	 let chunked = match item with
 	    | Xmlelement (_, _, _) ->
-		 Printf.sprintf "%s%s%s%s - %s"
+		 incr count;
+		 Printf.sprintf "%d: %s%s%s%s%s\n"
+		    !count
 		    (let t = text item "title" in
 			if t = "" then "" else t ^ "\n")
 		    (let t = text item "summary" in
@@ -107,12 +113,22 @@ let message result =
 		    (let t = text item "snippet" in
 			if t = "" then "" else t ^ "\n")
 		    (get_cdata item ~path:["URL"])
-		    (text item "cachedSize");
+		    (let t = text item "cachedSize" in 
+			if t = "" then "" else " - " ^ t)
 	    | _ -> ""
 	 in
 	    cycle (List.tl lst) (acc ^ chunked)
    in
-      cycle (get_subels result) ""
+      cycle items ""
+
+let one_message item =
+   let text tag = strip_html (get_cdata item ~path:[tag]) in
+      Printf.sprintf "%s%s%s"
+	 (let t = text "title" in if t = "" then "" else t ^ "\n")
+	 (let t = text "summary" in if t = "" then "" else t ^ "\n")
+	 (let t = text "snippet" in if t = "" then "" else t),
+   (get_cdata item ~path:["URL"]) ^ 
+      (let t = text "cachedSize" in if t = "" then "" else " - " ^ t)
 
 let xmldecl = "<?xml version='1.0' encoding='UTF-8' ?>\r\n"
 
@@ -171,28 +187,38 @@ let google ?(start="0") ?(items="1") text event from xml out =
       make_msg out xml (Lang.get_msg ~xml "plugin_google_invalid_syntax" [])
    else
       let callback data =
-	 let resp = match data with
+	 let resp, tail = match data with
 	    | OK content ->
 		 let parsed = Xmlstring.parse_string content in
 		 let result = Xml.get_tag parsed ["SOAP-ENV:Body"; 
 						  "ns1:doGoogleSearchResponse";
 						  "return";
-						  "resultElements"] 
-		 in
-		 let r = message result in
-		    if r = "" then
-		       Lang.get_msg ~xml "plugin_google_not_found" []
-		    else r
+						  "resultElements"] in
+		    if items = "1" then
+		       let item = get_tag result ["item"] in
+		       let r1, r2 = one_message item in
+			  if r1 = "" && r2 = "" then
+			     (Lang.get_msg ~xml "plugin_google_not_found" [], 
+			      "")
+			  else
+			     r1, r2
+		    else
+		       let r = message (get_subels result) in
+			  if r = "" then
+			     (Lang.get_msg ~xml "plugin_google_not_found" [],
+			      "")
+			  else r, ""
 	    | Exception exn ->
 		 match exn with
 		    | ClientError ->
-			 Lang.get_msg ~xml "plugin_google_server_404" []
+			 Lang.get_msg ~xml "plugin_google_server_404" [], ""
 		    | ServerError ->
-			 Lang.get_msg ~xml "plugin_google_server_error" []
+			 Lang.get_msg ~xml "plugin_google_server_error" [], ""
 		    | _ ->
-			 Lang.get_msg ~xml "plugin_google_server_error" []
+			 Lang.get_msg ~xml "plugin_google_server_error" [], ""
 	 in
-	    make_msg out xml resp
+	 let response_tail = if tail = "" then None else Some tail in
+	    make_msg out xml ?response_tail resp 
       in
       let soap = make_query start items text in
 	 Http_suck.http_post "http://api.google.com/search/beta2"
