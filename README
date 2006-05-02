@@ -15,7 +15,7 @@ To compile, you need previously installed:
 * ulex
      http://www.cduce.org/download/
      It is strongly recomended to use version 0.7
-* ocamlfind
+* ocamlfind (findlib-1.1.2pl1)
      http://www.ocaml-programming.de/packages/documentation/findlib/
 * ocamlnet 1.1+
      http://sourceforge.net/projects/ocamlnet

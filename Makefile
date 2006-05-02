@@ -160,7 +160,7 @@ tarball::
 	mkdir $(SDIR)
 	cp -Rp ../packages $(SDIR)
 	mkdir $(SDIR)/sulci
-	cp *.ml *.mll *.mly *.mli Makefile Makefile.conf $(SDIR)/sulci
+	cp *.ml *.mll *.mly Makefile Makefile.conf $(SDIR)/sulci
 	cp -Rp tlds fcgi lang utils $(SDIR)/sulci
 	mkdir $(SDIR)/libs
 	for i in $(LIB_PROJECTS); do \
