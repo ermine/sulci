@@ -1,6 +1,6 @@
-(*                                                                          *)
-(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
-(*                                                                          *)
+(*
+ * (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ *)
 
 open Xml
 open Xmpp
@@ -71,7 +71,7 @@ let ping text event from xml (out:element -> unit) =
       in
       let id = new_id () in
 	 register_handle (Id (id, proc));
-	 out (iq_query ~to_ ~xmlns:"jabber:iq:version" ~id ~type_:`Get ())
+	 out (make_iq ~to_ ~xmlns:"jabber:iq:version" ~id ~type_:`Get ())
    with _ ->
       make_msg out xml (Lang.get_msg ~xml "invalid_entity" [])
 		  

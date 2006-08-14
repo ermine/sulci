@@ -1,6 +1,6 @@
-(*                                                                          *)
-(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
-(*                                                                          *)
+(*
+ * (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ *)
 
 open Xml
 open Xmpp
@@ -114,7 +114,7 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
 		    in
 		    let id = new_id () in
 		       register_handle (Id (id, proc));
-		       out (iq_query ~to_ ~id ~type_:`Get ?query_tag ~xmlns 
+		       out (make_iq ~to_ ~id ~type_:`Get ?query_tag ~xmlns 
 			       ?subels:query_subels ())
       with _ ->
 	 make_msg out xml (Lang.get_msg ~xml "invalid_entity" [])

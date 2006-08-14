@@ -1,6 +1,6 @@
-(*                                                                          *)
-(* (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>        *)
-(*                                                                          *)
+(*
+ * (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ *)
 
 open Common
 open Xml
@@ -229,7 +229,7 @@ let leave_room ?reason (luser, lserver) =
 	 ~type_:`Unavailable ?status:reason ()
 
 let kick ?reason id (luser, lserver) nick =
-   iq_query ~id ~to_:(luser ^ "@" ^ lserver) ~type_:`Set
+   make_iq ~id ~to_:(luser ^ "@" ^ lserver) ~type_:`Set
       ~xmlns:"http://jabber.org/protocol/muc#admin"
       ~subels:[Xmlelement ("item", ["nick", nick; "role", "none"],
 			   (match reason with
@@ -239,7 +239,7 @@ let kick ?reason id (luser, lserver) nick =
 			  )] ()
 
 let ban id ?reason (luser,lserver) (jid:string) =
-   iq_query ~id ~to_:(luser ^ "@" ^ lserver)
+   make_iq ~id ~to_:(luser ^ "@" ^ lserver)
       ~xmlns:"http://jabber.org/protocol/muc#admin" ~type_:`Set
       ~subels:[Xmlelement ("item", ["affiliation", "outcast"; "jid", jid], 
 			   (match reason with

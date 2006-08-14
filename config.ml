@@ -1,6 +1,6 @@
-(*                                                                          *)
-(* (c) 2004, 2005 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
-(*                                                                          *)
+(*
+ * (c) 2004, 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ *)
 
 open Xml
 open Xmlstring
@@ -15,9 +15,11 @@ let config =
       Pervasives.exit 0
    in
    let configfile = ref "./sulci.conf" in
+   let create_account = ref false in
    let opts = ["v", "version", OptEmpty, "Show version", Some version;
-	       "c", "config", OptString !configfile, "Path to config file", 
-	       None] in
+	       "c", "config", OptString !configfile, "Path to config file", None;
+	       "r", "register", OptEmpty, "Create an account", None
+	      ] in
    let parsed = Getopt.parse ~help:true opts in
       List.iter (fun (a,b) ->
 		    match a with
@@ -26,6 +28,9 @@ let config =
 			    (match b with
 				| OptString str -> configfile := str
 				| _ -> ())
+		       | Shortopt "r"
+		       | Longopt "register" ->
+			    create_account := true
 		       | _ -> ()
 		) parsed;
 

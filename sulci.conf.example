@@ -13,7 +13,10 @@
  -->
  <reconnect interval='10' count='3' />
 
- <lifelog>./sulci_life.log</lifelog>
+ <log>
+  <report>report.log</report>
+  <rawxml>rawxml.log</rawxml>
+ </log>
 
  <lang dir="./lang" default="ru"/>
 
@@ -25,12 +28,6 @@
 
   <chatlogs>./chatlogs</chatlogs>
  </muc>
-
- <!-- produces raw xml log
- <debug>
-  <logfile>log.log</logfile>
- </debug>
- -->
 
  <plugins>
 

@@ -60,6 +60,9 @@ let _ =
 	 Sys.set_signal Sys.sigterm
 	    (Sys.Signal_handle (function x -> Hooks.quit out));
       
+	 (* workaround for wildfire *)
+         out (make_presence ());
+
 	 List.iter (fun proc -> 
 		       try proc out with exn -> 
 			  Logger.print_exn "sulci.ml" exn) !onstart;
@@ -104,8 +107,15 @@ let _ =
 			times);
 	      end;
 	      reconnect (times - 1)
-	 | Auth.AuthError ->
-	      Logger.out "Authorization failed";
+	 | Auth.Failure cond ->
+	      Logger.out ("Auth.Failure: " ^ cond);
+	      (match cond with
+		 | "non-authorized" ->
+		      print_endline "will register"
+		 | _ -> ()
+	      )
+	 | Auth.AuthError reason ->
+	      Logger.out ("Authorization failed: " ^ reason);
 	      Pervasives.exit 127
 	 | Xmpp.XMPPStreamEnd ->
 	      Logger.out "The connection to the server is lost";
