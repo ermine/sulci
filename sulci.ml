@@ -107,14 +107,14 @@ let _ =
 			times);
 	      end;
 	      reconnect (times - 1)
-	 | Auth.Failure cond ->
+	 | Sasl.Failure cond ->
 	      Logger.out ("Auth.Failure: " ^ cond);
 	      (match cond with
 		 | "non-authorized" ->
 		      print_endline "will register"
 		 | _ -> ()
 	      )
-	 | Auth.AuthError reason ->
+	 | Sasl.AuthError reason ->
 	      Logger.out ("Authorization failed: " ^ reason);
 	      Pervasives.exit 127
 	 | Xmpp.XMPPStreamEnd ->
