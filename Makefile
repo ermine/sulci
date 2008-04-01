@@ -38,6 +38,7 @@ ifdef PLUGIN_MARKOV
 endif
 ifdef PLUGIN_VOCABULARY
   SOURCES1 += plugin_vocabulary.ml
+  SQLITE = yes
 endif
 ifdef PLUGIN_PING
   SOURCES1 += plugin_ping.ml
@@ -99,6 +100,9 @@ endif
 ifdef PLUGIN_HOSTIP
    SOURCES1 += plugin_hostip.ml
    HTTP_SUCK = yes
+endif
+ifdef PLUGIN_1APRIL
+   SOURCES1 += plugin_1april.ml
 endif
 
 LANGPACKS = lang/ru_time.ml lang/en_time.ml lang/es_time.ml
