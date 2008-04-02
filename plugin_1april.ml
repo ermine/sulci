@@ -99,8 +99,8 @@ let divide_group group out =
 	    Hashtbl.add groups newgroup 
 	       {rate = init_rate (); participants = set_of_list g2};
 	    update_group newgroup g2;
-	    Printf.fprintf log "%s Divide group %d -> %d and %d\n"
-	       (ltime ()) group group newgroup;
+	    Printf.fprintf log "%s Divide group %d -> %d (%d) and %d (%d)\n"
+	       (ltime ()) group group (List.length g1) newgroup (List.length g2);
 	    flush log
 	    
 let union_groups group1 group2 out =
@@ -111,8 +111,9 @@ let union_groups group1 group2 out =
 	  participants = UserGroup.union g1.participants g2.participants};
       Hashtbl.remove groups group2;
       update_group group1 (UserGroup.elements g2.participants);
-      Printf.fprintf log "%s Union groups %d and %d\n"
-	 (ltime ()) group1 group2;
+      Printf.fprintf log "%s Union groups %d (%d) and %d (%d)\n"
+	 (ltime ()) group1 (UserGroup.cardinal g1.participants)
+	 group2 (UserGroup.cardinal g2.participants);
       flush log
 
 let add_group (group:int) ((u, s, r) as user) out =
@@ -189,12 +190,11 @@ let dispatch from body_s out =
    try
       let data = Hashtbl.find ht (from.luser, from.lserver) in
       let group = Hashtbl.find groups data.group in
-      let () =
-	 Printf.fprintf log "%s Message [%d] (%s@%s/%s)\n%s\n\n"
-	    (ltime ()) data.group from.user from.server from.resource body_s;
-	 flush log
-      in
       let newrate = update_rate group.rate 100 in
+	 Printf.fprintf log "%s Message [%d] (%g) (%s@%s/%s)\n%s\n\n"
+	    (ltime ()) data.group group.rate.lastrate 
+	    from.user from.server from.resource body_s;
+	 flush log;
 	 Hashtbl.replace groups data.group {group with rate = newrate};
 	 if newrate.lastrate >= !maxrate then
 	    divide_group data.group out;
