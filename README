@@ -8,13 +8,12 @@ It is an Jabber bot
 
 To compile, you need previously installed:
 
-* Ocaml 3.08.3
+* Ocaml 3.10.2
      www.ocaml.org
 * cryptokit
      http://cristal.inria.fr/~xleroy/software.html
-* ulex
+* ulex 1.0
      http://www.cduce.org/download/
-     It is strongly recomended to use version 0.7
 * ocamlfind (findlib-1.1.2pl1)
      http://www.ocaml-programming.de/packages/documentation/findlib/
 * ocamlnet 1.1+
