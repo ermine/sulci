@@ -61,7 +61,7 @@ let parse_content content =
 let load_curr () =
    let callback data =
       match data with
-	 | OK content -> 
+	      | OK (_media, _charset, content) -> 
 	      Logger.out "Plugin_currency: successfully fetched data";
 	      parse_content content;
 	 | Exception exn ->

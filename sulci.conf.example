@@ -2,7 +2,7 @@
  <jabber>
   <server>jabber.ru</server>
   <port>5222</port>
-  <user>sxxxx</user>
+  <user>xxxx</user>
   <resource>Ocaml</resource>
   <password>secret</password>
  </jabber>
@@ -24,7 +24,7 @@
  
  <muc msg_limit="400">
   <!--  <room nick="sulci-test" jid="z@conference.jabber.ru" lang="ru"/> -->
-  <room nick="sulci" jid="ejabberd@conference.jabber.ru" lang="en"/>
+  <room nick="sulci" jid="some@conference.jabber.ru" lang="en"/>
 
   <chatlogs>./chatlogs</chatlogs>
  </muc>

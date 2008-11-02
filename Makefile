@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.5-alpha-20060814
+VERSION=0.5-alpha-20081102
 
 include Makefile.conf
 
@@ -90,6 +90,10 @@ endif
 ifdef PLUGIN_TRANSLATE
   SOURCES1 += plugin_translate.ml
   HTTP_SUCK = yes
+endif
+ifdef PLUGIN_GOOGLE_TRANSLATE
+   SOURCES1 += plugin_google_translate.ml
+   HTTP_SUCK = yes
 endif
 ifdef PLUGIN_VCARD
   SOURCES1 += plugin_vcard.ml

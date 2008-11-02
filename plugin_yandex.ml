@@ -15,7 +15,7 @@ let blogs text event from xml out =
       let callback data =
 	 let response_tail = ref None in
 	 let resp = match data with
-	    | OK content ->
+	   | OK (_media, _charset, content) ->
 		 let parsed = Xmlstring_netstring.parse_string content in
 		    (try
 			let item = Xml.get_tag parsed ["channel"; "item"] in

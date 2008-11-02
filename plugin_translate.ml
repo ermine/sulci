@@ -67,7 +67,7 @@ let rex2 = Pcre.regexp ~flags:[`DOTALL; `UTF8]
 let do_request lang text xml out =
    let callback data =
       let resp = match data with
-	 | OK content ->
+	 | OK (_media, _charset, content) ->
               let wml = Xmlstring.parse_string content in
               let p = Xml.get_tag wml ["card";"p"] in
 		 (match p with

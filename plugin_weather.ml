@@ -87,7 +87,7 @@ let weather text event from xml out =
    if pmatch ~rex:r text then
       let callback data =
 	 let resp = match data with
-	    | OK body ->
+	   | OK (_media, _charset, body) ->
 		 parse_weather body
 	    | Exception exn ->
 		 match exn with 

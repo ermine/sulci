@@ -31,7 +31,7 @@ let hostip text event from xml out =
 		    ip in
 		 let callback data =
 		    match data with
-		       | OK content ->
+		      | OK (_media, charset, content) ->
 			    make_msg out xml ("\n" ^ (Xml.encode content))
 		       | _ ->
 			    make_msg out xml (Lang.get_msg ~xml 

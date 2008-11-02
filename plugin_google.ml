@@ -157,7 +157,7 @@ let gspell text event from xml out =
       let query = element_to_string soap in
       let callback data =
 	 let resp = match data with
-	    | OK content ->
+	   | OK (_media, _charset, content) ->
 		 let parsed = Xmlstring.parse_string content in
 		 let response = 
 		    Xml.get_cdata parsed 
@@ -188,7 +188,7 @@ let google ?(start="0") ?(items="1") text event from xml out =
    else
       let callback data =
 	 let resp, tail = match data with
-	    | OK content ->
+	   | OK (_media, _charset, content) ->
 		 let parsed = Xmlstring.parse_string content in
 		 let result = Xml.get_tag parsed ["SOAP-ENV:Body"; 
 						  "ns1:doGoogleSearchResponse";
