@@ -125,7 +125,8 @@ let translate_text sl tl text xml out =
             let enc = 
               match charset with
                 | None -> `Enc_iso88591
-                | Some v -> encoding_of_string v
+                | Some v ->
+                    encoding_of_string v
             in
             let data =
               if enc <> `Enc_utf8 then
@@ -148,8 +149,9 @@ let translate_text sl tl text xml out =
       make_msg out xml resp
   in
   let url = "http://translate.google.com/translate_t" in
-  let data = Printf.sprintf "hl=en&ie=UTF-8&sl=%s&tl=%s&text=%s"
-    sl tl (Netencoding.Url.encode (Xml.decode text)) in
+  let data = Printf.sprintf "langpair=%s|%s&ie=UTF8&oe=UTF8&text=%s"
+    sl tl (Xml.decode text)
+  in
     Http_suck.http_post url [] data callback
 
 (* gtr er ru text *)
@@ -177,5 +179,5 @@ let translate text event from xml out =
 		      make_msg out xml 
 		        (Lang.get_msg ~xml "plugin_seen_bad_syntax" [])
       
-let _ =
+let _ = 
   Hooks.register_handle (Hooks.Command ("gtr", translate))

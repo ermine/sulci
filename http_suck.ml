@@ -118,11 +118,9 @@ let http_post url headers data callback =
   let h = p # request_header `Base in
     p # set_request_uri url;
     List.iter (fun (key, value) -> h # update_field key value) headers;
-    
     let b = new Netmime.memory_mime_body data in
       p # set_request_body b;
       h # update_field "Content-length" (string_of_int (String.length data));
-      
       request p callback
 
 let _ =
