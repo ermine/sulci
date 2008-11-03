@@ -122,15 +122,16 @@ let translate_text sl tl text xml out =
     let resp = match data with
 	    | OK (media, charset, content) -> (
           try
-            let data =
+            let enc = 
               match charset with
-                | None -> content
-                | Some v ->
-                    let enc = encoding_of_string v in
-                      if enc <> `Enc_utf8 then
-                        convert ~in_enc:enc ~out_enc:`Enc_utf8 content
-                      else
-                        content
+                | None -> `Enc_iso88591
+                | Some v -> encoding_of_string v
+            in
+            let data =
+              if enc <> `Enc_utf8 then
+                convert ~in_enc:enc ~out_enc:`Enc_utf8 content
+              else
+                content
             in
             let ch = new Netchannels.input_string data in
             let doc = parse ~dtd:relaxed_html40_dtd ~return_declarations:false
@@ -139,7 +140,7 @@ let translate_text sl tl text xml out =
                 | None -> ""
                 | Some v -> v
           with exn ->
-            Printexc.to_string exn
+            Lang.get_msg ~xml "conversation_trouble" []
         )
 	    | Exception exn ->
           Printexc.to_string exn
