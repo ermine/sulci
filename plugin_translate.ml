@@ -1,120 +1,135 @@
-(*                                                                          *)
-(* (c) 2005, 2006 Anastasia Gornostaeva. <ermine@ermine.pp.ru>              *)
-(*                                                                          *)
+(*
+ * (c) 2005-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ *)
 
 (* wap.translate.ru/default.asp?cp=cyr&dir=er&source=hello *)
 
 open Pcre
+open Nethtml
 open Xml
 open Printf
 open Common
 open Http_suck
 
-let languages = [
-   "er", "English-Russian";
-   "re", "Russian-English";
-   "gr", "German-Russian";
-   "rg", "Russian-German";
-   "fr", "French-Russian";
-   "rf", "Russian-French";
-   "sr", "Spanish-Russian";
-   "rs", "Russian-Spanish";
-   "ir", "Italian-Russian";
-   "eg", "English-German";
-   "ge", "German-English";
-   "es", "English-Spanish";
-   "se", "Spanish-English";
-   "ef", "English-French";
-   "fe", "French-English";
-   "ep", "English-Portuguese"
-]
-
-let langmap = [
-   "en", ["ru"; "ge"; "sp"; "fr"; "pt"];
-   "ru", ["en"; "ge"; "fr"; "sp"];
-   "fr", ["en"; "ru"; "sp"];
-   "ge", ["ru"; "en"];
-   "sp", ["ru"; "en"];
-   "it", ["ru"]
+let langpairs = [
+  "er", "English-Russian";
+  "re", "Russian-English";
+  "gr", "German-Russian";
+  "rg", "Russian-German";
+  "fr", "French-Russian";
+  "rf", "Russian-French";
+  "ir", "Italian-Russian";
+  "sr", "Spanish-Russian";
+  "rs", "Russian-Spanish";
+  "eg", "English-German";
+  "ge", "German-English";
+  "ef", "English-French";
+  "fe", "French-English";
+  "fg", "French-German";
+  "gf", "German-French";
+  "es", "English-Spanish";
+  "se", "Spanish-English";
+  "fs", "French-Spanish";
+  "sf", "Spanish-French";
+  "ep", "English-Portuguese";
+  "pe", "Portuguese-English";
+  "gs", "German-Spanish";
+  "sg", "Spanish-German";
+  "ie", "Italian-Englsish"
 ]
 
 let do_list =
-   let list = "\n" ^ String.concat "\n" 
-      (List.map (fun (a,b) -> a ^ "\t" ^ b) languages)
-   in
-      fun xml out -> make_msg out xml list
-
-let  do_map =
-   let list = "\n" ^ String.concat "\n"
-      ((List.map (fun (a, l) -> a ^ " [" ^ String.concat ", " l ^ "]") langmap))
-   in
-      fun xml out -> make_msg out xml list
+  let list = "\n" ^ String.concat "\n"
+    ((List.map (fun (a, l) -> a ^ "\t" ^ l) langpairs))
+  in
+    fun xml out -> make_msg out xml list
 
 let url lang text =
-   Printf.sprintf 
-      "http://wap.translate.ru/default.asp?cp=cyr&dir=%s&source=%s"
-      lang (Netencoding.Url.encode (Xml.decode text))
+  Printf.sprintf
+    "http://wap.translate.ru/wap2/translator.aspx/result/?tbDirection=%s&tbText=%s&submit=%s"
+    lang (Netencoding.Url.encode (Xml.decode text))
+    (Netencoding.Url.encode "Перевести")
 
 (* translate er text *)
-let rex1 = Pcre.regexp ~flags:[`DOTALL; `UTF8] "^([a-zA-Z]{2,2})\\s+(.+)"
-let rex2 = Pcre.regexp ~flags:[`DOTALL; `UTF8] 
-   "^([a-zA-Z]{2,2})\\s+([a-z]{2,2})\\s+(.+)"
-(*
-let rex2 = Pcre.regexp ~flags:[`DOTALL; `UTF8]
-   "^-(from|to)\\s+([a-zA-Z]{2,2})\\s+-(from|to)\\s+([a-zA-Z]{2,2})\\s+(-via\\s+([a-zA-Z]{2,2})\\s+)?(.+)" in
-*)
+let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8] "^([a-zA-Z]{2,2})\\s+(.+)"
+
+let process_doc doc =
+  let get_data els =
+    let rec aux_get_data = function
+      | [] -> ""
+      | x :: xs ->
+          match x with
+            | Data data -> data
+            | _ -> aux_get_data xs
+    in
+      aux_get_data els
+  in
+  let rec aux_find (acc: string list option) = function
+    | [] -> acc
+    | x :: xs ->
+        match x with
+          | Element (tag, attrs, els) ->
+              if tag = "p" &&
+                (try List.assoc "class" attrs with Not_found -> "") = "result" then
+                  let newacc = match acc with
+                    | None -> Some [get_data els]
+                    | Some v -> Some ((get_data els) :: v)
+                  in
+                    aux_find newacc xs
+              else (
+                if acc = None then
+                  match aux_find acc els with
+                    | None -> aux_find acc xs
+                    | Some v -> Some v
+                else
+                  aux_find acc xs
+              )
+          | _ ->
+              aux_find acc xs
+  in
+    aux_find None doc
 
 let do_request lang text xml out =
-   let callback data =
-      let resp = match data with
-	 | OK (_media, _charset, content) ->
-              let wml = Xmlstring.parse_string content in
-              let p = Xml.get_tag wml ["card";"p"] in
-		 (match p with
-		     | Xmlelement (_, _, els) ->
-			  element_to_string (List.nth els 2)
-		     | _ ->
-			  Lang.get_msg ~xml "plugin_translate_not_parsed" [])
-	 | Exception exn ->
-	      Lang.get_msg ~xml "plugin_translate_server_error" []
-      in
-	 make_msg out xml resp
-   in
-      Http_suck.http_get (url lang text) callback
+  let callback data =
+    let resp = match data with
+	    | OK (_media, _charset, content) -> (
+          try
+            let ch = new Netchannels.input_string content in
+            let doc = parse ~dtd:relaxed_html40_dtd ~return_declarations:false
+                ~return_pis:false ~return_comments:false ch in
+            let res = process_doc doc in
+              match res with
+                | None -> Lang.get_msg ~xml "plugin_translate_not_parsed" []
+                | Some vl ->
+                    trim (List.hd vl)
+          with exc ->
+            Lang.get_msg ~xml "plugin_translate_not_parsed" []
+        )
+	    | Exception exn ->
+	        Lang.get_msg ~xml "plugin_translate_server_error" []
+    in
+	    make_msg out xml resp
+  in
+    Http_suck.http_get (url lang text) callback
 
 let translate text event from xml out =
-   match trim(text) with
-      | "list" ->
-	   do_list xml out
-      | "map" ->
-	   do_map xml out
-      | other ->
-	   try
-	      let res = exec ~rex:rex2 text in
-	      let lg1 = get_substring res 1 in
-		 let lg2 = get_substring res 2 in
-		 let str = get_substring res 3 in
-		 let a = List.assoc lg1 langmap in
-		    if List.mem lg2 a then
-		       let lang = String.make 2 lg1.[0] in
-			  lang.[1] <- lg2.[0];
-			  do_request lang str xml out
-		    else
-		       raise Not_found
-	   with Not_found ->
-              try
-		 let res = exec ~rex:rex1 ~pos:0 text in
-		    let lang = String.lowercase (get_substring res 1)
-		    and str = get_substring res 2 in
-                       if List.mem_assoc lang languages then
-			  do_request lang str xml out
-		       else
-			  make_msg out xml 
-			     (Lang.get_msg ~xml "plugin_translate_bad_language"
-				 [])
+  match trim(text) with
+    | "list" ->
+	      do_list xml out
+    | other ->
+        try
+		      let res = exec ~rex:cmd ~pos:0 text in
+		      let lang = String.lowercase (get_substring res 1)
+		      and str = get_substring res 2 in
+            if List.mem_assoc lang langpairs then
+			        do_request lang str xml out
+		        else
+			        make_msg out xml 
+			          (Lang.get_msg ~xml "plugin_translate_bad_language"
+				          [])
 	      with Not_found ->
-		 make_msg out xml 
-		    (Lang.get_msg ~xml "plugin_seen_bad_syntax" [])
-		    
+		      make_msg out xml 
+		        (Lang.get_msg ~xml "plugin_seen_bad_syntax" [])
+		          
 let _ =
-   Hooks.register_handle (Hooks.Command ("tr", translate))
+  Hooks.register_handle (Hooks.Command ("tr", translate))

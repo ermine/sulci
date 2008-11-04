@@ -150,7 +150,7 @@ let translate_text sl tl text xml out =
   in
   let url = "http://translate.google.com/translate_t" in
   let data = Printf.sprintf "langpair=%s|%s&ie=UTF8&oe=UTF8&text=%s"
-    sl tl (Xml.decode text)
+    sl tl (Netencoding.Url.encode (Xml.decode text))
   in
     Http_suck.http_post url [] data callback
 
