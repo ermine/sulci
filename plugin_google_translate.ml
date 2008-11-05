@@ -90,14 +90,18 @@ let list_languages =
   
 let process_result doc =
   let get_data els =
-    let rec aux_get_data = function
-      | [] -> ""
+    let rec aux_get_data acc = function
+      | [] -> acc
       | x :: xs ->
           match x with
-            | Data data -> data
-            | _ -> aux_get_data xs
+            | Data data -> aux_get_data (acc ^ data) xs
+            | Element (tag, _, _) ->
+                if tag = "br" then
+                  aux_get_data (acc ^ "\n") xs
+                else
+                  aux_get_data acc xs
     in
-      aux_get_data els
+      aux_get_data "" els
   in
   let rec aux_find = function
     | [] -> None
@@ -157,6 +161,8 @@ let translate_text sl tl text xml out =
 (* gtr er ru text *)
 let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8]
   "^([a-zA-Z-]{2,5})\\s+([a-zA-Z-]{2,5})\\s(.+)"
+
+let rm_newlines = Pcre.regexp "[\n\r]"
 
 let translate text event from xml out =
   match trim(text) with
