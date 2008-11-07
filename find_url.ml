@@ -1,5 +1,5 @@
 (* 
- * (c) 2005, 2006 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2005-2008 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *
  * Searches potentional url in text and replace it into hyperlink 
  * 
