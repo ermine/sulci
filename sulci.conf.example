@@ -22,6 +22,8 @@
 
  <acl jid='ermine@jabber.ru' class='admin'/>
  
+ <max_message_length value="4000"/>
+
  <muc msg_limit="400">
   <!--  <room nick="sulci-test" jid="z@conference.jabber.ru" lang="ru"/> -->
   <room nick="sulci" jid="some@conference.jabber.ru" lang="en"/>

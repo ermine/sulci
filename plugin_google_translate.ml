@@ -1,5 +1,5 @@
 (*
- * 2008 (c) Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2008 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
 open Nethtml
