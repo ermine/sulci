@@ -28,11 +28,11 @@ let msg text event from xml out =
     make_msg out xml ":-P"
 	    
 let quit text event from xml out =
-  if check_access from "admin" then begin
+  if check_access from "admin" then (
     make_msg out xml 
 	    (Lang.get_msg ~xml "plugin_admin_quit_bye" []);
     Hooks.quit out
-  end
+  )
   else
     make_msg out xml 
 	    (Lang.get_msg ~xml "plugin_admin_quit_no_access" [])
@@ -46,13 +46,12 @@ let join text event from xml out =
 	    let room_s = Pcre.get_substring r 1
 	    and nick = try Pcre.get_substring r 3 with Not_found ->
 	      trim (get_cdata Config.config ~path:["jabber"; "user"]) in
-        
 	    let room = jid_of_string room_s in
 	    if not (GroupchatMap.mem (room.luser, room.lserver) !groupchats) 
-	    then begin
+	    then (
 	      Muc.register_room nick (room.luser, room.lserver);
 	      out (Muc.join_room nick (room.luser, room.lserver))
-	    end
+	    )
 	    else
 	      make_msg out xml "again?"
     with _ ->
@@ -147,26 +146,27 @@ let lang_admin text event from xml out =
           
 let sulci_set_rex = Pcre.regexp "([a-zA-Z_-]+) *= *(.+)"
   
+let variables = [
+  "max_message_length", (fun i -> Common.max_message_length := i);
+  "msg_limit", (fun i -> Common.msg_limit := i);
+]
+
 let sulci_set text event from xml out =
   if check_access from "admin" then
     try
 	    let r = Pcre.exec ~rex:sulci_set_rex text in
 	    let var = Pcre.get_substring r 1
 	    and value = Pcre.get_substring r 2 in
-	      if var = "msg_limit" then
-	        try
-		        let newvalue = int_of_string value in
-		          Common.msg_limit := newvalue
-	        with _ ->
-		        make_msg out xml "Bad value: must be integer"
-        else if var = "max_message_length" then
-	        try
-		        let newvalue = int_of_string value in
-		          Common.max_message_length := newvalue
-	        with _ ->
-		        make_msg out xml "Bad value: must be integer"
-	      else
-	        make_msg out xml "Unknown variable"
+        try
+          let f = List.assoc var variables in
+		      let newvalue = int_of_string value in
+            f newvalue;
+            make_msg out xml "Done"
+	      with
+          | Failure "int_of_string" ->
+		          make_msg out xml "Bad value: must be integer"
+          | Not_found ->
+	            make_msg out xml "Unknown variable"
     with Not_found ->
 	    make_msg out xml "Hm?"
         

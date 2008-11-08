@@ -46,21 +46,40 @@ let find_htbl lang =
 	    LangMap.find deflang !langmsgs
         
 let process str args =
-  let rec cycle part arges =
-    if arges = [] then part
-    else
-	    try
-	      let mark = String.index part '%' in
-	        if part.[mark+1] = 's' then
-		        (String.sub part 0 mark) ^ (List.hd arges) ^ 
-		          cycle (string_after part (mark+2)) (List.tl arges)
-	        else
-		        String.sub part 0 (mark+2) ^
-		          (cycle (string_after part (mark+2)) arges)
-	    with Not_found ->
-	      part
+  let rec aux_subst acc part = function
+    | [] -> List.rev (part :: acc)
+    | arges ->
+	      try
+	        let mark = String.index part '%' in
+            if mark+1 < String.length part then
+              match part.[mark+1] with
+                | '1'..'9' as d -> (
+                    let n = Char.code d - Char.code '0' -1 in
+                      if mark+2 < String.length part then
+                        match part.[mark+2] with
+                          | 's' ->
+                              aux_subst (List.nth args n ::
+                                String.sub part 0 mark :: acc)
+                                (string_after part (mark+3)) arges
+                          | _ ->
+                              aux_subst (String.sub part 0 (mark+3) :: acc)
+                                (string_after part (mark+3)) arges
+                      else
+                        List.rev (part :: acc)
+                  )
+                | 's' ->
+                    aux_subst (List.hd arges :: String.sub part 0 mark :: acc)
+                      (string_after part (mark+2)) (List.tl arges)
+                | _ ->
+                    aux_subst (String.sub part 0 (mark+2) :: acc)
+                      (string_after part (mark+2)) arges
+            else
+              List.rev (part :: acc)
+	      with Not_found ->
+	        List.rev (part :: acc)
   in
-	  cycle str args
+	let res = aux_subst []  str args in
+    String.concat "" res
       
 let get_lang xml =
   match safe_get_attr_s xml "type" with
@@ -142,15 +161,16 @@ let float_seconds ?xml ?lang cause seconds =
 let update_msgid (lang:string) (msgid:string) (str:string option) =
   let htbl = LangMap.find lang !langmsgs in
     begin match str with
-	    | None -> Hashtbl.remove htbl msgid
-	    | Some data ->
-	        if Hashtbl.mem htbl msgid then
-		        Hashtbl.replace htbl msgid data
-	        else
-		        Hashtbl.add htbl msgid data;
+      | None -> Hashtbl.remove htbl msgid
+      | Some data ->
+          if Hashtbl.mem htbl msgid then
+            Hashtbl.replace htbl msgid data
+          else
+            Hashtbl.add htbl msgid data;
     end;
     let dir = 
-	    try trim (get_attr_s Config.config ~path:["lang"] "dir")
-	    with Not_found -> "" in
+      try trim (get_attr_s Config.config ~path:["lang"] "dir")
+      with Not_found -> "" in
     let mout = open_out_bin (Filename.concat dir (lang ^ ext)) in
-	    Marshal.to_channel mout htbl []
+      Marshal.to_channel mout htbl []
+       

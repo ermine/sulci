@@ -3,4 +3,4 @@
  *)
 
 let name = "Sulci"
-let version = "0.5.alpha 20081107"
+let version = "0.5.alpha 20081108"
