@@ -29,24 +29,13 @@ let http_init() =
     http_keep_alive_group := Some keep_alive_group
 
 let http_thread() =
-  (* Create the HTTP pipeline for a known event system: *)
   let esys = get_http_esys() in
   let pipeline = new pipeline in
     pipeline # set_event_system esys;
-    
-    (* In order to keep the event system active when there are no HTTP requests
-     * to process, we add an artificial timer that never times out (-1.0).
-     * The timer is bound to a Unixqueue group, and by clearing this group
-     * the timer can be deleted.
-     *)
     let keep_alive_group = get_http_keep_alive_group() in
     let w = Unixqueue.new_wait_id esys in
 	    Unixqueue.add_resource esys keep_alive_group (Unixqueue.Wait w,(-1.0));
-      
-	    (* We arrange now that whenever a HTTP_Job arrives on the event queue,
-	     * a new HTTP call is started.
-	     *)
-	    Unixqueue.add_handler
+      Unixqueue.add_handler
 	      esys
 	      keep_alive_group
 	      (fun _ _ event ->
@@ -60,9 +49,7 @@ let http_thread() =
 		        | _ ->
 			          raise Equeue.Reject  (* The event is not for us *)
 	      );
-	    
-	    Unixqueue.run esys;
-	    ()
+	    Unixqueue.run esys
 
 let shutdown_http_thread() =
   let esys = get_http_esys() in

@@ -62,7 +62,7 @@ plugin_roulette_not_allowed        Прав не имею.
 plugin_vocabulary_invalid_syntax   ну?
 plugin_vocabulary_recorded         записал.
 plugin_vocabulary_dfn_again        это уже было
-plugin_vocabulary_removed          стё
+plugin_vocabulary_removed          стёр
 plugin_vocabulary_nothing_to_remove а был ли мальчик?
 plugin_vocabulary_replaced         переписал
 plugin_vocabulary_answer           %s сказал(а), что %s - %s
@@ -80,9 +80,13 @@ plugin_google_no_answer            [нет ответа]
 plugin_google_server_error         Гугль сломался.
 plugin_google_server_404           Хмм.. что-то с урлом. Гугль выдает 404.
 
+plugin_google_translate_not_parsed Не смог распарсить ответ от  Google
+plugin_google_translate_server_error Переводчик Гугла сломался.
+
 plugin_weather_invalid_syntax     гы! попробуй еще разок, сына!
 plugin_weather_server_error       Погода сломалась :(
 plugin_weather_404                Нет такого аэропорта.
+plugin_weather_not_parsed         Не получилось распарсить ответ на запрос о погоде
 
 plugin_admin_quit_bye             Пока! Я ушел...
 plugin_admin_quit_no_access       Это ты мне? Quit? Фиг!

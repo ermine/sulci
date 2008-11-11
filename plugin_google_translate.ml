@@ -145,10 +145,10 @@ let translate_text sl tl text xml out =
                 | None -> ""
                 | Some v -> v
           with exn ->
-            Lang.get_msg ~xml "conversation_trouble" []
+            Lang.get_msg ~xml "plugin_google_translate_not_parsed" []
         )
 	    | Exception exn ->
-          Printexc.to_string exn
+          Lang.get_msg ~xml "plugin_google_translate_server_error" []
     in
       make_msg out xml resp
   in

@@ -87,8 +87,12 @@ let weather text event from xml out =
   if pmatch ~rex:r text then
     let callback data =
 	    let resp = match data with
-	      | OK (_media, _charset, body) ->
-		        parse_weather body
+	      | OK (_media, _charset, body) -> (
+            try
+		          parse_weather body
+            with _exn ->
+              Lang.get_msg ~xml "plugin_weather_not_parsed" []
+          )
 	      | Exception exn ->
 		        match exn with 
 		          | ClientError ->

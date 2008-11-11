@@ -157,16 +157,20 @@ let gspell text event from xml out =
     let query = element_to_string soap in
     let callback data =
 	    let resp = match data with
-	      | OK (_media, _charset, content) ->
-		        let parsed = Xmlstring.parse_string content in
-		        let response = 
-		          Xml.get_cdata parsed 
-		            ~path:["SOAP-ENV:Body"; 
-			          "ns1:doSpellingSuggestionResponse";
-			          "return"] in
-		          if response = "" then 
-		            Lang.get_msg ~xml "plugin_google_no_answer" []
-		          else response
+	      | OK (_media, _charset, content) -> (
+            try
+		          let parsed = Xmlstring.parse_string content in
+		          let response = 
+		            Xml.get_cdata parsed 
+		              ~path:["SOAP-ENV:Body"; 
+			            "ns1:doSpellingSuggestionResponse";
+			            "return"] in
+		            if response = "" then 
+		              Lang.get_msg ~xml "plugin_google_no_answer" []
+		            else response
+            with _exn ->
+              Lang.get_msg ~xml "plugin_google_no_answer" []
+          )
 	      | Exception exn ->
 		        match exn with
 		          | ClientError ->
@@ -187,35 +191,43 @@ let google ?(start="0") ?(items="1") text event from xml out =
     make_msg out xml (Lang.get_msg ~xml "plugin_google_invalid_syntax" [])
   else
     let callback data =
-	    let resp, tail = match data with
-	      | OK (_media, _charset, content) ->
-		        let parsed = Xmlstring.parse_string content in
-		        let result = Xml.get_tag parsed ["SOAP-ENV:Body"; 
-						"ns1:doGoogleSearchResponse";
-						"return";
-						"resultElements"] in
-		          if items = "1" then
-		            let item = get_tag result ["item"] in
-		            let r1, r2 = one_message item in
-			            if r1 = "" && r2 = "" then
-			              (Lang.get_msg ~xml "plugin_google_not_found" [], 
-			              "")
-			            else
-			              r1, r2
-		          else
-		            let r = message (get_subels result) in
-			            if r = "" then
-			              (Lang.get_msg ~xml "plugin_google_not_found" [],
-			              "")
-			            else r, ""
-	      | Exception exn ->
-		        match exn with
-		          | ClientError ->
-			            Lang.get_msg ~xml "plugin_google_server_404" [], ""
-		          | ServerError ->
-			            Lang.get_msg ~xml "plugin_google_server_error" [], ""
-		          | _ ->
-			            Lang.get_msg ~xml "plugin_google_server_error" [], ""
+	    let resp, tail =
+        match data with
+	        | OK (_media, _charset, content) -> (
+              try
+		            let parsed = Xmlstring.parse_string content in
+		            let result =
+                  Xml.get_tag parsed ["SOAP-ENV:Body"; 
+						      "ns1:doGoogleSearchResponse";
+						      "return";
+						      "resultElements"] in
+                  if get_subels result = [] then
+                    (Lang.get_msg ~xml "plugin_google_not_found" [], "")
+                  else
+		                if items = "1" then
+		                  let item = get_tag result ["item"] in
+		                  let r1, r2 = one_message item in
+			                  if r1 = "" && r2 = "" then
+			                    (Lang.get_msg ~xml "plugin_google_not_found" [], "")
+			                  else
+			                    r1, r2
+		                else
+		                  let r = message (get_subels result) in
+			                  if r = "" then
+			                    (Lang.get_msg ~xml "plugin_google_not_found" [],
+			                    "")
+			                  else r, ""
+              with _exn ->
+                (Lang.get_msg ~xml "plugin_google_not_found" [], "")
+            )
+	        | Exception exn ->
+		          match exn with
+		            | ClientError ->
+			              Lang.get_msg ~xml "plugin_google_server_404" [], ""
+		            | ServerError ->
+			              Lang.get_msg ~xml "plugin_google_server_error" [], ""
+		            | _ ->
+			              Lang.get_msg ~xml "plugin_google_server_error" [], ""
 	    in
 	    let response_tail = if tail = "" then None else Some tail in
 	      make_msg out xml ?response_tail resp 

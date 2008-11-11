@@ -15,20 +15,21 @@ let blogs text event from xml out =
     let callback data =
 	    let response_tail = ref None in
 	    let resp = match data with
-	      | OK (_media, _charset, content) ->
-		        let parsed = Xmlstring_netstring.parse_string content in
-		          (try
-			          let item = Xml.get_tag parsed ["channel"; "item"] in
-			          let title = Dehtml.html2text 
-			            (Xml.get_cdata item ~path:["title"]) in
-			          let pubdate = Xml.get_cdata item ~path:["pubDate"] in
-			          let link = Xml.get_cdata item ~path:["link"] in
-			          let descr = Dehtml.html2text 
-			            (Xml.get_cdata item ~path:["description"]) in
-			            response_tail := Some (link ^ "\n" ^ pubdate);
-			            Printf.sprintf "%s\n%s" (trim title) (trim descr)
-		          with Not_found ->
-			          Lang.get_msg ~xml "plugin_yandex_not_found" [])
+	      | OK (_media, _charset, content) -> (
+		        try
+		          let parsed = Xmlstring_netstring.parse_string content in
+			        let item = Xml.get_tag parsed ["channel"; "item"] in
+			        let title = Dehtml.html2text 
+			          (Xml.get_cdata item ~path:["title"]) in
+			        let pubdate = Xml.get_cdata item ~path:["pubDate"] in
+			        let link = Xml.get_cdata item ~path:["link"] in
+			        let descr = Dehtml.html2text 
+			          (Xml.get_cdata item ~path:["description"]) in
+			          response_tail := Some (link ^ "\n" ^ pubdate);
+			          Printf.sprintf "%s\n%s" (trim title) (trim descr)
+		        with Not_found ->
+			        Lang.get_msg ~xml "plugin_yandex_not_found" []
+          )
 	      | Exception exn ->
 		        match exn with
 		          | ClientError ->

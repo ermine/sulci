@@ -313,6 +313,7 @@ let cerberus event from xml out =
 		        report word from text msg_type out;
 		        if do_kick then
 		          kill from xml out;
+            raise Hooks.Filtered
 	    with
 	      | Ulexing.Error ->
 		        Logger.out (Printf.sprintf
@@ -353,9 +354,8 @@ let cerberus event from xml out =
 		        )
 	    | MUC_message (msg_type, nick, body) ->
 	        if msg_type <> `Error then
-		        if from.lresource <> 
-		          (GroupchatMap.find room !groupchats).mynick &&
-		          body <> "" then
+		        if body <> "" &&
+              from.lresource <> (GroupchatMap.find room !groupchats).mynick  then
 		            check body (match msg_type with
 				          | `Groupchat -> 
 					            "groupchat public"

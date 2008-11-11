@@ -79,9 +79,13 @@ plugin_google_no_answer            [no answer]
 plugin_google_server_error         Google is broken
 plugin_google_server_404           Probably Google is broken
 
+plugin_google_translate_not_parsed Cannot parse the response from Google
+plugin_google_translate_server_error Google Translator is broken
+
 plugin_weather_invalid_syntax      Hmm... whose weather?
 plugin_weather_server_error        Weather Service is broken.
 plugin_weather_404                 No such airport.
+plugin_weather_not_parsed          Cannot parse the response from NOAA server
 
 plugin_admin_quit_bye              Bye! I'm gone...
 plugin_admin_quit_no_access        Who should to quit?
