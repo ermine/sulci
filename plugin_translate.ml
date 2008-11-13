@@ -129,7 +129,7 @@ let translate text event from xml out =
 				          [])
 	      with Not_found ->
 		      make_msg out xml 
-		        (Lang.get_msg ~xml "plugin_seen_bad_syntax" [])
+		        (Lang.get_msg ~xml "plugin_translate_bad_syntax" [])
 		          
 let _ =
   Hooks.register_handle (Hooks.Command ("tr", translate))

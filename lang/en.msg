@@ -81,6 +81,7 @@ plugin_google_server_404           Probably Google is broken
 
 plugin_google_translate_not_parsed Cannot parse the response from Google
 plugin_google_translate_server_error Google Translator is broken
+plugin_google_translate_bad_syntax   Sorry, but I don't understand.
 
 plugin_weather_invalid_syntax      Hmm... whose weather?
 plugin_weather_server_error        Weather Service is broken.

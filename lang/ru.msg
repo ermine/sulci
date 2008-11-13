@@ -82,6 +82,7 @@ plugin_google_server_404           Хмм.. что-то с урлом. Гугл�
 
 plugin_google_translate_not_parsed Не смог распарсить ответ от  Google
 plugin_google_translate_server_error Переводчик Гугла сломался.
+plugin_google_translate_bad_syntax   Не понял!
 
 plugin_weather_invalid_syntax     гы! попробуй еще разок, сына!
 plugin_weather_server_error       Погода сломалась :(
