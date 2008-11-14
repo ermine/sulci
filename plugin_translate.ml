@@ -2,10 +2,12 @@
  * (c) 2005-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-(* wap.translate.ru/default.asp?cp=cyr&dir=er&source=hello *)
+(*
+  prev: wap.translate.ru/default.asp?cp=cyr&dir=er&source=hello
+  curr: m.translate.ru/translator/result/?dirCode=er&text=hello
+*)
 
 open Pcre
-open Nethtml
 open Xml
 open Printf
 open Common
@@ -46,62 +48,40 @@ let do_list =
 
 let url lang text =
   Printf.sprintf
-    "http://wap.translate.ru/wap2/translator.aspx/result/?tbDirection=%s&tbText=%s&submit=%s"
+    "http://m.translate.ru/translator/result/?dirCode=%s&text=%s"
     lang (Netencoding.Url.encode (Xml.decode text))
-    (Netencoding.Url.encode "Перевести")
 
-(* translate er text *)
+(* command: tr er text *)
 let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8] "^([a-zA-Z]{2,2})\\s+(.+)"
 
-let process_doc doc =
-  let get_data els =
-    let rec aux_get_data = function
-      | [] -> ""
-      | x :: xs ->
-          match x with
-            | Data data -> data
-            | _ -> aux_get_data xs
-    in
-      aux_get_data els
-  in
-  let rec aux_find (acc: string list option) = function
-    | [] -> acc
+let process_doc wml =
+  let rec aux_find = function
+    | [] -> None
     | x :: xs ->
         match x with
-          | Element (tag, attrs, els) ->
-              if tag = "p" &&
-                (try List.assoc "class" attrs with Not_found -> "") = "result" then
-                  let newacc = match acc with
-                    | None -> Some [get_data els]
-                    | Some v -> Some ((get_data els) :: v)
-                  in
-                    aux_find newacc xs
+          | Xmlelement (tag, attrs, els) ->
+              if tag = "div" &&
+                (try List.assoc "class" attrs with Not_found -> "") = "tres" then
+                  Some (get_cdata x)
               else (
-                if acc = None then
-                  match aux_find acc els with
-                    | None -> aux_find acc xs
-                    | Some v -> Some v
-                else
-                  aux_find acc xs
+                match aux_find els with
+                  | None -> aux_find xs
+                  | Some r -> Some r
               )
           | _ ->
-              aux_find acc xs
+              aux_find xs
   in
-    aux_find None doc
+    aux_find wml
 
 let do_request lang text xml out =
   let callback data =
     let resp = match data with
 	    | OK (_media, _charset, content) -> (
           try
-            let ch = new Netchannels.input_string content in
-            let doc = parse ~dtd:relaxed_html40_dtd ~return_declarations:false
-                ~return_pis:false ~return_comments:false ch in
-            let res = process_doc doc in
-              match res with
+            let wml = Xmlstring.parse_string content in
+              match process_doc (get_subels wml) with
                 | None -> Lang.get_msg ~xml "plugin_translate_not_parsed" []
-                | Some vl ->
-                    trim (List.hd vl)
+                | Some r -> r
           with exc ->
             Lang.get_msg ~xml "plugin_translate_not_parsed" []
         )
