@@ -161,7 +161,7 @@ $(SUBDIRS):
 	$(MAKE) -C $@
 
 SDIR=/tmp/sulci-$(VERSION)
-LIB_PROJECTS = Makefile.inc xmpp xml xmlstring xmlstring_netstring getopt dehtml cryptokit sqlite sqlite_util scheduler strftime
+LIB_PROJECTS = Makefile.inc xmpp xml xmlstring xmlstring_netstring getopt dehtml cryptokit sqlite sqlite_util scheduler scheduler2 strftime
 
 tarball::
 	rm -rf $(SDIR)
