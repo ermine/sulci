@@ -7,34 +7,33 @@ open Xmpp
 open Common
 open Types
 open Nicks
-open Sqlite
+open Sqlite3
 open Sqlite_util
 
 let total = ref 0
 
+let file =
+  try trim (Xml.get_attr_s Config.config 
+    ~path:["plugins"; "vocabulary"] "db")
+  with Not_found -> "wtf.db"
+
+let table = "wtf"
+
 let db =
-  let file = 
-    try trim (Xml.get_attr_s Config.config 
-      ~path:["plugins"; "vocabulary"] "db")
-    with Not_found -> "wtf.db" in
-  let db = Sqlite.db_open file in
-    if not (result_bool db
-      "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='wtf'")
-    then begin try
-      exec db
-        "CREATE TABLE wtf (stamp integer, nick varchar, luser varchar, lserver varchar, key varchar, value varchar)";
-      exec db "create index dfnidx on wtf(key)";
-    with Sqlite_error s -> 
-      raise (Failure "error while creating table")
-    end;
-    let () =
-	    let vm = compile_simple db "SELECT count(*) FROM wtf" in
-	      try let result = step_simple vm in
-	        finalize vm;
-	        total := int_of_string result.(0)
-	      with Sqlite_done ->
-	        total := 0
-    in
+  let db = Sqlite3.db_open file in
+    create_table file db
+      (Printf.sprintf
+        "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'" table)
+      (Printf.sprintf
+        "CREATE TABLE %s (stamp integer, nick varchar, luser varchar, lserver varchar, key varchar, value varchar);
+CREATE INDEX dfnidx ON %s (key)"
+        table  table);
+    let t =
+      match get_one_row file db
+        (Printf.sprintf "SELECT count(*) FROM %s" table) with
+          | None -> 0
+          | Some r -> Int64.to_int (int64_of_data r.(0)) in
+      total := t;
 	    db
 
 let dfn text event from xml out =
@@ -68,46 +67,46 @@ let dfn text event from xml out =
 		          " AND lserver=" ^ escape from.lserver in
 		          from.luser, from.luser, from.lserver, cond
     in
-    let sql = ("SELECT value FROM wtf WHERE key=" ^ escape key ^ cond) in
-    let vm = compile_simple db 
-	    ("SELECT value FROM wtf WHERE key=" ^ escape key ^ cond) in
-	    try
-	      let result = step_simple vm in
-	        finalize vm;
-	        if value = result.(0) then
-		        make_msg out xml 
-		          (Lang.get_msg ~xml "plugin_vocabulary_dfn_again" [])
-	        else if value = "" then begin
-		        exec db ("DELETE FROM wtf WHERE key=" ^ escape key ^ cond);
-		        decr total;
-		        make_msg out xml 
-		          (Lang.get_msg ~xml "plugin_vocabulary_removed" [])
-	        end
-	        else
-		        let stamp = Int32.to_string (Int32.of_float 
-						  (Unix.gettimeofday ())) in
-		          exec db ("UPDATE wtf SET stamp=" ^ stamp ^
-				        ", nick=" ^ escape nick ^
-				        ", value=" ^ escape value ^
-				        " WHERE key=" ^ escape key ^ cond);
+    let sql = Printf.sprintf
+      "SELECT value FROM %s WHERE key=%s %s" table (escape key) cond in
+      match get_one_row file db sql with
+        | Some r ->
+            if value = (string_of_data r.(0)) then
 		          make_msg out xml 
-			          (Lang.get_msg ~xml "plugin_vocabulary_replaced" [])
-	    with Sqlite_done ->
-	      if value <> "" then
-	        let stamp = Int32.to_string (Int32.of_float 
-					  (Unix.gettimeofday ())) in
-		        exec db 
-		          ("INSERT INTO wtf (stamp,nick,luser,lserver,key,value) " ^
-			          values [stamp; 
-				        escape nick; 
-				        escape luser; escape lserver;
-				        escape key; escape value]);
-		        incr total;
-		        make_msg out xml 
-		          (Lang.get_msg ~xml "plugin_vocabulary_recorded" [])
-	      else
-	        make_msg out xml
-		        (Lang.get_msg ~xml "plugin_vocabulary_nothing_to_remove" [])
+		            (Lang.get_msg ~xml "plugin_vocabulary_dfn_again" [])
+	          else if value = "" then (
+              simple_exec file db
+                (Printf.sprintf
+                  "DELETE FROM %s WHERE key=%s %s" table (escape key) cond);
+		          decr total;
+		          make_msg out xml 
+		            (Lang.get_msg ~xml "plugin_vocabulary_removed" [])
+	          )
+	          else
+		          let stamp =
+                Int32.to_string (Int32.of_float  (Unix.gettimeofday ())) in
+		            simple_exec file db
+                  (Printf.sprintf
+                    "UPDATE %s SET stamp=%s, nick=%s, value=%s WJERE key=%s %s"
+                    table stamp (escape nick) (escape value) (escape key) cond);
+                make_msg out xml
+                  (Lang.get_msg ~xml "plugin_vocabulary_replaced" [])
+        | None ->
+	          if value <> "" then
+	            let stamp = Int32.to_string (Int32.of_float 
+					      (Unix.gettimeofday ())) in
+		            simple_exec file db
+                  (Printf.sprintf
+		                "INSERT INTO %s (stamp,nick,luser,lserver,key,value)
+  VALUES(%s,%s,%s,%s,%s,%s)"
+                    table stamp (escape nick) (escape luser) (escape lserver)
+	                  (escape key) (escape value));
+		            incr total;
+		            make_msg out xml 
+		              (Lang.get_msg ~xml "plugin_vocabulary_recorded" [])
+	          else
+	            make_msg out xml
+		            (Lang.get_msg ~xml "plugin_vocabulary_nothing_to_remove" [])
   with Not_found ->
     make_msg out xml 
       (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
@@ -122,19 +121,18 @@ let wtf text event from xml out =
 	      let q = String.index text '?' in
 	        String.sub text 0 q
 	    with Not_found -> text in
-    let vm = compile_simple db 
-	    ("SELECT nick, value FROM wtf WHERE key=" ^ escape key ^
-	      " ORDER BY stamp DESC LIMIT 1") in
-	    try
-	      let result = step_simple vm in
-	        finalize vm;
-	        make_msg out xml 
-		        (Lang.get_msg ~xml "plugin_vocabulary_answer"
-		          [result.(0); key; result.(1)])
-	    with Sqlite_done ->
-	      make_msg out xml 
-	        (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
-          
+    let sql = Printf.sprintf
+	    "SELECT nick, value FROM %s WHERE key=%s ORDER BY stamp DESC LIMIT 1"
+      table (escape key) in
+      match get_one_row file db sql with
+        | Some r ->
+	          make_msg out xml 
+		          (Lang.get_msg ~xml "plugin_vocabulary_answer"
+                [string_of_data r.(0); key; string_of_data r.(1)])
+        | None ->
+	          make_msg out xml 
+	            (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+              
 let wtfall text event from xml out =
   if text = "" then
     make_msg out xml 
@@ -145,81 +143,93 @@ let wtfall text event from xml out =
 	      let q = String.index text '?' in
 	        String.sub text 0 q
 	    with Not_found -> text in
-    let vm = compile_simple db 
-	    ("SELECT nick, value FROM wtf WHERE key=" ^ escape key ^
-	      " ORDER BY stamp") in
-    let rec aux_acc i acc =
-	    let result = try Some (step_simple vm) with Sqlite_done -> None in
-	      match result with
-	        | Some r ->
-		          let str = 
-		            string_of_int i ^ ") " ^
-			            Lang.get_msg ~xml "plugin_vocabulary_answer"
-			            [r.(0); key; r.(1)] in
-		            aux_acc (i+1) (str :: acc)
-	        | None -> 
-		          if acc = [] then "" else
-		            String.concat "\n" (List.rev acc)
+    let sql =
+      Printf.sprintf "SELECT nick, value FROM %s WHERE key=%s ORDER BY stamp"
+        table (escape key)in
+    let rec aux_acc i acc stmt =
+      match step stmt with
+        | Rc.ROW ->
+		        let str = 
+              Printf.sprintf "%d) %s"
+                i
+                (Lang.get_msg ~xml "plugin_vocabulary_answer"
+                  [Data.to_string (column stmt 1)])
+            in
+		          aux_acc (i+1) (str :: acc) stmt
+	      | Rc.DONE -> 
+		        if acc = [] then "" else String.concat "\n" (List.rev acc)
+        | _ -> exit_with_rc file db sql
     in
-    let reply = aux_acc 1 [] in
-	    if reply = "" then
-	      make_msg out xml 
-	        (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
-	    else
-	      make_msg out xml reply
+      try
+        let stmt = prepare db sql in
+        let reply = aux_acc 1 [] stmt in
+	        if reply = "" then
+	          make_msg out xml 
+	            (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+	        else
+	          make_msg out xml reply
+      with Sqlite3.Error _ ->
+        exit_with_rc file db sql
           
 let wtfrand text event from xml out =
   let key = trim(text) in
     if key = "" then
 	    let rand = string_of_int (Random.int (!total)) in
-	    let vm = compile_simple db
-	      ("SELECT nick, key, value FROM wtf LIMIT " ^ rand ^ ",1") in
-	      try 
-	        let r = step_simple vm in 
-		        finalize vm;
-		        make_msg out xml 
-		          (Lang.get_msg ~xml "plugin_vocabulary_answer"
-			          [r.(0); r.(1); r.(2)])
-	      with Sqlite_done ->
-	        make_msg out xml 
-		        (Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" [])
+      let sql = Printf.sprintf
+	      "SELECT nick, key, value FROM %s LIMIT %s,1" table rand in
+      let reply =
+        match get_one_row file db sql with
+          | None ->
+              Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" []
+          | Some r ->
+		          Lang.get_msg ~xml "plugin_vocabulary_answer"
+                [string_of_data r.(0);
+                string_of_data r.(1);
+                string_of_data r.(2);]
+      in          
+	      make_msg out xml reply
     else
-	    let vm = compile_simple db ("SELECT count(*) FROM wtf WHERE key=" ^
-				escape key) in
-	      try 
-	        let r = step_simple vm in
-		        finalize vm;
-		        let vm' = compile_simple db 
-		          ("SELECT nick, value FROM wtf WHERE key=" ^ escape key ^
-			          " LIMIT " ^ string_of_int 
-			          (Random.int (int_of_string r.(0))) ^ ",1") in
-		        let r' = step_simple vm' in
-		          finalize vm';
-		          make_msg out xml 
-			          (Lang.get_msg ~xml "plugin_vocabulary_answer"
-			            [r'.(0); key; r'.(1)])
-	      with Sqlite_done ->
-	        make_msg out xml 
-		        (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
-            
+      let sql = Printf.sprintf
+        "SELECT count(*) FROM %s WHERE key=%s" table (escape key) in
+        match get_one_row file db sql with
+          | Some r -> (
+              let sql = Printf.sprintf
+		            "SELECT nick, value FROM %s WHERE key=%s LIMIT %d,1"
+                table (escape key)
+                (Random.int (Int64.to_int (int64_of_data r.(0)))) in
+                match get_one_row file db sql with
+                  | Some q ->
+		                  make_msg out xml 
+			                  (Lang.get_msg ~xml "plugin_vocabulary_answer"
+                          [string_of_data q.(0); key; string_of_data q.(1)])
+                  | None ->
+                      make_msg out xml 
+		                    (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+            )
+          | None ->
+	            make_msg out xml 
+		            (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+                
 let wtfcount text event from xml out =
   let key = trim(text) in
-  let vm = compile_simple db 
-    (if key = "" then
-	    "SELECT count(*) FROM wtf"
+  let sql =
+    if key = "" then
+      Printf.sprintf "SELECT count(*) FROM %s" table
     else
-	    "SELECT count(*) FROM wtf WHERE key=" ^ escape key)
+      Printf.sprintf "SELECT count(*) FROM %s WHERE key=%s" table (escape key)
   in
-    try
-	    let r = step_simple vm in
-	      finalize vm;
-	      if key = "" then
-	        total := int_of_string r.(0);
-	      make_msg out xml 
-	        (Lang.get_msg ~xml "plugin_vocabulary_records" [r.(0)])
-    with Sqlite_done ->
-	    make_msg out xml 
-	      (Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" [])
+  let i =
+    match get_one_row file db sql with
+      | None -> 0
+      | Some r -> Int64.to_int (int64_of_data r.(0))
+  in
+	  if key = "" then
+	    total := i;
+    if i > 0 then
+	    make_msg out xml (Lang.get_msg ~xml "plugin_vocabulary_records"
+        [string_of_int i])
+    else
+	    make_msg out xml (Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" [])
         
 let _ =
   Hooks.register_handle (Hooks.Command ("wtf", wtf));

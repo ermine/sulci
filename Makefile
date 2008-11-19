@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.5-alpha-20081119
+VERSION=0.6-alpha-20081119
 
 include Makefile.conf
 
@@ -116,8 +116,6 @@ ifdef HTTP_SUCK
    NETCLIENT = yes
 endif
 
-SOURCES += $(SOURCES1) $(LANGPACKS) sulci.ml
-
 THREADS = yes
 
 PACKS = ulex unix xmpp getopt xmlstring strftime scheduler pcre
@@ -134,15 +132,18 @@ endif
 ifdef DBM_LIB
   PACKS += dbm
 endif
-ifdef SQLITE
-  PACKS += sqlite_util
-endif
 ifdef DEHTML
    PACKS += dehtml
 endif
 ifdef XMLSTRING_NETSTRING
    PACKS += xmlstring_netstring
 endif
+ifeq ($(SQLITE), yes)
+   SOURCES += sqlite_util.ml
+   PACKS += sqlite3
+endif
+
+SOURCES += $(SOURCES1) $(LANGPACKS) sulci.ml
 
 OCAMLDEP      = ocamldep -package ulex -syntax camlp4o
 OCAMLFLAGS    = -syntax camlp4o
@@ -161,7 +162,7 @@ $(SUBDIRS):
 	$(MAKE) -C $@
 
 SDIR=/tmp/sulci-$(VERSION)
-LIB_PROJECTS = Makefile.inc xmpp xml xmlstring xmlstring_netstring getopt dehtml cryptokit sqlite sqlite_util scheduler scheduler2 strftime
+LIB_PROJECTS = Makefile.inc xmpp xml xmlstring xmlstring_netstring getopt dehtml cryptokit scheduler scheduler2 strftime
 
 tarball::
 	rm -rf $(SDIR)

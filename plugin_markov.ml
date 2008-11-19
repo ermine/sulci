@@ -5,11 +5,13 @@
 open Xml
 open Xmpp
 open Common
-open Sqlite
-open Sqlite_util
 open Hooks
 open Types
 open Xmpp
+open Sqlite3
+open Sqlite_util
+
+let table = "words"
 
 type mevent = 
   | MMessage of xmpp_event * jid * Xml.element * (Xml.element -> unit) 
@@ -47,93 +49,110 @@ let open_markovdb (luser, lserver) =
   let path = 
     try trim (Xml.get_attr_s Config.config 
 		  ~path:["plugins"; "markov"] "dir")
-    with Not_found -> "./markov_db" in
+    with Not_found -> "./markov_db"
+  in
     if not (Sys.file_exists path) then Unix.mkdir path 0o755;
-    let db = Sqlite.db_open (Filename.concat path (luser ^ "@" ^ lserver)) in
-	    if not (result_bool db
-	      "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='words'")
-	    then begin try
-	      exec db
-      "CREATE TABLE words (word1 varchar(256), word2 varchar(256), counter int)";
-	      exec db "create index word1word2 on words(word1, word2)"
-	    with Sqlite_error s -> 
-	      raise (Failure "error while creating table")
-	    end;
-	    db
+    let file = Filename.concat path (luser ^ "@" ^ lserver) in
+    let db = Sqlite3.db_open file in
+      create_table file db 
+	      (Printf.sprintf
+          "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'"
+          table)
+        (Printf.sprintf 
+          "CREATE TABLE %s (word1 varchar(256), word2 varchar(256), counter int);
+	      CREATE INDEX word1word2 ON %s (word1, word2)"
+          table table);
+	    file, db
         
-let add db words =
+let add file db words =
   let rec cycle1 w1 lst =
     match lst with
-	    | [] ->
-	        let cond = ("word1=" ^ escape w1 ^ " AND word2=''") in 
-		        if result_bool db
-		          ("SELECT counter FROM words WHERE " ^ cond) then
-		            exec db 
-			            ("UPDATE words SET counter=counter+1 WHERE " ^ cond)
-		        else
-		          exec db ("INSERT INTO words VALUES(" ^ 
-			          escape w1 ^ ",'',1)");
-	    | w2 :: tail ->
+	    | [] -> (
+          let sql1 = Printf.sprintf
+            "SELECT counter FROM %s WHERE word1=%s AND word2=''"
+            table (escape w1) in
+          let sql2 =
+            Printf.sprintf
+              "UPDATE %s SET counter=counter+1 WHERE word1=%s AND word2=''"
+              table (escape w1) in
+          let sql3 = 
+            Printf.sprintf
+		          "INSERT INTO %s (word1, word2, counter) VALUES(%s, '', 1)"
+              table ( escape w1)
+          in
+            ignore (insert_or_update file db sql1 sql2 sql3)
+        )
+	    | w2 :: tail -> (
 	        if w1 = w2 then
 		        cycle1 w2 tail
-	        else begin
-		        let cond = ("word1=" ^ escape w1 ^ " AND word2=" ^ 
-				      escape w2) in
-		          if result_bool db
-		            ("SELECT counter FROM words WHERE " ^ cond) then
-			            exec db 
-			              ("UPDATE words SET counter=counter+1 WHERE " ^ cond)
-		          else
-		            exec db ("INSERT INTO words VALUES(" ^ 
-				          escape w1 ^ "," ^ escape w2 ^ ",1)");
+	        else (
+            let sql1 = Printf.sprintf
+              "SELECT counter FROM %s WHERE word1=%s AND word2=%s"
+              table (escape w1) (escape w2) in
+            let sql2 = Printf.sprintf
+			        "UPDATE %s SET counter=counter+1 WHERE word1=%s AND word2=%s"
+              table (escape w1) (escape w2) in
+            let sql3 = Printf.sprintf
+		          "INSERT INTO %s (word1, word2, counter) VALUES(%s, %s, 1)"
+              table (escape w1) (escape w2) in
+              ignore (insert_or_update file db sql1 sql2 sql3);
 		          cycle1 w2 tail
-	        end
+	        )
+        )
   in
     try
 	    cycle1 "" words
     with exn ->
 	    Logger.print_exn "Plugin_markov" exn
         
-let seek db (w1:string) =
-  let sum = result_integer db
-		("SELECT sum(counter) FROM words WHERE word1=" ^
-		  escape w1) in
+let seek file db (w1:string) =
+  let sum =
+    match get_one_row file db
+      (Printf.sprintf "SELECT sum(counter) FROM %s WHERE word1=%s"
+        table (escape w1)) with
+        | None -> 0
+        | Some r -> Int64.to_int (int64_of_data r.(0))
+  in
     if sum = 0 then
 	    w1, ""
     else
-	    let vm = compile_simple db 
-		    ("SELECT word1, word2, counter FROM words WHERE word1=" ^
-		      escape w1) in
-	    let rec cycle2 lsum =
-	      let data = step_simple vm in
-	        if lsum - int_of_string data.(2) <= 0 then begin
-		        finalize vm;
-		        data.(0), data.(1)
-	        end
-	        else
-		        cycle2 (lsum - int_of_string data.(2))
-	    in
-	      try
-	        cycle2 (Random.int sum + 1)
-	      with 
-	        | Sqlite_done -> 
-		          w1, ""
-	        | exn ->
-		          Logger.print_exn "Plugin_markov" exn;
-		          w1, ""
+      let sql = Printf.sprintf 
+		    "SELECT word1, word2, counter FROM %s WHERE word1=%s"
+        table (escape w1) in
+      let rec aux_seek lsum stmt =
+        match step stmt with
+          | Rc.ROW ->
+              let i = int_of_string (Data.to_string (column stmt 2)) in
+                if lsum - i <= 0 then
+                  (Data.to_string (column stmt 0),
+                  Data.to_string (column stmt 1))
+                else
+                  aux_seek (lsum - i) stmt
+          | Rc.DONE ->
+              w1, ""
+          | _ -> exit_with_rc file db sql
+      in        
+        try
+          let stmt = prepare db sql in
+          let w1, w2 = aux_seek (Random.int sum + 1) stmt in
+            if finalize stmt <> Rc.OK then
+              exit_with_rc file db sql;
+            w1, w2
+        with Sqlite3.Error _ ->
+          exit_with_rc file db sql
                 
 let chain_limit = ref
   (try int_of_string (get_attr_s Config.config ~path:["plugin"; "markov"]
 		"msg_limit")
   with Not_found -> 20)
   
-let generate db word =
+let generate file db word =
   let rec cycle3 w i acc =
     if i = !chain_limit then
 	    let p = String.concat " " (List.rev acc) in
 	      p
     else
-	    let w1, w2 = seek db w in
+	    let w1, w2 = seek file db w in
 	      if w2 = "" then String.concat " " (List.rev acc)
 	      else cycle3 w2 (i+1) (w2::acc)
   in
@@ -146,70 +165,82 @@ let generate db word =
 let split_words body =
   Pcre.split ~pat:"[ \t\n]+" body
     
-let process_markov db event from xml out =
+let process_markov file db event from xml out =
   match event with
     | MUC_message (msg_type, nick, body) ->
 	      let room = from.luser, from.lserver in
 	      let room_env = GroupchatMap.find room !groupchats in
 	        if from.lresource <> room_env.mynick then
 		        let words = split_words body in
-		          if words = [] then begin
+		          if words = [] then (
 		            if (msg_type = `Groupchat && nick = room_env.mynick) ||
 			            msg_type <> `Groupchat then
 			              make_msg out xml "?"
-		          end
-		          else begin
-		            add db words;
+		          ) else (
+		            add file db words;
 		            if (msg_type = `Groupchat && nick = room_env.mynick) ||
 			            msg_type <> `Groupchat then
-			              let chain = generate db "" in
+			              let chain = generate file db "" in
 				              make_msg out xml chain
 		            else
 			            ()
-		          end
+		          )
 	        else
 		        ()
     | _ -> ()
         
-let rec markov_thread (db, m) =
-  begin match take_queue m with
+let rec markov_thread (file, db, m) =
+  (match take_queue m with
     | MMessage (event, from, xml, out) ->
-	      process_markov db event from xml out
+	      process_markov file db event from xml out
     | MCount (from, xml, out) ->
-	      (try
-	        let result = result_integer db "SELECT COUNT(*) FROM words" in
-		        make_msg out xml (string_of_int result)
-	      with exn ->
-	        Logger.print_exn "Plugin_markov !!!count" exn)
-    | MTop (from, xml, out) ->
-	      (try
-	        let vm = compile_simple db 
-		        "SELECT word1, word2, counter FROM words WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10" in
-	        let rec cycle4 () =
-		        try 
-		          let data = step_simple vm in
-			          (Printf.sprintf "\n%s | %s | %s"
-			            data.(0) data.(1) data.(2))
-			          ^ cycle4 ()
-		        with Sqlite_done -> ""
-	        in
-		        make_msg out xml (cycle4 ())
-	      with exn ->
-	        Logger.print_exn "Plugin_markov: !!!top" exn)
+        let sql = Printf.sprintf "SELECT COUNT(*) FROM %s" table in
+        let result =
+          match get_one_row file db sql with
+            | None -> 9
+            | Some r -> Int64.to_int (int64_of_data r.(0))
+        in
+		      make_msg out xml (string_of_int result)
+    | MTop (from, xml, out) -> (
+        let sql = Printf.sprintf
+		      "SELECT word1, word2, counter FROM %s WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10" table in
+	      let rec aux_top acc stmt =
+          match step stmt with
+            | Rc.ROW ->
+                let r =
+			            Printf.sprintf "\n%s | %s | %s"
+                    (Data.to_string (column stmt 0))
+                    (Data.to_string (column stmt 1))
+                    (Data.to_string (column stmt 2)) in
+                  aux_top (r::acc) stmt
+            | Rc.DONE ->
+                List.rev acc
+            | _ -> exit_with_rc file db sql
+	      in
+          try
+            let stmt = prepare db sql in
+            let data = aux_top [] stmt in
+		          make_msg out xml (String.concat "" data)
+	        with
+            | Sqlite3.Error _ ->
+                exit_with_rc file db sql
+            | exn ->
+	              Logger.print_exn "Plugin_markov: !!!top" exn
+      )
     | MStop -> 
-	      Sqlite.db_close db;
+	      db_close db;
 	      Thread.exit ()
-  end;
-  markov_thread (db, m)
+  );
+  markov_thread (file, db, m)
     
 let get_markov_queue room =
   try
     MarkovMap.find room !markovrooms
   with Not_found ->
-    let db = open_markovdb room in
+    let file, db = open_markovdb room in
     let m = {queue = Queue.create (); mutex = Mutex.create ();
 	  cond = Condition.create ()} in
-	    ignore (Thread.create markov_thread (db, m));
+	    ignore (Thread.create markov_thread (file, db, m));
 	    markovrooms := MarkovMap.add room m !markovrooms;
 	    m
 

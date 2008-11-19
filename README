@@ -12,18 +12,25 @@ To compile, you need previously installed:
      www.ocaml.org
 * cryptokit
      http://cristal.inria.fr/~xleroy/software.html
-* ulex 1.0
+* ulex 1.0+
      http://www.cduce.org/download/
-* ocamlfind (findlib-1.1.2pl1)
+* ocamlfind (findlib-1.1.2pl1+)
      http://www.ocaml-programming.de/packages/documentation/findlib/
+
 * ocamlnet 1.1+
+* netclient 0.91.1+
      http://sourceforge.net/projects/ocamlnet
+     http://www.ocaml-programming.de/programming/netclient.html
+or
+* ocamlnet 2+
+     http://sourceforge.net/projects/ocamlnet
+
 * pcre-ocaml
      http://www.ai.univie.ac.at/~markus/home/ocaml_sources.html
-* netclient 0.91.1+
-     http://www.ocaml-programming.de/programming/netclient.html
-* sqlite 2.x
-     www.sqlite.org
+* sqlite 3.x
+     http://www.sqlite.org
+* ocaml-sqlite3 1.2+
+     http://ocaml.info/home/ocaml_sources.html
 
 Note: If you plan to use Mueller dictonary, you should compile pcre library
 with enabled UTF-8 support
