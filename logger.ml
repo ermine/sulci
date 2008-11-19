@@ -19,7 +19,7 @@ let out str =
       flush !lout
 
 let print_exn file ?xml exn =
-   out ("Catched exception in file " ^ file ^ ": " ^
+   out ("Caught exception in file " ^ file ^ ": " ^
            (Printexc.to_string exn) ^
            (match xml with
                | None -> ""

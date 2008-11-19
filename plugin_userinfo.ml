@@ -32,7 +32,7 @@ let status text event from xml out =
 						      | `XA -> "xa") ^ "]")
 	        with _ ->
 		        make_msg out xml 
-		          (Lang.get_msg "plugin_userinfo_statuse_whose" []))
+		          (Lang.get_msg "plugin_userinfo_status_whose" []))
     | _ -> ()
         
 let idle =

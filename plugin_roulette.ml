@@ -47,6 +47,8 @@ let roulette text event from xml out =
 					                      "plugin_roulette_kick_failed" []
 				                  in
 					                  make_msg out xml err_text
+                      | _ ->
+                          ()
 			            in
 			              Hooks.register_handle (Hooks.Id (id, proc));
 			              out (Muc.kick ~reason id (from.luser, from.lserver)

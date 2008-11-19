@@ -46,11 +46,9 @@ let open_log (user, host) =
 	    open_out_gen [Open_append] 0o644 file
 
 let get_next_noun () =
-  let curr_time = gettimeofday () in
-  let curr_tm = localtime curr_time in
+  let curr_tm = localtime (gettimeofday ()) in
   let noun, _ = mktime {curr_tm with 
-		tm_sec = 0; tm_min = 0; tm_hour = 0;
-		tm_mday = curr_tm.tm_mday + 1} in
+		tm_sec = 0; tm_min = 0; tm_hour = 0; tm_mday = curr_tm.tm_mday + 1} in
     noun
 
 let rotate_logs () =
@@ -63,8 +61,8 @@ let rotate_logs () =
 			close_out old;
 			newlog) !logmap
     
-let _ = Scheduler.add_task Types.timerQ rotate_logs (get_next_noun ())
-  (fun () -> get_next_noun ())
+let _ =
+  Scheduler.add_task Types.timerQ rotate_logs (get_next_noun ()) get_next_noun
   
 let get_logfile room =
   try 
