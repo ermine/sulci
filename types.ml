@@ -3,17 +3,16 @@
  *)
 
 open Xmpp
+open Jid
 
 let timerQ = Scheduler.create ()
 let _ = Scheduler.run timerQ
 
-exception InvalidJID
-
 let new_id = 
   let my_id = ref 0 in
     fun () ->
-	    incr my_id;
-	    "stoat_" ^ string_of_int !my_id
+      incr my_id;
+      "stoat_" ^ string_of_int !my_id
 
 module Id =
 struct
@@ -27,7 +26,7 @@ struct
   type role_t = [ | `Moderator | `Participant | `Visitor | `None ]
   type affiliation_t = [ | `Owner | `Admin | `Member | `Outcast | `None ]
   type participant_t = {
-    jid: Xmpp.jid option;
+    jid: jid option;
     status: string;
     show: presence_show_t;
     orig_nick: string;
@@ -38,19 +37,19 @@ struct
   let find nick nicks = List.assoc nick nicks
   let add nick item nicks =
     let rec aux_add tail acc =
-	    match tail with
-	      | [] -> List.rev ((nick, item) :: acc)
-	      | (nick1, item1) as x :: xs ->
-		        if String.length nick1 > String.length nick then
-		          aux_add xs (x :: acc)
-		        else if compare nick nick1 = 0 then
-		          List.rev ((nick, item) :: acc) @ xs
-		        else if compare nick nick1  = -1 then
-		          aux_add xs (x :: acc)
-		        else
-		          List.rev ((nick, item) :: acc) @ tail
+      match tail with
+        | [] -> List.rev ((nick, item) :: acc)
+        | (nick1, item1) as x :: xs ->
+            if String.length nick1 > String.length nick then
+              aux_add xs (x :: acc)
+            else if compare nick nick1 = 0 then
+              List.rev ((nick, item) :: acc) @ xs
+            else if compare nick nick1  = -1 then
+              aux_add xs (x :: acc)
+            else
+              List.rev ((nick, item) :: acc) @ tail
     in
-	    aux_add nicks []
+      aux_add nicks []
   let remove nick nicks = List.remove_assoc nick nicks
   let mem nick nicks = List.mem_assoc nick nicks
   let iter = List.iter

@@ -12,10 +12,10 @@ let fact x =
   else if x < 0.0 then raise MathNegNumber
   else
     let rec f y acc =
-	    if y = 0.0 then acc
-	    else f (y -. 1.) (y *. acc)
+      if y = 0.0 then acc
+      else f (y -. 1.) (y *. acc)
     in
-	    f x 1.
+      f x 1.
         
 let fib n =
   let phi = (sqrt(5.) +. 1.) /. 2. in

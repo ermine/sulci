@@ -16,11 +16,11 @@ rule token = parse
   | digit+ ("." digit)* ("e"|"E")('-'|'+')? digit+ as num
       { NUM (float_of_string num) }
   | '0' ('x'|'X') ['A'-'F' 'a'-'f' '0'-'9']+ as num
-	    { NUM (float_of_string num) }
+      { NUM (float_of_string num) }
   | '0' ['b' 'B'] ['0' '1']+ as num
-	    { NUM (float_of_int (int_of_string num)) }
+      { NUM (float_of_int (int_of_string num)) }
   | '0' ['o' 'O'] ['0'-'8']+ as num
-	    { NUM (float_of_int (int_of_string num)) }
+      { NUM (float_of_int (int_of_string num)) }
   | '+'                       { PLUS }
   | '-'                       { MINUS }
   | '*'                       { MUL }

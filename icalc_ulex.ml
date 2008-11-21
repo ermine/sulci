@@ -37,14 +37,14 @@ let rec token = lexer
   | "." xml_digit+
   | xml_digit+ "." xml_digit+
   | xml_digit+ ("." xml_digit)* ("e"|"E")('-'|'+')? xml_digit+ ->
-	    let num = Ulexing.utf8_lexeme lexbuf in
+      let num = Ulexing.utf8_lexeme lexbuf in
         NUM (float_of_string num)
   | '0' ('x'|'X') ['a'-'f' 'A'-'F' '0'-'9']+ ->
-	    NUM (float_of_string (Ulexing.utf8_lexeme lexbuf))
+      NUM (float_of_string (Ulexing.utf8_lexeme lexbuf))
   | '0' ['b' 'B'] ['0' '1']+ ->
-	    NUM (float_of_int (int_of_string (Ulexing.utf8_lexeme lexbuf)))
+      NUM (float_of_int (int_of_string (Ulexing.utf8_lexeme lexbuf)))
   | '0' ['o' 'O'] ['0'-'8']+ ->
-	    NUM (float_of_int (int_of_string (Ulexing.utf8_lexeme lexbuf)))
+      NUM (float_of_int (int_of_string (Ulexing.utf8_lexeme lexbuf)))
   | '+' ->
       PLUS
   | '-' ->
@@ -54,13 +54,13 @@ let rec token = lexer
   | '/' ->
       DIVIDE
   | '%' ->
-	    MOD
+      MOD
   | '^'  ->
       CARET
   | "max_float" ->
       MAX_FLOAT
   | ['p' 'P']['i' 'I'] ->
-	    PI
+      PI
   | "(" ->
       LPAREN
   | ")" ->
@@ -68,12 +68,12 @@ let rec token = lexer
   | '=' ->
       EQ
   | '!' ->
-	    FACT
+      FACT
   | ident_first ident_char* ->
-	    let word = Ulexing.utf8_lexeme lexbuf in
-	      (try let f = Hashtbl.find fun_table word in
-	        FUNC f
-	      with Not_found -> VAR word)
+      let word = Ulexing.utf8_lexeme lexbuf in
+        (try let f = Hashtbl.find fun_table word in
+           FUNC f
+         with Not_found -> VAR word)
           
   | eof ->
       EOL

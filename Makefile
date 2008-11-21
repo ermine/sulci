@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.6-alpha-20081119
+VERSION=0.6-alpha-20081121
 
 include Makefile.conf
 
@@ -15,6 +15,9 @@ SUBDIRS = lang
 #  SOURCES += muc_log.ml
 #endif
 
+ifdef PLUGIN_CERBERUS
+  SOURCES1 += plugin_cerberus.ml
+endif
 ifdef PLUGIN_GOOGLE
   SOURCES1 += plugin_google.ml
   DEHTML = yes
@@ -83,9 +86,6 @@ endif
 ifdef PLUGIN_TALKERS
   SOURCES1 += plugin_talkers.ml
   SQLITE = yes
-endif
-ifdef PLUGIN_CERBERUS
-  SOURCES1 += plugin_cerberus.ml
 endif
 ifdef PLUGIN_TRANSLATE
   SOURCES1 += plugin_translate.ml

@@ -19,12 +19,12 @@ let escape str =
 
 let exit_with_rc file db sql =
   (match errcode db with
-    | Rc.NOTADB ->
-        Printf.eprintf "File %s is not a Sqlite3 database\n" file;
-    | Rc.ERROR ->
-        Printf.eprintf "File %s: Bad SQL:\n%s\n" file sql;
-    | rc ->
-        Printf.eprintf "File %s: %s\n" file (Rc.to_string rc);
+     | Rc.NOTADB ->
+         Printf.eprintf "File %s is not a Sqlite3 database\n" file;
+     | Rc.ERROR ->
+         Printf.eprintf "File %s: Bad SQL:\n%s\n" file sql;
+     | rc ->
+         Printf.eprintf "File %s: %s\n" file (Rc.to_string rc);
   );
   flush Pervasives.stderr;
   Pervasives.exit 127
@@ -35,8 +35,8 @@ let simple_exec file db sql =
     | _ -> exit_with_rc file db sql
   with Sqlite3.Error _ ->
     exit_with_rc file db sql
-
-
+      
+      
 let create_table file db sql1 sql2 =
   let found =
     try
@@ -49,7 +49,7 @@ let create_table file db sql1 sql2 =
   in
     if not found then
       simple_exec file db sql2
-
+        
 let get_one_row file db sql =
   try
     let stmt = prepare db sql in
@@ -63,7 +63,7 @@ let get_one_row file db sql =
         exit_with_rc file db sql;
       res
   with Sqlite3.Error _ -> exit_with_rc file db sql
-      
+    
 let insert_or_update file db sql1 sql2 sql3 =
   let found =
     match get_one_row file db sql1 with

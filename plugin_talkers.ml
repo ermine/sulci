@@ -2,10 +2,11 @@
  * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
+open Xml
+open Xmpp
+open Jid
 open Common
 open Muc
-open Xmpp
-open Xml
 open Hooks
 open Types
 open Nicks
@@ -27,38 +28,39 @@ let db =
   let db = db_open file in
     create_table file db
       (Printf.sprintf
-        "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'" table)
+         "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'" table)
       (Printf.sprintf
-        "CREATE TABLE %s (jid varchar, nick varchar, room varchar, words int, me int, sentences int);
+         "CREATE TABLE %s (jid varchar, nick varchar, room varchar, words int, me int, sentences int);
 CREATE INDEX talkersidx ON %s (jid, room);
 CREATE INDEX words_idx ON %s (words)"
-        table table table);
+         table table table);
     db
       
 let talkers event from xml out =
   match event with
     | MUC_message (msg_type, nick, text) -> (
-	      if msg_type = `Groupchat then
-	        let room = from.luser, from.lserver in
-	        let room_s = escape (from.luser ^ "@" ^ from.lserver) in
-		        if text <> "" then
-		          let room_env = GroupchatMap.find room !groupchats in
-		            if from.lresource <> room_env.mynick then
-			            let words = List.length (split_words text) in
-			            let me = 
-			              if nick = "" && 
-				              ((length text = 3 && text = "/me") ||
-				                (length text > 3 && 
-					                String.sub text 0 4 = "/me ")) 
-			              then
-				              1 else 0 in
-			            let jid = (Nicks.find from.lresource 
-					          room_env.nicks).jid in
-			            let cond =
-			              match jid with
-				              | None -> "nick=" ^ escape from.lresource
-				              | Some j -> "jid=" ^ escape (j.luser ^ "@" ^ j.lserver)
-			            in
+        if msg_type = `Groupchat then
+          let room = from.lnode, from.ldomain in
+          let room_s = escape (string_of_jid (bare_jid from)) in
+            if text <> "" then
+              let room_env = GroupchatMap.find room !groupchats in
+                if from.lresource <> room_env.mynick then
+                  let words = List.length (split_words text) in
+                  let me = 
+                    if nick = "" && 
+                      ((length text = 3 && text = "/me") ||
+                         (length text > 3 && 
+                            String.sub text 0 4 = "/me ")) 
+                    then
+                      1 else 0 in
+                  let jid = (Nicks.find from.lresource 
+                               room_env.nicks).jid in
+                  let cond =
+                    match jid with
+                      | None -> "nick=" ^ escape from.lresource
+                      | Some j ->
+                          "jid=" ^ escape (string_of_jid (bare_jid j))
+                  in
                   let sql1 = Printf.sprintf
                     "SELECT 1 FROM %s WHERE %s AND room=%s"
                     table cond room_s in
@@ -69,10 +71,10 @@ let talkers event from xml out =
                     Printf.sprintf
                       "INSERT INTO %s (jid, nick, room, words, me, sentences) VALUES(%s, %s, %s, %d, %d, %d)"
                       table
-					            (escape (match jid with
-							          | None -> ""
-							          | Some j -> j.luser ^  "@" ^ j.lserver))
-					            (escape from.resource)
+                      (escape (match jid with
+                                 | None -> ""
+                                 | Some j -> string_of_jid (bare_jid j)))
+                      (escape from.resource)
                       room_s words me 1
                   in
                     ignore (insert_or_update file db sql1 sql2 sql3)
@@ -82,8 +84,8 @@ let talkers event from xml out =
 let cmd_talkers text event from xml out =
   match event with
     | MUC_message (msg_type, _, _) -> (
-        let room_s = escape (from.luser ^ "@" ^ from.lserver) in
-	      let nick = Stringprep.resourceprep text in
+        let room_s = escape (string_of_jid (bare_jid from)) in
+        let nick = Stringprep.resourceprep text in
         let sql =
           Printf.sprintf 
             "SELECT nick, words, me, sentences FROM %s WHERE room=%s %sORDER BY words DESC, sentences ASC%s"
@@ -96,9 +98,9 @@ let cmd_talkers text event from xml out =
             | Rc.ROW ->
                 aux_step 
                   ((Data.to_string (column stmt 0),
-                  Data.to_string (column stmt 1),
-                  Data.to_string (column stmt 2),
-                  Data.to_string (column stmt 3)) :: acc) stmt
+                    Data.to_string (column stmt 1),
+                    Data.to_string (column stmt 2),
+                    Data.to_string (column stmt 3)) :: acc) stmt
             | Rc.DONE ->
                 if finalize stmt <> Rc.OK then
                   exit_with_rc file db sql;
@@ -113,54 +115,54 @@ let cmd_talkers text event from xml out =
           with
             | Sqlite3.Error _ ->
                 exit_with_rc file db sql
-	      in
-	      let header = (
-	        Lang.get_msg ~xml "plugin_talkers_top_header_man" [],
-	        Lang.get_msg ~xml "plugin_talkers_top_header_words" [],
-	        Lang.get_msg ~xml "plugin_talkers_top_header_actions" [],
-	        Lang.get_msg ~xml "plugin_talkers_top_header_sentences" [],
-	        Lang.get_msg ~xml "plugin_talkers_top_header_average" []
+        in
+        let header = (
+          Lang.get_msg ~xml "plugin_talkers_top_header_man" [],
+          Lang.get_msg ~xml "plugin_talkers_top_header_words" [],
+          Lang.get_msg ~xml "plugin_talkers_top_header_actions" [],
+          Lang.get_msg ~xml "plugin_talkers_top_header_sentences" [],
+          Lang.get_msg ~xml "plugin_talkers_top_header_average" []
         )
         in
-	      let rec aux_max_len max l =
-		      match l with
-		        | [] -> max
-		        | (nick, _, _, _) :: t -> 
-			          if length nick > max then
-			            aux_max_len (length nick) t
-			          else
-			            aux_max_len max t
-	      in
+        let rec aux_max_len max l =
+          match l with
+            | [] -> max
+            | (nick, _, _, _) :: t -> 
+                if length nick > max then
+                  aux_max_len (length nick) t
+                else
+                  aux_max_len max t
+        in
         let (nick_title, _, _, _, _) = header in
-	      let max_len = aux_max_len (length nick_title / 8) data in
-	      let tabs = max_len / 8 + 1 in
-	      let tab = String.make tabs '\t' in
-	      let rec cycle l acc =
-	        match l with
-		        | [] -> String.concat "" (List.rev acc)
-		        | (nick, words, me, sentences) :: t ->
-		            let m = tabs - (length nick / 8) in
-			            cycle t ((Printf.sprintf "%s%s%s\t%s\t%s\t%.2g\n"
-			              nick
-			              (String.sub tab 0 m)
-			              words me sentences
-			              (float_of_string words /. float_of_string sentences)
-			            ) :: acc)
-	      in
-	      let r = cycle data [] in
-	        if r <> "" then
+        let max_len = aux_max_len (length nick_title / 8) data in
+        let tabs = max_len / 8 + 1 in
+        let tab = String.make tabs '\t' in
+        let rec cycle l acc =
+          match l with
+            | [] -> String.concat "" (List.rev acc)
+            | (nick, words, me, sentences) :: t ->
+                let m = tabs - (length nick / 8) in
+                  cycle t ((Printf.sprintf "%s%s%s\t%s\t%s\t%.2g\n"
+                              nick
+                              (String.sub tab 0 m)
+                              words me sentences
+                              (float_of_string words /. float_of_string sentences)
+                           ) :: acc)
+        in
+        let r = cycle data [] in
+          if r <> "" then
             let (nick, words, me, sentences, eff) = header in
-		          make_msg out xml 
-		            ((Printf.sprintf "\n%s%s%s\t%s\t%s\t%s\n"
-                  nick
-			            (String.sub tab 0 (tabs - (length nick / 8)))
-			            words me sentences eff) ^ 
-			            r)
-	        else
-		        make_msg out xml
-		          (Lang.get_msg ~xml "plugin_talkers_no_result" []))
+              make_msg out xml 
+                ((Printf.sprintf "\n%s%s%s\t%s\t%s\t%s\n"
+                    nick
+                    (String.sub tab 0 (tabs - (length nick / 8)))
+                    words me sentences eff) ^ 
+                   r)
+          else
+            make_msg out xml
+              (Lang.get_msg ~xml "plugin_talkers_no_result" []))
     | _ -> ()
-	
+        
 let _ =
   Hooks.register_handle (Catch talkers);
   Hooks.register_handle (Command ("talkers", cmd_talkers))

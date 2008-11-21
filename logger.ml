@@ -2,34 +2,34 @@ open Unix
 open Config
 
 let logfile = 
-   (try 
-       Xml.get_cdata config ~path:["log"; "report"]
-    with Not_found -> 
-       "sulci_life.log")
+  (try 
+     Xml.get_cdata config ~path:["log"; "report"]
+   with Not_found -> 
+     "sulci_life.log")
 
 let lout = ref Pervasives.stdout
 
 let open_log () =
-   lout := open_out_gen [Open_creat; Open_append] 0o644 logfile
+  lout := open_out_gen [Open_creat; Open_append] 0o644 logfile
 
 let out str =
-   let time = Strftime.strftime "%d/%m/%Y %T" 
-      ~tm:(localtime (gettimeofday ())) in
-      output_string !lout (time ^ " " ^ str ^ "\n");
-      flush !lout
-
+  let time = Strftime.strftime "%d/%m/%Y %T" 
+    ~tm:(localtime (gettimeofday ())) in
+    output_string !lout (time ^ " " ^ str ^ "\n");
+    flush !lout
+      
 let print_exn file ?xml exn =
-   out ("Caught exception in file " ^ file ^ ": " ^
-           (Printexc.to_string exn) ^
-           (match xml with
-               | None -> ""
-               | Some x ->
-                    "\n" ^ Xml.element_to_string x))
+  out ("Caught exception in file " ^ file ^ ": " ^
+         (Printexc.to_string exn) ^
+         (match xml with
+            | None -> ""
+            | Some x ->
+                "\n" ^ Xml.element_to_string x))
 
 let _ =
-   open_log ();
-   Sys.set_signal Sys.sighup
-      (Sys.Signal_handle (fun x -> 
-                             let old_log = !lout in
-                                open_log ();
-                                close_out old_log))
+  open_log ();
+  Sys.set_signal Sys.sighup
+    (Sys.Signal_handle (fun x -> 
+                          let old_log = !lout in
+                            open_log ();
+                            close_out old_log))

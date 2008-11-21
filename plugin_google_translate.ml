@@ -46,7 +46,7 @@ let slist = [
   "uk", "Ukrainian";
   "vi", "Vietnamese";
 ]
-
+  
 let tlist = [
   "ar", "Arabic";
   "bg", "Bulgarian";
@@ -109,7 +109,8 @@ let process_result doc =
         match x with
           | Element (tag, attrs, els1) ->
               if tag = "div" &&
-                (try List.assoc "id" attrs with Not_found -> "") = "result_box" then
+                (try List.assoc "id" attrs with Not_found -> "") =
+                "result_box" then
                   Some (get_data els1)
               else (
                 match aux_find els1 with
@@ -120,11 +121,11 @@ let process_result doc =
               aux_find xs
   in
     aux_find doc
-  
+      
 let translate_text sl tl text xml out =
   let callback data =
     let resp = match data with
-	    | OK (media, charset, content) -> (
+      | OK (media, charset, content) -> (
           try
             let enc = 
               match charset with
@@ -147,7 +148,7 @@ let translate_text sl tl text xml out =
           with exn ->
             Lang.get_msg ~xml "plugin_google_translate_not_parsed" []
         )
-	    | Exception exn ->
+      | Exception exn ->
           Lang.get_msg ~xml "plugin_google_translate_server_error" []
     in
       make_msg out xml resp
@@ -157,33 +158,33 @@ let translate_text sl tl text xml out =
     sl tl (Netencoding.Url.encode (Xml.decode text))
   in
     Http_suck.http_post url [] data callback
-
+      
 (* gtr er ru text *)
 let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8]
   "^([a-zA-Z-]{2,5})\\s+([a-zA-Z-]{2,5})\\s(.+)"
-
+  
 let rm_newlines = Pcre.regexp "[\n\r]"
-
+  
 let translate text event from xml out =
   match trim(text) with
     | "list" ->
         make_msg out xml list_languages
     | other ->
-	      try
-	        let res = exec ~rex:cmd text in
-	        let lg1 = get_substring res 1 in
-		      let lg2 = get_substring res 2 in
-		      let str = get_substring res 3 in
+        try
+          let res = exec ~rex:cmd text in
+          let lg1 = get_substring res 1 in
+          let lg2 = get_substring res 2 in
+          let str = get_substring res 3 in
             if List.mem_assoc lg1 slist then
               if List.mem_assoc lg2 tlist then
                 translate_text lg1 lg2 str xml out
-		          else
-		            raise Not_found
+              else
+                raise Not_found
             else
               raise Not_found
-	      with Not_found ->
-		      make_msg out xml 
-		        (Lang.get_msg ~xml "plugin_google_translate_bad_syntax" [])
-      
+        with Not_found ->
+          make_msg out xml 
+            (Lang.get_msg ~xml "plugin_google_translate_bad_syntax" [])
+            
 let _ = 
   Hooks.register_handle (Hooks.Command ("gtr", translate))
