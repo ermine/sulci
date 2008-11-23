@@ -54,18 +54,18 @@ let dfn text event from xml out =
             let nicks = (GroupchatMap.find room !groupchats).nicks in
               (match (Nicks.find from.lresource nicks).jid with
                  | Some jid ->
-                     let cond = " AND lnode=" ^ escape jid.lnode ^
-                       " AND ldomain=" ^ escape jid.ldomain in
+                     let cond = " AND luser=" ^ escape jid.lnode ^
+                       " AND lserver=" ^ escape jid.ldomain in
                        from.lresource, jid.lnode, jid.ldomain, cond
                  | None ->
                      let cond = " AND nick=" ^ escape from.lresource ^
-                       " AND lnode=" ^ escape from.lnode ^
-                       " AND ldomain=" ^ escape from.ldomain in
+                       " AND luser=" ^ escape from.lnode ^
+                       " AND lserver=" ^ escape from.ldomain in
                        from.lresource, from.lnode, from.ldomain, cond
               )
         | _ ->
-            let cond = " AND lnode=" ^ escape from.lnode ^ 
-              " AND ldomain=" ^ escape from.ldomain in
+            let cond = " AND luser=" ^ escape from.lnode ^ 
+              " AND lserver=" ^ escape from.ldomain in
               from.lnode, from.lnode, from.ldomain, cond
     in
     let sql = Printf.sprintf
@@ -98,7 +98,7 @@ let dfn text event from xml out =
                                              (Unix.gettimeofday ())) in
                 simple_exec file db
                   (Printf.sprintf
-                     "INSERT INTO %s (stamp,nick,lnode,ldomain,key,value)
+                     "INSERT INTO %s (stamp,nick,luser,lserver,key,value)
   VALUES(%s,%s,%s,%s,%s,%s)"
                      table stamp (escape nick) (escape lnode) (escape ldomain)
                      (escape key) (escape value));
@@ -150,11 +150,12 @@ let wtfall text event from xml out =
     let rec aux_acc i acc stmt =
       match step stmt with
         | Rc.ROW ->
-            let str = 
-              Printf.sprintf "%d) %s"
-                i
-                (Lang.get_msg ~xml "plugin_vocabulary_answer"
-                   [Data.to_string (column stmt 1)])
+            let str = Printf.sprintf "%d) %s"
+              i
+              (Lang.get_msg ~xml "plugin_vocabulary_answer"
+                 [Data.to_string (column stmt 0);
+                  key;
+                  Data.to_string (column stmt 1)])
             in
               aux_acc (i+1) (str :: acc) stmt
         | Rc.DONE -> 

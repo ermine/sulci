@@ -281,21 +281,7 @@ Nick: %s (%s)
 let kill (from:jid) xml out =
   if from.resource = "" then ()
   else
-    let proc event f x o = 
-      match event with
-        | Iq (_, `Error, _) ->
-            let err_text = try
-              get_error_semantic x
-            with Not_found -> 
-              Lang.get_msg ~xml "plugin_cerberus_cannot_kick_admin"
-                [from.resource]
-            in
-              out (Xmlelement ("message", 
-                               ["type", "groupchat";
-                                "to", string_of_jid (bare_jid from)],
-                               [make_simple_cdata "body" err_text]))
-        | _ -> ()
-    in
+    let proc event f x o = () in
     let id = new_id () in
     let room = from.lnode, from.ldomain in
     let lang = (GroupchatMap.find room !groupchats).lang in

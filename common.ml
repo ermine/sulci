@@ -164,14 +164,7 @@ let make_msg out xml ?response_tail response =
                                     | "" -> ["to", from.string]
                                     | o -> ["to", from.string; "type", other]),
                                  [make_simple_cdata "body" m]))) msgs
-              
-let get_error_semantic xml =
-  let err_text =  
-    try 
-      get_cdata ~path:["error"; "text"] xml
-    with _ -> raise Not_found
-  in err_text
-       
+
 (* temp code *)
 exception DNSPrepError
   

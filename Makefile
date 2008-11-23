@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.6-alpha-20081121
+VERSION=0.6-alpha-20081123
 
 include Makefile.conf
 
