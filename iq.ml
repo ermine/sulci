@@ -71,7 +71,7 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
           fun entity event from ->
             match entity with
               | `Mynick mynick ->
-                  string_of_jid {from with resource = mynick}
+                  string_of_jid {from with resource = mynick; lresource = mynick}
               | `You ->
                   string_of_jid from
               | `User user ->
@@ -80,7 +80,7 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
                   else
                     user.string
               | `Nick nick ->
-                  string_of_jid {from with resource = nick}
+                  string_of_jid {from with resource = nick; lresource = nick}
               | `Host host ->
                   host.domain
               | _ ->
