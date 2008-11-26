@@ -17,7 +17,7 @@ let ping text event from xml (out:element -> unit) =
       match entity with
         | `Mynick nick
         | `Nick nick ->
-            string_of_jid {from with resource = nick}
+            string_of_jid {from with resource = nick; lresource = nick}
         | `You ->
             string_of_jid from
         | `User user ->
