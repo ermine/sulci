@@ -34,6 +34,11 @@ struct
     affiliation: affiliation_t
   }
   type t = (string * participant_t) list
+  let string_of_role = function
+    | `Moderator -> "moderator"
+    | `Participant -> "participant"
+    | `Visitor -> "visitor"
+    | `None -> "none"
   let find nick nicks = List.assoc nick nicks
   let add nick item nicks =
     let rec aux_add tail acc =

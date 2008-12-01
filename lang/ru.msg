@@ -139,4 +139,4 @@ plugin_currency_too_big_number    Так не бывает!
 plugin_hostip_bad_syntax          Какой адрес?
 plugin_hostip_failed              Не удалось сделать запрос.
 
-plugin_cerberus_cannot_kick_admin %s, не болтай глупостей как малолетка!
+plugin_cerberus_cannot_kick_admin не болтай глупостей как малолетка!

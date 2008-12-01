@@ -135,4 +135,4 @@ plugin_currency_too_big_number    it's impossible to have so much money
 plugin_hostip_bad_syntax          Please give an address.
 plugin_hostip_failed              Failed to make a request
 
-plugin_cerberus_cannot_kick_admin %s, what do you say?
+plugin_cerberus_cannot_kick_admin what do you say?

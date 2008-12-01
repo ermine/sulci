@@ -1,11 +1,8 @@
 open Unix
 open Config
 
-let logfile = 
-  (try 
-     Xml.get_cdata config ~path:["log"; "report"]
-   with Not_found -> 
-     "sulci_life.log")
+let logfile =
+  try List.assoc "report" Config.logger_options with Not_found -> "/dev/null"
 
 let lout = ref Pervasives.stdout
 
