@@ -50,7 +50,7 @@ let vsearch =
     match entity with
       | `Mynick nick
       | `Nick nick ->
-          string_of_jid {from with resource = nick }
+          string_of_jid {from with resource = nick; lresource = nick }
       | `You -> from.string
       | `User user -> user.string
       | `Host host -> host.domain

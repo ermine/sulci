@@ -37,81 +37,83 @@ CREATE INDEX dfnidx ON %s (key)"
       total := t;
       db
         
+let dfn_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)\\s*=\\s*(.*)"
+
 let dfn text event from xml out =
-  try
-    let eq = String.index text '=' in
-    let key = 
-      let key' = trim (String.sub text 0 eq) in
-        if key' = "" then raise Not_found
+  let key, value=
+    try
+      let res = Pcre.exec ~rex:dfn_re text in
+      let key = Pcre.get_substring res 1 in
+      let value = try Pcre.get_substring res 2 with Not_found -> "" in
+        key, value
+    with Not_found ->
+      "", ""
+  in
+    if key = "" then
+      make_msg out xml 
+        (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
+    else
+      let room = from.lnode, from.ldomain in
+      let nick, lnode, ldomain, cond =
+        if GroupchatMap.mem room !groupchats then
+          let room_env = GroupchatMap.find room !groupchats in
+          let item = Nicks.find from.lresource room_env.nicks in
+            match item.jid with
+              | Some jid ->
+                  let cond = " AND luser=" ^ escape jid.lnode ^
+                    " AND lserver=" ^ escape jid.ldomain in
+                    from.lresource, jid.lnode, jid.ldomain, cond
+              | None ->
+                  let cond = " AND nick=" ^ escape from.lresource ^
+                    " AND luser=" ^ escape from.lnode ^
+                    " AND lserver=" ^ escape from.ldomain in
+                    from.lresource, from.lnode, from.ldomain, cond
         else
-          key'
-    in
-    let value = trim (string_after text (eq+1)) in
-    let nick, lnode, ldomain, cond =
-      match event with
-        | MUC_message _ ->
-            let room = (from.lnode, from.ldomain) in
-            let nicks = (GroupchatMap.find room !groupchats).nicks in
-              (match (Nicks.find from.lresource nicks).jid with
-                 | Some jid ->
-                     let cond = " AND luser=" ^ escape jid.lnode ^
-                       " AND lserver=" ^ escape jid.ldomain in
-                       from.lresource, jid.lnode, jid.ldomain, cond
-                 | None ->
-                     let cond = " AND nick=" ^ escape from.lresource ^
-                       " AND luser=" ^ escape from.lnode ^
-                       " AND lserver=" ^ escape from.ldomain in
-                       from.lresource, from.lnode, from.ldomain, cond
-              )
-        | _ ->
-            let cond = " AND luser=" ^ escape from.lnode ^ 
-              " AND lserver=" ^ escape from.ldomain in
-              from.lnode, from.lnode, from.ldomain, cond
-    in
-    let sql = Printf.sprintf
-      "SELECT value FROM %s WHERE key=%s %s" table (escape key) cond in
-      match get_one_row file db sql with
-        | Some r ->
-            if value = (string_of_data r.(0)) then
-              make_msg out xml 
-                (Lang.get_msg ~xml "plugin_vocabulary_dfn_again" [])
-            else if value = "" then (
-              simple_exec file db
-                (Printf.sprintf
-                   "DELETE FROM %s WHERE key=%s %s" table (escape key) cond);
-              decr total;
-              make_msg out xml 
-                (Lang.get_msg ~xml "plugin_vocabulary_removed" [])
-            )
-            else
-              let stamp =
-                Int32.to_string (Int32.of_float  (Unix.gettimeofday ())) in
-                simple_exec file db
-                  (Printf.sprintf
-                     "UPDATE %s SET stamp=%s, nick=%s, value=%s WJERE key=%s %s"
-                     table stamp (escape nick) (escape value) (escape key) cond);
-                make_msg out xml
-                  (Lang.get_msg ~xml "plugin_vocabulary_replaced" [])
-        | None ->
-            if value <> "" then
-              let stamp = Int32.to_string (Int32.of_float 
-                                             (Unix.gettimeofday ())) in
-                simple_exec file db
-                  (Printf.sprintf
-                     "INSERT INTO %s (stamp,nick,luser,lserver,key,value)
-  VALUES(%s,%s,%s,%s,%s,%s)"
-                     table stamp (escape nick) (escape lnode) (escape ldomain)
-                     (escape key) (escape value));
-                incr total;
+          let cond = " AND luser=" ^ escape from.lnode ^ 
+            " AND lserver=" ^ escape from.ldomain in
+            from.lnode, from.lnode, from.ldomain, cond
+      in
+      let sql = Printf.sprintf
+        "SELECT value FROM %s WHERE key=%s %s" table (escape key) cond in
+        match get_one_row file db sql with
+          | Some r ->
+              if value = (string_of_data r.(0)) then
                 make_msg out xml 
-                  (Lang.get_msg ~xml "plugin_vocabulary_recorded" [])
-            else
-              make_msg out xml
-                (Lang.get_msg ~xml "plugin_vocabulary_nothing_to_remove" [])
-  with Not_found ->
-    make_msg out xml 
-      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
-      
+                  (Lang.get_msg ~xml "plugin_vocabulary_dfn_again" [])
+              else if value = "" then (
+                simple_exec file db
+                  (Printf.sprintf
+                     "DELETE FROM %s WHERE key=%s %s" table (escape key) cond);
+                decr total;
+                make_msg out xml 
+                  (Lang.get_msg ~xml "plugin_vocabulary_removed" [])
+              )
+              else
+                let stamp =
+                  Int32.to_string (Int32.of_float  (Unix.gettimeofday ())) in
+                  simple_exec file db
+                    (Printf.sprintf
+                       "UPDATE %s SET stamp=%s, nick=%s, value=%s WJERE key=%s %s"
+                       table stamp (escape nick) (escape value) (escape key) cond);
+                  make_msg out xml
+                    (Lang.get_msg ~xml "plugin_vocabulary_replaced" [])
+          | None ->
+              if value <> "" then
+                let stamp = Int32.to_string (Int32.of_float 
+                                               (Unix.gettimeofday ())) in
+                  simple_exec file db
+                    (Printf.sprintf
+                       "INSERT INTO %s (stamp,nick,luser,lserver,key,value)
+  VALUES(%s,%s,%s,%s,%s,%s)"
+                       table stamp (escape nick) (escape lnode) (escape ldomain)
+                       (escape key) (escape value));
+                  incr total;
+                  make_msg out xml 
+                    (Lang.get_msg ~xml "plugin_vocabulary_recorded" [])
+              else
+                make_msg out xml
+                  (Lang.get_msg ~xml "plugin_vocabulary_nothing_to_remove" [])
+
 let wtf text event from xml out =
   if text = "" then
     make_msg out xml 
@@ -304,7 +306,6 @@ let wtfremove text event from xml out =
           else
             make_msg out xml (Lang.get_msg ~xml
                                 "plugin_vocabulary_nothing_to_remove" [])
-
 
 let _ =
   List.iter (fun (command, callback) ->
