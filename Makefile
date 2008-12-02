@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.6-alpha-20081201
+VERSION=0.6-alpha-20081202
 
 include Makefile.conf
 
@@ -154,7 +154,10 @@ RESULT = sulci
 
 include ../Makefile.global
 
-all: nc subdirs
+all: version.ml nc subdirs
+
+version.ml: version.ml.src
+	sed 's/VERSION/$(VERSION)/' version.ml.src > version.ml
 
 subdirs: $(SUBDIRS)
 
@@ -191,9 +194,11 @@ include $(OCAMLMAKEFILE)
 
 .PHONY: clean
 clean::
+	rm -f version.ml
 	rm -f $(TARGETS) $(TRASH)
 	rm -rf $(BCDIDIR) $(NCDIDIR) $(MLDEPDIR)
 	for dir in $(SUBDIRS); do \
 	   $(MAKE) -C $$dir clean; \
 	done
+
 

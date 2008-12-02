@@ -43,9 +43,9 @@ let _ =
     flush stdout;
     Pervasives.exit 127
   in
-  let rawxml_log = 
-    try Some (trim (Xml.get_cdata config ~path:["log"; "rawxml"]))
-    with Not_found -> None 
+  let rawxml_log =
+    try Some (List.assoc "rawxml" Config.logger_options)
+    with Not_found -> None
   in
   let run () =
     let jid, out, next_xml = 

@@ -26,7 +26,7 @@ let db =
       (Printf.sprintf
          "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'" table)
       (Printf.sprintf
-         "CREATE TABLE %s (stamp integer, nick varchar, lnode varchar, ldomain varchar, key varchar, value varchar);
+         "CREATE TABLE %s (stamp integer, nick varchar, luser varchar, lserver varchar, key varchar, value varchar);
 CREATE INDEX dfnidx ON %s (key)"
          table  table);
     let t =
@@ -134,6 +134,33 @@ let wtf text event from xml out =
             make_msg out xml 
               (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
               
+let output_records sql xml out =
+  let rec aux_acc i acc stmt =
+    match step stmt with
+      | Rc.ROW ->
+          let str = Printf.sprintf "%d) %s"
+            i
+            (Lang.get_msg ~xml "plugin_vocabulary_answer"
+               [Data.to_string (column stmt 0);
+                Data.to_string (column stmt 1);
+                Data.to_string (column stmt 2)])
+          in
+            aux_acc (i+1) (str :: acc) stmt
+      | Rc.DONE -> 
+          if acc = [] then "" else String.concat "\n" (List.rev acc)
+      | _ -> exit_with_rc file db sql
+  in
+    try
+      let stmt = prepare db sql in
+      let reply = aux_acc 1 [] stmt in
+        if reply = "" then
+          make_msg out xml 
+            (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+        else
+          make_msg out xml reply
+    with Sqlite3.Error _ ->
+      exit_with_rc file db sql
+
 let wtfall text event from xml out =
   if text = "" then
     make_msg out xml 
@@ -145,34 +172,11 @@ let wtfall text event from xml out =
           String.sub text 0 q
       with Not_found -> text in
     let sql =
-      Printf.sprintf "SELECT nick, value FROM %s WHERE key=%s ORDER BY stamp"
-        table (escape key)in
-    let rec aux_acc i acc stmt =
-      match step stmt with
-        | Rc.ROW ->
-            let str = Printf.sprintf "%d) %s"
-              i
-              (Lang.get_msg ~xml "plugin_vocabulary_answer"
-                 [Data.to_string (column stmt 0);
-                  key;
-                  Data.to_string (column stmt 1)])
-            in
-              aux_acc (i+1) (str :: acc) stmt
-        | Rc.DONE -> 
-            if acc = [] then "" else String.concat "\n" (List.rev acc)
-        | _ -> exit_with_rc file db sql
+      Printf.sprintf "SELECT nick, key, value FROM %s WHERE key=%s ORDER BY stamp"
+        table (escape key)
     in
-      try
-        let stmt = prepare db sql in
-        let reply = aux_acc 1 [] stmt in
-          if reply = "" then
-            make_msg out xml 
-              (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
-          else
-            make_msg out xml reply
-      with Sqlite3.Error _ ->
-        exit_with_rc file db sql
-          
+      output_records sql xml out
+      
 let wtfrand text event from xml out =
   let key = trim(text) in
     if key = "" then
@@ -233,10 +237,23 @@ let wtfcount text event from xml out =
     else
       make_msg out xml (Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" [])
         
+let wtffind text event from xml out =
+  if text = "" then
+    make_msg out xml 
+      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
+  else
+    let sql = Printf.sprintf
+      "SELECT nick, key, value FROM %s WHERE key LIKE %s OR value LIKE %s"
+      table (escape text) (escape text)
+    in
+      output_records sql xml out
+
 let _ =
-  Hooks.register_handle (Hooks.Command ("wtf", wtf));
-  Hooks.register_handle (Hooks.Command ("wtfall", wtfall));
-  Hooks.register_handle (Hooks.Command ("wtfrand", wtfrand));
-  Hooks.register_handle (Hooks.Command ("wtfcount", wtfcount));
-  Hooks.register_handle (Hooks.Command ("dfn", dfn));
-  
+  List.iter (fun (command, callback) ->
+               Hooks.register_handle (Hooks.Command (command, callback)))
+    ["wtfall", wtfall;
+     "wtfrand", wtfrand;
+     "wtfcount", wtfcount;
+     "dfn", dfn;
+     "wtffind", wtffind]
+    
