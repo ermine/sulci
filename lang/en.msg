@@ -62,7 +62,7 @@ plugin_vocabulary_invalid_syntax   hm?
 plugin_vocabulary_recorded         wrote
 plugin_vocabulary_dfn_again        it already was done
 plugin_vocabulary_removed          removed
-plugin_vocabulary_nothing_to_remove no such key
+plugin_vocabulary_nothing_to_remove nothing to remove
 plugin_vocabulary_replaced         replaced
 plugin_vocabulary_answer           %s said that %s - %s
 plugin_vocabulary_db_is_empty      data base is empty
