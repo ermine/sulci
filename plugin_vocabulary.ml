@@ -93,7 +93,7 @@ let dfn text event from xml out =
                   Int32.to_string (Int32.of_float  (Unix.gettimeofday ())) in
                   simple_exec file db
                     (Printf.sprintf
-                       "UPDATE %s SET stamp=%s, nick=%s, value=%s WJERE key=%s %s"
+                       "UPDATE %s SET stamp=%s, nick=%s, value=%s WHERE key=%s %s"
                        table stamp (escape nick) (escape value) (escape key) cond);
                   make_msg out xml
                     (Lang.get_msg ~xml "plugin_vocabulary_replaced" [])
