@@ -1,0 +1,25 @@
+<*.ml>: use_pcre, use_xml, use_xmpp
+#<config.ml>: use_getopt
+<sulci.ml>: use_plugins, use_lang
+<sulci.{byte,native}>: thread, use_xml, use_xmpp, use_unix, use_cryptokit, use_pcre, use_ulex, use_sqlite3, use_netstring, use_netclient, use_dbm
+
+<find_url.ml>: camlp4o, use_ulex.syntax, use_ulex
+<http_suck.ml>: thread, use_equeue, use_netclient, use_netstring
+<sqlite_util.ml>: use_sqlite3
+
+<*_ulex.ml>: camlp4o, use_ulex.syntax, use_ulex
+<plugin_calc.ml>: use_ulex
+<plugin_cerberus.ml>: camlp4o, use_ulex.syntax, use_ulex
+<plugin_dict.ml>: thread
+<plugin_google.ml>: use_dehtml
+<plugin_google_translate.ml>: use_netstring
+<plugin_hostip.ml>: use_netstring
+<plugin_markov.ml>: thread, use_sqlite3
+<plugin_mueller.ml>: use_netstring
+<plugin_seen.ml>: use_sqlite3
+<plugin_talkers.ml>: use_sqlite3, use_netstring
+<plugin_translate.ml>: use_netstring
+<plugin_userinfo.ml>: use_netstring
+<plugin_vocabulary.ml>: use_sqlite3
+<plugin_yandex.ml>: use_netstring
+
