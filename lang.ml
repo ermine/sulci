@@ -83,31 +83,9 @@ let process str args =
     String.concat "" res
       
 let get_lang xml =
-  match safe_get_attr_s xml "type" with
-    | "groupchat" ->
-        let from = jid_of_string (get_attr_s xml "from") in
-        let room = (from.lnode, from.ldomain) in
-          (try
-             let room_env = GroupchatMap.find room !groupchats in
-              room_env.lang
-          with Not_found ->
-            deflang)
-    | _ ->
-        try get_attr_s xml "xml:lang" with Not_found ->
-          let from = jid_of_string (get_attr_s xml "from") in
-          let room = (from.lnode, from.ldomain) in
-            try let room_env = GroupchatMap.find room !groupchats in
-              room_env.lang
-            with Not_found -> deflang
-              
-let get_msg ?xml ?(lang="") msgid args =
-  let lang = 
-    match xml with
-      | Some x -> 
-          get_lang x
-      | None -> 
-          if lang = "" then deflang else lang
-  in
+  try get_attr_s xml "xml:lang" with Not_found -> deflang
+      
+let get_msg lang msgid args =
   let htbl = find_htbl lang in
   let str =  try Hashtbl.find htbl msgid with _ ->
     try
@@ -142,15 +120,7 @@ let expand_time ~lang cause seconds =
   in
     f cause year month day hour min sec
       
-let float_seconds ?xml ?lang cause seconds =
-  let lang = 
-    match xml with
-      | Some x -> get_lang x
-      | None ->
-          match lang with
-            | Some l -> l
-            | None -> deflang
-  in
+let float_seconds lang cause seconds =
   let f =
     try
       (LangTime.find lang !langtime).float_seconds

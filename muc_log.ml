@@ -136,13 +136,11 @@ let process_log event (from:jid) xml =
       | MUC_topic subject ->
           if from.resource <> "" then
             write room 
-              (Lang.get_msg ~lang:(lang room)
-                 "muc_log_set_subject" 
+              (Lang.get_msg (lang room) "muc_log_set_subject" 
                  [from.resource;  html_url subject])
           else
             write room 
-              (Lang.get_msg ~lang:(lang room)
-                 "muc_log_subject" [html_url subject])
+              (Lang.get_msg (lang room) "muc_log_subject" [html_url subject])
       | MUC_message (msg_type, _, _) when msg_type = `Groupchat  ->
           let body = Xml.get_cdata xml ~path:["body"] in
             if body <> "" then
@@ -157,14 +155,13 @@ let process_log event (from:jid) xml =
                   make_message from.resource body)
       | MUC_join item ->
           write room
-            ("-- " ^ Lang.get_msg ~lang:(lang room) 
-               "muc_log_join" 
+            ("-- " ^ Lang.get_msg (lang room) "muc_log_join" 
                [from.resource])
       | MUC_leave (me, t, reason, item) ->
           write room
             ("-- " ^
                (if reason = "" then
-                  Lang.get_msg ~lang:(lang room)
+                  Lang.get_msg (lang room)
                     (match t with
                        | `Kick -> "muc_log_kick"
                        | `Ban -> "muc_log_ban"
@@ -172,7 +169,7 @@ let process_log event (from:jid) xml =
                        | `Normal -> "muc_log_leave")
                     [from.resource]
                 else
-                  Lang.get_msg ~lang:(lang room)
+                  Lang.get_msg (lang room)
                     (match t with
                        | `Kick -> "muc_log_kick_reason"
                        | `Ban -> "muc_log_ban_reason"
@@ -189,11 +186,11 @@ let process_log event (from:jid) xml =
       | MUC_change_nick (newnick, item) ->
           write room
             ("-- " ^
-               (Lang.get_msg ~lang:(lang room) 
+               (Lang.get_msg (lang room) 
                   "muc_log_change_nick" [from.resource; newnick]))
             (*
               | MUC_presence (room, user, item) ->
-            (* Lang.get_msg ~lang:(lang room) "muc_log_presence" 
+            (* Lang.get_msg (lang room) "muc_log_presence" 
               [user; item.show; item.status] *)
               write room
               (Printf.sprintf "-- %s [%s] %s" user item.show 

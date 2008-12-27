@@ -5,9 +5,9 @@
 open Unix
 open Common
 
-let dns text event from xml out =
+let dns text event from xml lang out =
   if text = "" then
-    make_msg out xml (Lang.get_msg ~xml "plugin_misc_dns_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg lang "plugin_misc_dns_invalid_syntax" [])
   else
     make_msg out xml
       (try
@@ -24,10 +24,10 @@ let dns text event from xml out =
                   String.concat " "
                     (List.map (fun addr -> string_of_inet_addr addr) hl)
               with Not_found ->  
-                Lang.get_msg ~xml "plugin_misc_dns_not_resolved" []
+                Lang.get_msg lang "plugin_misc_dns_not_resolved" []
              ) 
          | Not_found ->
-             Lang.get_msg ~xml "plugin_misc_dns_not_resolved" [])
+             Lang.get_msg lang "plugin_misc_dns_not_resolved" [])
       
 let _ =
   Hooks.register_handle (Hooks.Command ("dns", dns))

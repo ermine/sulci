@@ -115,9 +115,9 @@ let process_dict db word lang =
         flush out_dict;
         (match get_status in_dict with
            | "550", err -> 
-               Lang.get_msg ~lang "plugin_dict_db_not_found" []
+               Lang.get_msg lang "plugin_dict_db_not_found" []
            | "552", err -> 
-               Lang.get_msg ~lang "plugin_dict_word_not_found" []
+               Lang.get_msg lang "plugin_dict_word_not_found" []
            | "150", rsp -> 
                let rec cycle acc =
                  match get_status in_dict with
@@ -147,10 +147,9 @@ let process_dict db word lang =
 let rex1 = Pcre.regexp ~iflags:(cflags [`UTF8]) "([^\\s]+)[\\s]*$"
 let rex2 = Pcre.regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
   
-let dict text event from xml out =
+let dict text event from xml lang out =
   if text = "" then
-    make_msg out xml
-      (Lang.get_msg ~xml "plugin_dict_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg lang "plugin_dict_invalid_syntax" [])
   else
     if String.get text 0 = '-' then
       let proc () =
@@ -168,8 +167,7 @@ let dict text event from xml out =
         let word = Pcre.get_substring r 2 in
         let proc () =
           let response = try
-            let lang = Lang.get_lang xml in
-              process_dict db word lang
+            process_dict db word lang
           with (DictError error) -> error
           in
             make_msg out xml (Xml.encode response)
@@ -181,16 +179,14 @@ let dict text event from xml out =
           let word = Pcre.get_substring r 1 in
           let proc () =
             let response = try
-              let lang = Lang.get_lang xml in
-                process_dict "*" word lang
+              process_dict "*" word lang
             with (DictError error) -> error
             in
               make_msg out xml (Xml.encode response)
           in
             ignore (Thread.create proc ())
         with Not_found ->
-          make_msg out xml 
-            (Lang.get_msg ~xml "plugin_dict_invalid_syntax" [])
+          make_msg out xml (Lang.get_msg lang "plugin_dict_invalid_syntax" [])
             
 let _ =
   Hooks.register_handle (Hooks.Command ("dict", dict))

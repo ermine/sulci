@@ -258,6 +258,16 @@ let register_room ?lang nick (lnode, ldomain) =
         | None -> Lang.deflang
         | Some l -> l } !groupchats
     
+let get_lang from xml =
+  if GroupchatMap.mem (from.lnode, from.ldomain) !groupchats then
+    match safe_get_attr_s xml "type" with
+      | "groupchat" ->
+          (GroupchatMap.find (from.lnode, from.ldomain) !groupchats).lang
+      | _ ->
+          Lang.get_lang xml
+  else
+    Lang.get_lang xml
+
 let _ =
   let default_mynick = 
     trim (Xml.get_cdata Config.config ~path:["jabber"; "user"]) in

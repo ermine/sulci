@@ -83,7 +83,7 @@ let parse_weather content =
       
 let r = Pcre.regexp "[a-zA-Z]{4}"
   
-let weather text event from xml out =
+let weather text event from xml lang out =
   if pmatch ~rex:r text then
     let callback data =
       let resp = match data with
@@ -91,16 +91,16 @@ let weather text event from xml out =
             try
               parse_weather body
             with _exn ->
-              Lang.get_msg ~xml "plugin_weather_not_parsed" []
+              Lang.get_msg lang "plugin_weather_not_parsed" []
           )
         | Exception exn ->
             match exn with 
               | ClientError ->
-                  Lang.get_msg ~xml "plugin_weather_404" []
+                  Lang.get_msg lang "plugin_weather_404" []
               | ServerError ->
-                  Lang.get_msg ~xml "plugin_weather_server_error" []
+                  Lang.get_msg lang "plugin_weather_server_error" []
               | _ ->
-                  Lang.get_msg ~xml "plugin_weather_server_error" []
+                  Lang.get_msg lang "plugin_weather_server_error" []
       in
         make_msg out xml resp
     in
@@ -110,7 +110,7 @@ let weather text event from xml out =
         callback
   else
     make_msg out xml 
-      (Lang.get_msg ~xml "plugin_weather_invalid_syntax" [])
+      (Lang.get_msg lang "plugin_weather_invalid_syntax" [])
       
 let _ =
   Hooks.register_handle (Hooks.Command ("wz", weather))

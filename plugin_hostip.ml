@@ -10,7 +10,7 @@ open Netconversion
 
 let rex = Pcre.regexp "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
 
-let hostip text event from xml out =
+let hostip text event from xml lang out =
   let ip =
     try
       let h = gethostbyname text in
@@ -24,7 +24,7 @@ let hostip text event from xml out =
     match ip with
       | None ->
           make_msg out xml
-            (Lang.get_msg ~xml "plugin_hostip_bad_syntax" []);
+            (Lang.get_msg lang "plugin_hostip_bad_syntax" []);
       | Some ip ->
           let url = Printf.sprintf 
             "http://api.hostip.info/get_html.php?ip=%s&position=true" 
@@ -47,10 +47,10 @@ let hostip text event from xml out =
                       in
                         "\n" ^ Xml.encode resp
                     with exn ->
-                      Lang.get_msg ~xml "conversation_trouble" []
+                      Lang.get_msg lang "conversation_trouble" []
                   )
                 | _ ->
-                    Lang.get_msg ~xml "plugin_hostip_failed" []
+                    Lang.get_msg lang "plugin_hostip_failed" []
             in
               make_msg out xml response
           in

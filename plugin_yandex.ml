@@ -7,10 +7,9 @@ open Xmpp
 open Common
 open Http_suck
 
-let blogs text event from xml out =
+let blogs text event from xml lang out =
   if text = "" then
-    make_msg out xml 
-      (Lang.get_msg ~xml "plugin_yandex_bad_syntax" [])
+    make_msg out xml (Lang.get_msg lang "plugin_yandex_bad_syntax" [])
   else
     let callback data =
       let response_tail = ref None in
@@ -28,16 +27,16 @@ let blogs text event from xml out =
                 response_tail := Some (link ^ "\n" ^ pubdate);
                 Printf.sprintf "%s\n%s" (trim title) (trim descr)
             with Not_found ->
-              Lang.get_msg ~xml "plugin_yandex_not_found" []
+              Lang.get_msg lang "plugin_yandex_not_found" []
           )
         | Exception exn ->
             match exn with
               | ClientError ->
-                  Lang.get_msg ~xml "plugin_yandex_404" []
+                  Lang.get_msg lang "plugin_yandex_404" []
               | ServerError ->
-                  Lang.get_msg ~xml "plugin_yandex_server_error" []
+                  Lang.get_msg lang "plugin_yandex_server_error" []
               | _ ->
-                  Lang.get_msg ~xml "plugin_yandex_server_error" []
+                  Lang.get_msg lang "plugin_yandex_server_error" []
       in
         make_msg out xml ?response_tail:!response_tail resp
     in

@@ -38,10 +38,12 @@ type reg_handle =
       string * (xmpp_event -> jid -> element -> (element -> unit) -> unit)
   | Id of string * (xmpp_event -> jid -> element -> (element -> unit) -> unit)
   | Command of string * 
-      (string -> xmpp_event -> jid -> element -> (element -> unit) -> unit)
+      (string -> xmpp_event -> jid -> element -> string -> (element -> unit) ->
+         unit)
   | OnStart of ((element -> unit) -> unit)
   | OnQuit of ((element -> unit) -> unit)
-  | Catch of (xmpp_event -> jid -> element -> (element -> unit) -> unit)
+  | Catch of (xmpp_event -> jid -> element -> string -> (element -> unit) ->
+                unit)
   | Filter of (xmpp_event -> jid -> element -> (element -> unit) -> unit)
   | PresenceHandle of 
       (xmpp_event -> jid -> element -> (element -> unit) -> unit)
@@ -88,51 +90,52 @@ let process_iq event from xml out =
                 with Not_found -> ()))
     | _ -> ()
         
-let do_command text event from xml out =
+let do_command text event from xml lang out =
   let word = 
     try String.sub text 0 (String.index text ' ') with Not_found -> text in
   let f = CommandMap.find word !commands in
   let params = try string_after text (String.index text ' ') with _ -> "" in
-    try f (trim params) event from xml out with exn -> 
+    try f (trim params) event from xml lang out with exn -> 
       Logger.print_exn "hooks.ml" exn ~xml
         
 let process_message event from xml out =
-  match event with
-    | MUC_message (msg_type, nick, text) ->
-        if msg_type <> `Error then
-          if text <> "" then
-            try
-              let room_env = GroupchatMap.find (from.lnode, from.ldomain)
-                !groupchats in
-                match msg_type with
-                  | `Groupchat ->
-                      if from.lresource <> room_env.mynick && 
-                        nick = "" then
-                          do_command text event from xml out
-                      else
-                        raise Not_found
-                  | _ ->
-                      do_command text event from xml out
-            with Not_found ->
+  let lang = Muc.get_lang from xml in
+    match event with
+      | MUC_message (msg_type, nick, text) ->
+          if msg_type <> `Error then
+            if text <> "" then
+              try
+                let room_env = GroupchatMap.find (from.lnode, from.ldomain)
+                  !groupchats in
+                  match msg_type with
+                    | `Groupchat ->
+                        if from.lresource <> room_env.mynick && 
+                          nick = "" then
+                            do_command text event from xml lang out
+                        else
+                          raise Not_found
+                    | _ ->
+                        do_command text event from xml lang out
+              with Not_found ->
+                List.iter  (fun f -> 
+                              try f event from xml lang out with exn ->
+                                Logger.print_exn "hooks.ml" exn ~xml
+                           ) !catchset 
+            else
               List.iter  (fun f -> 
-                            try f event from xml out with exn ->
+                            try f event from xml lang out with exn ->
                               Logger.print_exn "hooks.ml" exn ~xml
                          ) !catchset 
-          else
-            List.iter  (fun f -> 
-                          try f event from xml out with exn ->
-                            Logger.print_exn "hooks.ml" exn ~xml
-                       ) !catchset 
-    | Message ->
-        if safe_get_attr_s xml "type" <> "error" then
-          let text = 
-            try get_cdata xml ~path:["body"] with Not_found -> "" in
-            (try do_command text event from xml out with Not_found ->
-               List.iter  (fun f -> 
-                             try f event from xml out with exn ->
-                               Logger.print_exn "hooks.ml" exn ~xml
-                          ) !catchset)
-    | _ -> ()
+      | Message ->
+          if safe_get_attr_s xml "type" <> "error" then
+            let text = 
+              try get_cdata xml ~path:["body"] with Not_found -> "" in
+              (try do_command text event from xml lang out with Not_found ->
+                 List.iter  (fun f -> 
+                               try f event from xml lang out with exn ->
+                                 Logger.print_exn "hooks.ml" exn ~xml
+                            ) !catchset)
+      | _ -> ()
         
 exception Filtered
   
@@ -169,11 +172,12 @@ let rec process_xml next_xml out =
             | MUC_message _
             | Message ->
               process_message event from xml out;
-            | _ -> 
-                List.iter (fun proc -> 
-                             try proc event from xml out with exn ->
-                               Logger.print_exn "hooks.ml" exn ~xml
-                          ) !catchset
+            | _ ->
+                let lang = Muc.get_lang from xml in
+                  List.iter (fun proc -> 
+                               try proc event from xml lang out with exn ->
+                                 Logger.print_exn "hooks.ml" exn ~xml
+                            ) !catchset
          );
      with
        | InvalidStanza as exn ->

@@ -283,21 +283,21 @@ let kill (from:jid) xml out =
   else
     let room = from.lnode, from.ldomain in
     let room_env = GroupchatMap.find room !groupchats in
+    let lang = (GroupchatMap.find room !groupchats).lang in
     let myitem = Nicks.find room_env.mynick room_env.nicks in
       if myitem.role = `Moderator then
         let item = Nicks.find from.lresource room_env.nicks in
           if item.role = `Moderator then
-            make_msg out xml (Lang.get_msg ~xml
+            make_msg out xml (Lang.get_msg lang
                                 "plugin_cerberus_cannot_kick_admin" [])
           else
             let proc event f x o = () in
             let id = new_id () in
-            let lang = (GroupchatMap.find room !groupchats).lang in
-            let reason = Lang.get_msg ~lang "plugin_markov_kick_reason" [] in
+            let reason = Lang.get_msg lang "plugin_markov_kick_reason" [] in
               Hooks.register_handle (Hooks.Id (id, proc));
               out (Muc.kick ~reason id room from.resource)
       else
-        make_msg out xml (Lang.get_msg ~xml
+        make_msg out xml (Lang.get_msg lang
                             "plugin_cerberus_cannot_kick_admin" [])
 
 let topics = Hashtbl.create 5

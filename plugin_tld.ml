@@ -16,7 +16,7 @@ let tlds =
       Printf.eprintf "Cannot open db file %s for plugin_tlds\n" name;
       Pervasives.exit 127
         
-let tld text event from xml out =
+let tld text event from xml lang out =
   if text = "" then
     make_msg out xml "какой домен?"
   else

@@ -36,7 +36,7 @@ CREATE INDEX words_idx ON %s (words)"
          table table table);
     db
       
-let talkers event from xml out =
+let talkers event from xml lang out =
   match event with
     | MUC_message (msg_type, nick, text) -> (
         if msg_type = `Groupchat then
@@ -81,7 +81,7 @@ let talkers event from xml out =
       )
     | _ -> ()
         
-let cmd_talkers text event from xml out =
+let cmd_talkers text event from xml lang out =
   match event with
     | MUC_message (msg_type, _, _) -> (
         let room_s = escape (string_of_jid (bare_jid from)) in
@@ -117,11 +117,11 @@ let cmd_talkers text event from xml out =
                 exit_with_rc file db sql
         in
         let header = (
-          Lang.get_msg ~xml "plugin_talkers_top_header_man" [],
-          Lang.get_msg ~xml "plugin_talkers_top_header_words" [],
-          Lang.get_msg ~xml "plugin_talkers_top_header_actions" [],
-          Lang.get_msg ~xml "plugin_talkers_top_header_sentences" [],
-          Lang.get_msg ~xml "plugin_talkers_top_header_average" []
+          Lang.get_msg lang "plugin_talkers_top_header_man" [],
+          Lang.get_msg lang "plugin_talkers_top_header_words" [],
+          Lang.get_msg lang "plugin_talkers_top_header_actions" [],
+          Lang.get_msg lang "plugin_talkers_top_header_sentences" [],
+          Lang.get_msg lang "plugin_talkers_top_header_average" []
         )
         in
         let rec aux_max_len max l =
@@ -160,7 +160,7 @@ let cmd_talkers text event from xml out =
                    r)
           else
             make_msg out xml
-              (Lang.get_msg ~xml "plugin_talkers_no_result" []))
+              (Lang.get_msg lang "plugin_talkers_no_result" []))
     | _ -> ()
         
 let _ =

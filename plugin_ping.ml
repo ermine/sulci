@@ -7,10 +7,9 @@ open Xmpp
 open Jid
 open Common
 open Types
-open Xmpp
 open Hooks
 
-let ping text event from xml (out:element -> unit) =
+let ping text event from xml lang out =
   try
     let entity = get_entity text event from in
     let to_ =
@@ -31,17 +30,17 @@ let ping text event from xml (out:element -> unit) =
             raise BadEntity
     in
     let success starttime =
-      let diff = Lang.float_seconds ~xml "ping" 
+      let diff = Lang.float_seconds lang "ping" 
         (Unix.gettimeofday () -. starttime) in
         (match entity with
            | `Mynick _ ->
-               Lang.get_msg ~xml "plugin_ping_pong_from_me" 
+               Lang.get_msg lang "plugin_ping_pong_from_me" 
                  [diff]
            | `You ->
-               Lang.get_msg ~xml "plugin_ping_pong_from_you" 
+               Lang.get_msg lang "plugin_ping_pong_from_you" 
                  [diff]
            | _ ->
-               Lang.get_msg ~xml "plugin_ping_pong_from_somebody"
+               Lang.get_msg lang "plugin_ping_pong_from_somebody"
                  [text; diff])
     in
     let starttime = Unix.gettimeofday () in
@@ -74,7 +73,7 @@ let ping text event from xml (out:element -> unit) =
       register_handle (Id (id, proc));
       out (make_iq ~to_ ~xmlns:"jabber:iq:version" ~id ~type_:`Get ())
   with _ ->
-    make_msg out xml (Lang.get_msg ~xml "invalid_entity" [])
+    make_msg out xml (Lang.get_msg lang "invalid_entity" [])
       
 let _ =
   register_handle (Command ("ping", ping))

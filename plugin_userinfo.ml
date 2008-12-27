@@ -5,16 +5,16 @@
 open Xml
 open Xmpp
 open Jid
+open Error
 open Common
 open Unix
 open Hooks
 open Types
 open Nicks
 open Muc
-open Error
 open Iq
 
-let status text event from xml out =
+let status text event from xml lang out =
   match event with
     | MUC_message (msg_type, _, _) ->
         let entity = if text = "" then from.lresource else
@@ -33,17 +33,17 @@ let status text event from xml out =
                                             | `XA -> "xa") ^ "]")
            with _ ->
              make_msg out xml 
-               (Lang.get_msg "plugin_userinfo_status_whose" []))
+               (Lang.get_msg lang "plugin_userinfo_status_whose" []))
     | _ -> ()
         
 let idle =
   let print_idle lang xml =
     let seconds = get_attr_s xml ~path:["query"] "seconds" in
-      Lang.expand_time ~lang "idle"  (int_of_string seconds)
+      Lang.expand_time lang "idle"  (int_of_string seconds)
   in
   let me =
-    fun text event from xml out ->
-      make_msg out xml (Lang.get_msg ~xml "plugin_userinfo_idle_me" [])
+    fun text event from xml lang out ->
+      make_msg out xml (Lang.get_msg lang "plugin_userinfo_idle_me" [])
   in
   let entity_to_jid entity event from =
     match entity with
@@ -60,13 +60,13 @@ let idle =
   let success text entity lang xml =
     match entity with
       | `Mynick mynick ->
-          Lang.get_msg ~lang "plugin_userinfo_idle_me" []
+          Lang.get_msg lang "plugin_userinfo_idle_me" []
       | `You ->
-          Lang.get_msg ~lang "plugin_userinfo_idle_you" 
+          Lang.get_msg lang "plugin_userinfo_idle_you" 
             [print_idle lang xml]
       | `Nick _
       | `User _ ->
-          Lang.get_msg ~lang "plugin_userinfo_idle_somebody" 
+          Lang.get_msg lang "plugin_userinfo_idle_somebody" 
             [text; print_idle lang xml]
       | _ ->
           raise BadEntity
@@ -85,8 +85,8 @@ let uptime =
   in
   let success text entity lang xml =
     let seconds = get_attr_s xml ~path:["query"] "seconds" in
-    let last = Lang.expand_time ~lang "uptime" (int_of_string seconds) in
-      Lang.get_msg ~lang "plugin_userinfo_uptime" [text; last]
+    let last = Lang.expand_time lang "uptime" (int_of_string seconds) in
+      Lang.get_msg lang "plugin_userinfo_uptime" [text; last]
   in
     simple_query_entity ~entity_to_jid success "jabber:iq:last"
       
@@ -99,10 +99,10 @@ let version =
     let os = try get_cdata xml ~path:["query"; "os"] with 
         Not_found -> "[unknown]" 
     in
-      Lang.get_msg ~lang msgid (arg @ [client; version; os])
+      Lang.get_msg lang msgid (arg @ [client; version; os])
   in
   let me =
-    fun text event from xml out ->
+    fun text event from xml lang out ->
       make_msg out xml 
         (Printf.sprintf "%s %s - %s" Version.name Version.version Jeps.os)
   in
@@ -144,19 +144,19 @@ let time =
         let f = Netdate.since_epoch netdate in
           Netdate.mk_mail_date f
     in         
-      Lang.get_msg ~lang msgid (arg @ [resp])
+      Lang.get_msg lang msgid (arg @ [resp])
   in
   let me =
-    fun text event from xml out ->
+    fun text event from xml lang out ->
       make_msg out xml 
-        (Lang.get_msg ~xml "plugin_userinfo_time_me"
+        (Lang.get_msg lang "plugin_userinfo_time_me"
            [Strftime.strftime ~tm:(localtime (gettimeofday ())) 
               "%H:%M"])
   in
   let success text entity lang xml =
     match entity with
       | `Mynick mynick ->
-          Lang.get_msg ~lang "plugin_userinfo_time_me"
+          Lang.get_msg lang "plugin_userinfo_time_me"
             [Strftime.strftime ~tm:(localtime (gettimeofday ())) 
                "%H:%M"]
       | `You ->

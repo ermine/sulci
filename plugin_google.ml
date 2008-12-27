@@ -132,9 +132,9 @@ let one_message item =
     
 let xmldecl = "<?xml version='1.0' encoding='UTF-8' ?>\r\n"
   
-let gspell text event from xml out =
+let gspell text event from xml lang out =
   if text = "" then
-    make_msg out xml (Lang.get_msg ~xml "plugin_google_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg lang "plugin_google_invalid_syntax" [])
   else
     let soap = 
       Xmlelement 
@@ -166,19 +166,19 @@ let gspell text event from xml out =
                          "ns1:doSpellingSuggestionResponse";
                          "return"] in
                 if response = "" then 
-                  Lang.get_msg ~xml "plugin_google_no_answer" []
+                  Lang.get_msg lang "plugin_google_no_answer" []
                 else response
             with _exn ->
-              Lang.get_msg ~xml "plugin_google_no_answer" []
+              Lang.get_msg lang "plugin_google_no_answer" []
           )
         | Exception exn ->
             match exn with
               | ClientError ->
-                  Lang.get_msg ~xml "plugin_google_server_404" []
+                  Lang.get_msg lang "plugin_google_server_404" []
               | ServerError -> 
-                  Lang.get_msg ~xml "plugin_google_server_error" []
+                  Lang.get_msg lang "plugin_google_server_error" []
               | _ ->
-                  Lang.get_msg ~xml "plugin_google_server_error" []
+                  Lang.get_msg lang "plugin_google_server_error" []
       in
         make_msg out xml resp
     in
@@ -186,9 +186,9 @@ let gspell text event from xml out =
         ["Content-Type", "text/xml; charset=utf-8"] 
         (xmldecl ^ query) callback
         
-let google ?(start="0") ?(items="1") text event from xml out =
+let google ?(start="0") ?(items="1") text event from xml lang out =
   if text = "" then
-    make_msg out xml (Lang.get_msg ~xml "plugin_google_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg lang "plugin_google_invalid_syntax" [])
   else
     let callback data =
       let resp, tail =
@@ -202,32 +202,32 @@ let google ?(start="0") ?(items="1") text event from xml out =
                                       "return";
                                       "resultElements"] in
                   if get_subels result = [] then
-                    (Lang.get_msg ~xml "plugin_google_not_found" [], "")
+                    (Lang.get_msg lang "plugin_google_not_found" [], "")
                   else
                     if items = "1" then
                       let item = get_tag result ["item"] in
                       let r1, r2 = one_message item in
                         if r1 = "" && r2 = "" then
-                          (Lang.get_msg ~xml "plugin_google_not_found" [], "")
+                          (Lang.get_msg lang "plugin_google_not_found" [], "")
                         else
                           r1, r2
                     else
                       let r = message (get_subels result) in
                         if r = "" then
-                          (Lang.get_msg ~xml "plugin_google_not_found" [],
+                          (Lang.get_msg lang "plugin_google_not_found" [],
                            "")
                         else r, ""
               with _exn ->
-                (Lang.get_msg ~xml "plugin_google_not_found" [], "")
+                (Lang.get_msg lang "plugin_google_not_found" [], "")
             )
           | Exception exn ->
               match exn with
                 | ClientError ->
-                    Lang.get_msg ~xml "plugin_google_server_404" [], ""
+                    Lang.get_msg lang "plugin_google_server_404" [], ""
                 | ServerError ->
-                    Lang.get_msg ~xml "plugin_google_server_error" [], ""
+                    Lang.get_msg lang "plugin_google_server_error" [], ""
                 | _ ->
-                    Lang.get_msg ~xml "plugin_google_server_error" [], ""
+                    Lang.get_msg lang "plugin_google_server_error" [], ""
       in
       let response_tail = if tail = "" then None else Some tail in
         make_msg out xml ?response_tail resp 
@@ -242,16 +242,15 @@ let google ?(start="0") ?(items="1") text event from xml out =
         
 let rx = Pcre.regexp "([0-9]+) ([1-9]{1}) (.+)"
   
-let google_adv text event from xml out =
+let google_adv text event from xml lang out =
   try
     let r = Pcre.exec ~rex:rx text in
     let start = Pcre.get_substring r 1 in
     let items = Pcre.get_substring r 2 in
     let request = Pcre.get_substring r 3 in
-      google ~start ~items request event from xml out
+      google ~start ~items request event from xml lang out
   with Not_found ->
-    make_msg out xml 
-      (Lang.get_msg ~xml "plugin_google_adv_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg lang "plugin_google_adv_invalid_syntax" [])
       
 let _ =
   Hooks.register_handle (Hooks.Command ("google", google));

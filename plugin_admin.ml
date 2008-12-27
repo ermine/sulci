@@ -5,14 +5,14 @@
 open Xml
 open Xmpp
 open Jid
+open Error
 open Common
 open Muc
 open Hooks
 open Types
 open Nicks
-open Error
 
-let msg text event from xml out =
+let msg text event from xml lang out =
   if check_access from "admin" then
     let s = String.index text ' ' in
     let to_ = jid_of_string (String.sub text 0 s) in
@@ -28,19 +28,17 @@ let msg text event from xml out =
   else
     make_msg out xml ":-P"
       
-let quit text event from xml out =
+let quit text event from xml lang out =
   if check_access from "admin" then (
-    make_msg out xml 
-      (Lang.get_msg ~xml "plugin_admin_quit_bye" []);
+    make_msg out xml (Lang.get_msg lang "plugin_admin_quit_bye" []);
     Hooks.quit out
   )
   else
-    make_msg out xml 
-      (Lang.get_msg ~xml "plugin_admin_quit_no_access" [])
+    make_msg out xml (Lang.get_msg lang "plugin_admin_quit_no_access" [])
       
 let join_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let join text event from xml out =
+let join text event from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:join_rex text in
@@ -58,12 +56,11 @@ let join text event from xml out =
     with _ ->
       ()
   else
-    make_msg out xml 
-      (Lang.get_msg ~xml "plugin_admin_join_no_access" [])
+    make_msg out xml (Lang.get_msg lang "plugin_admin_join_no_access" [])
       
 let leave_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let leave text event from xml (out:element -> unit) =
+let leave text event from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
@@ -81,7 +78,7 @@ let leave text event from xml (out:element -> unit) =
         
 let invite_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let invite text event from xml (out:element -> unit) =
+let invite text event from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
@@ -114,7 +111,7 @@ let invite text event from xml (out:element -> unit) =
     with exn ->
       make_msg out xml "hmm?"
         
-let lang_update text event from xml out =
+let lang_update text event from xml lang out =
   if check_access from "admin" then
     if text = "" then
       make_msg out xml "What language?"
@@ -123,7 +120,7 @@ let lang_update text event from xml out =
         
 let lr = Pcre.regexp "([a-z][a-z])\\s+(\\w+)(\\s+(.+))?"
   
-let lang_admin text event from xml out =
+let lang_admin text event from xml lang out =
   if check_access from "admin" then
     if text = "" then
       make_msg out xml "en msgid string"
@@ -151,7 +148,7 @@ let variables = [
   "msg_limit", (fun i -> Common.msg_limit := i);
 ]
   
-let sulci_set text event from xml out =
+let sulci_set text event from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:sulci_set_rex text in

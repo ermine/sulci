@@ -39,7 +39,7 @@ CREATE INDEX dfnidx ON %s (key)"
         
 let dfn_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)\\s*=\\s*(.*)"
 
-let dfn text event from xml out =
+let dfn text event from xml lang out =
   let key, value=
     try
       let res = Pcre.exec ~rex:dfn_re text in
@@ -51,7 +51,7 @@ let dfn text event from xml out =
   in
     if key = "" then
       make_msg out xml 
-        (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
+        (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
     else
       let room = from.lnode, from.ldomain in
       let nick, lnode, ldomain, cond =
@@ -79,14 +79,14 @@ let dfn text event from xml out =
           | Some r ->
               if value = (string_of_data r.(0)) then
                 make_msg out xml 
-                  (Lang.get_msg ~xml "plugin_vocabulary_dfn_again" [])
+                  (Lang.get_msg lang "plugin_vocabulary_dfn_again" [])
               else if value = "" then (
                 simple_exec file db
                   (Printf.sprintf
                      "DELETE FROM %s WHERE key=%s %s" table (escape key) cond);
                 decr total;
                 make_msg out xml 
-                  (Lang.get_msg ~xml "plugin_vocabulary_removed" [])
+                  (Lang.get_msg lang "plugin_vocabulary_removed" [])
               )
               else
                 let stamp =
@@ -96,7 +96,7 @@ let dfn text event from xml out =
                        "UPDATE %s SET stamp=%s, nick=%s, value=%s WHERE key=%s %s"
                        table stamp (escape nick) (escape value) (escape key) cond);
                   make_msg out xml
-                    (Lang.get_msg ~xml "plugin_vocabulary_replaced" [])
+                    (Lang.get_msg lang "plugin_vocabulary_replaced" [])
           | None ->
               if value <> "" then
                 let stamp = Int32.to_string (Int32.of_float 
@@ -109,15 +109,15 @@ let dfn text event from xml out =
                        (escape key) (escape value));
                   incr total;
                   make_msg out xml 
-                    (Lang.get_msg ~xml "plugin_vocabulary_recorded" [])
+                    (Lang.get_msg lang "plugin_vocabulary_recorded" [])
               else
                 make_msg out xml
-                  (Lang.get_msg ~xml "plugin_vocabulary_nothing_to_remove" [])
+                  (Lang.get_msg lang "plugin_vocabulary_nothing_to_remove" [])
 
-let wtf text event from xml out =
+let wtf text event from xml lang out =
   if text = "" then
     make_msg out xml 
-      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
+      (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
   else
     let key =
       try
@@ -130,19 +130,19 @@ let wtf text event from xml out =
       match get_one_row file db sql with
         | Some r ->
             make_msg out xml 
-              (Lang.get_msg ~xml "plugin_vocabulary_answer"
+              (Lang.get_msg lang "plugin_vocabulary_answer"
                  [string_of_data r.(0); key; string_of_data r.(1)])
         | None ->
             make_msg out xml 
-              (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+              (Lang.get_msg lang "plugin_vocabulary_not_found" [])
               
-let output_records sql xml out =
+let output_records sql xml lang out =
   let rec aux_acc i acc stmt =
     match step stmt with
       | Rc.ROW ->
           let str = Printf.sprintf "%d) %s"
             i
-            (Lang.get_msg ~xml "plugin_vocabulary_answer"
+            (Lang.get_msg lang "plugin_vocabulary_answer"
                [Data.to_string (column stmt 0);
                 Data.to_string (column stmt 1);
                 Data.to_string (column stmt 2)])
@@ -157,16 +157,16 @@ let output_records sql xml out =
       let reply = aux_acc 1 [] stmt in
         if reply = "" then
           make_msg out xml 
-            (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+            (Lang.get_msg lang "plugin_vocabulary_not_found" [])
         else
           make_msg out xml reply
     with Sqlite3.Error _ ->
       exit_with_rc file db sql
 
-let wtfall text event from xml out =
+let wtfall text event from xml lang out =
   if text = "" then
     make_msg out xml 
-      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
+      (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
   else
     let key =
       try
@@ -177,9 +177,9 @@ let wtfall text event from xml out =
       Printf.sprintf "SELECT nick, key, value FROM %s WHERE key=%s ORDER BY stamp"
         table (escape key)
     in
-      output_records sql xml out
+      output_records sql xml lang out
       
-let wtfrand text event from xml out =
+let wtfrand text event from xml lang out =
   let key = trim(text) in
     if key = "" then
       let rand = string_of_int (Random.int (!total)) in
@@ -188,9 +188,9 @@ let wtfrand text event from xml out =
       let reply =
         match get_one_row file db sql with
           | None ->
-              Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" []
+              Lang.get_msg lang "plugin_vocabulary_db_is_empty" []
           | Some r ->
-              Lang.get_msg ~xml "plugin_vocabulary_answer"
+              Lang.get_msg lang "plugin_vocabulary_answer"
                 [string_of_data r.(0);
                  string_of_data r.(1);
                  string_of_data r.(2);]
@@ -208,17 +208,17 @@ let wtfrand text event from xml out =
                 match get_one_row file db sql with
                   | Some q ->
                       make_msg out xml 
-                        (Lang.get_msg ~xml "plugin_vocabulary_answer"
+                        (Lang.get_msg lang "plugin_vocabulary_answer"
                            [string_of_data q.(0); key; string_of_data q.(1)])
                   | None ->
                       make_msg out xml 
-                        (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+                        (Lang.get_msg lang "plugin_vocabulary_not_found" [])
             )
           | None ->
               make_msg out xml 
-                (Lang.get_msg ~xml "plugin_vocabulary_not_found" [])
+                (Lang.get_msg lang "plugin_vocabulary_not_found" [])
                 
-let wtfcount text event from xml out =
+let wtfcount text event from xml lang out =
   let key = trim(text) in
   let sql =
     if key = "" then
@@ -234,25 +234,25 @@ let wtfcount text event from xml out =
     if key = "" then
       total := i;
     if i > 0 then
-      make_msg out xml (Lang.get_msg ~xml "plugin_vocabulary_records"
+      make_msg out xml (Lang.get_msg lang "plugin_vocabulary_records"
                           [string_of_int i])
     else
-      make_msg out xml (Lang.get_msg ~xml "plugin_vocabulary_db_is_empty" [])
+      make_msg out xml (Lang.get_msg lang "plugin_vocabulary_db_is_empty" [])
         
-let wtffind text event from xml out =
+let wtffind text event from xml lang out =
   if text = "" then
     make_msg out xml 
-      (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
+      (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
   else
     let sql = Printf.sprintf
       "SELECT nick, key, value FROM %s WHERE key LIKE %s OR value LIKE %s"
       table (escape text) (escape text)
     in
-      output_records sql xml out
+      output_records sql xml lang out
 
 let wtfremove_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)(\\s*=\\s*(.*))?"
 
-let wtfremove text event from xml out =
+let wtfremove text event from xml lang out =
   let key, value =
     try
       let res = Pcre.exec ~rex:wtfremove_re text in
@@ -263,7 +263,7 @@ let wtfremove text event from xml out =
       ("", "") in
     if key = "" then
       make_msg out xml 
-        (Lang.get_msg ~xml "plugin_vocabulary_invalid_syntax" [])
+        (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
     else
       let room = from.lnode, from.ldomain in
       let cond =
@@ -301,10 +301,10 @@ let wtfremove text event from xml out =
         in
           if records > 0 then (
             simple_exec file db (sql "DELETE");
-            make_msg out xml (Lang.get_msg ~xml "plugin_vocabulary_removed" [])
+            make_msg out xml (Lang.get_msg lang "plugin_vocabulary_removed" [])
           )
           else
-            make_msg out xml (Lang.get_msg ~xml
+            make_msg out xml (Lang.get_msg lang
                                 "plugin_vocabulary_nothing_to_remove" [])
 
 let _ =

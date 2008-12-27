@@ -122,7 +122,7 @@ let process_result doc =
   in
     aux_find doc
       
-let translate_text sl tl text xml out =
+let translate_text sl tl text xml lang out =
   let callback data =
     let resp = match data with
       | OK (media, charset, content) -> (
@@ -146,10 +146,10 @@ let translate_text sl tl text xml out =
                 | None -> ""
                 | Some v -> v
           with exn ->
-            Lang.get_msg ~xml "plugin_google_translate_not_parsed" []
+            Lang.get_msg lang "plugin_google_translate_not_parsed" []
         )
       | Exception exn ->
-          Lang.get_msg ~xml "plugin_google_translate_server_error" []
+          Lang.get_msg lang "plugin_google_translate_server_error" []
     in
       make_msg out xml resp
   in
@@ -165,7 +165,7 @@ let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8]
   
 let rm_newlines = Pcre.regexp "[\n\r]"
   
-let translate text event from xml out =
+let translate text event from xml lang out =
   match trim(text) with
     | "list" ->
         make_msg out xml list_languages
@@ -177,14 +177,14 @@ let translate text event from xml out =
           let str = get_substring res 3 in
             if List.mem_assoc lg1 slist then
               if List.mem_assoc lg2 tlist then
-                translate_text lg1 lg2 str xml out
+                translate_text lg1 lg2 str xml lang out
               else
                 raise Not_found
             else
               raise Not_found
         with Not_found ->
           make_msg out xml 
-            (Lang.get_msg ~xml "plugin_google_translate_bad_syntax" [])
+            (Lang.get_msg lang "plugin_google_translate_bad_syntax" [])
             
 let _ = 
   Hooks.register_handle (Hooks.Command ("gtr", translate))

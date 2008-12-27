@@ -46,7 +46,7 @@ CREATE INDEX gr_index ON %s (jid, room)"
 let cmd_greet =
   Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^\\s]+)\\s+([^\\s]+)\\s+(.+)"
     
-let add_greet text event from xml out =
+let add_greet text event from xml lang out =
   if check_access from "admin" then (
     if text <> "" then
       try
@@ -67,15 +67,15 @@ let add_greet text event from xml out =
             table_greeting jid_s room_s greet in
           if (insert_or_update file db sql1 sql2 sql3) then
             make_msg out xml
-              (Lang.get_msg ~xml "plugin_seen_greet_updated" [])
+              (Lang.get_msg lang "plugin_seen_greet_updated" [])
           else
-            make_msg out xml (Lang.get_msg ~xml "plugin_seen_greet_added" [])
+            make_msg out xml (Lang.get_msg lang "plugin_seen_greet_added" [])
       with Not_found ->
-        make_msg out xml (Lang.get_msg ~xml "plugin_seen_greet_bad_syntax" [])
+        make_msg out xml (Lang.get_msg lang "plugin_seen_greet_bad_syntax" [])
   )
   else ()
     
-let catch_seen event from xml out =
+let catch_seen event from xml lang out =
   match event with
     | MUC_join item -> (
         let room_s = string_of_jid (bare_jid from) in
@@ -146,39 +146,39 @@ let find_nick (jid:string) nicks =
                ) nicks;
     if !result = [] then raise Not_found else !result
       
-let verify_nick nick jid nicks xml =
+let verify_nick nick jid nicks xml lang =
   try
     let item = Nicks.find nick nicks in
       match item.jid with
         | None ->
-            Lang.get_msg ~xml "plugin_seen_is_here" [nick]
+            Lang.get_msg lang "plugin_seen_is_here" [nick]
         | Some j ->
             if jid = string_of_jid (bare_jid j) then
-              Lang.get_msg ~xml "plugin_seen_is_here" [nick]
+              Lang.get_msg lang "plugin_seen_is_here" [nick]
             else if jid = "" then
-              Lang.get_msg ~xml "plugin_seen_is_here" [nick]
+              Lang.get_msg lang "plugin_seen_is_here" [nick]
             else
               try let changed = find_nick jid nicks in
-                Lang.get_msg ~xml "plugin_seen_changed_nick" 
+                Lang.get_msg lang "plugin_seen_changed_nick" 
                   [nick; (String.concat ", " changed)]
               with Not_found ->
-                Lang.get_msg ~xml "plugin_seen_is_not_same" [nick; nick]
+                Lang.get_msg lang "plugin_seen_is_not_same" [nick; nick]
   with Not_found ->
     if jid <> "" then
       let changed = find_nick jid nicks in
-        Lang.get_msg ~xml "plugin_seen_changed_nick" 
+        Lang.get_msg lang "plugin_seen_changed_nick" 
           [nick; (String.concat ", " changed)]
     else
       raise Not_found
         
-let seen text event from xml out =
+let seen text event from xml lang out =
   if text = "" then
-    make_msg out xml (Lang.get_msg ~xml "plugin_seen_whom" [])
+    make_msg out xml (Lang.get_msg lang "plugin_seen_whom" [])
   else
     match event with
       | MUC_message (msg_type, _, _) ->
           if text = from.resource then
-            make_msg out xml (Lang.get_msg ~xml "plugin_seen_you" [])
+            make_msg out xml (Lang.get_msg lang "plugin_seen_you" [])
           else
             let room  = from.lnode, from.ldomain in
             let nicks = (GroupchatMap.find room !groupchats).nicks in
@@ -191,7 +191,7 @@ let seen text event from xml out =
               match get_one_row file db sql with
                 | Some r -> (
                     try
-                      verify_nick text (string_of_data r.(0)) nicks xml
+                      verify_nick text (string_of_data r.(0)) nicks xml lang
                     with Not_found ->
                       let stamp = Int64.to_float (int64_of_data r.(1)) in
                       let diff = 
@@ -199,7 +199,7 @@ let seen text event from xml out =
                           (int_of_float 
                              (Unix.gettimeofday () -. stamp)) in
                         if string_of_data r.(3) = "" then
-                          Lang.get_msg ~xml 
+                          Lang.get_msg lang 
                             (match string_of_data r.(2) with
                                | "kick" -> "plugin_seen_kicked"
                                | "ban" -> "plugin_seen_banned"
@@ -207,7 +207,7 @@ let seen text event from xml out =
                                | _ -> "plugin_seen_left")
                             [text; diff]
                         else
-                          Lang.get_msg ~xml 
+                          Lang.get_msg lang 
                             (match string_of_data r.(2) with
                                | "kick" -> 
                                    "plugin_seen_kicked_reason"
@@ -221,7 +221,7 @@ let seen text event from xml out =
                   )
                 | None -> (
                     if Nicks.mem text nicks then
-                      Lang.get_msg ~xml "plugin_seen_is_here" [text]
+                      Lang.get_msg lang "plugin_seen_is_here" [text]
                     else
                       let result = ref [] in
                         Nicks.iter (fun (nick, item) ->
@@ -230,17 +230,17 @@ let seen text event from xml out =
                                    ) nicks;
                         if !result <> [] then
                           if List.mem from.resource !result then
-                            Lang.get_msg ~xml "plugin_seen_you" []
+                            Lang.get_msg lang "plugin_seen_you" []
                           else
-                            Lang.get_msg ~xml "plugin_seen_changed_nick"
+                            Lang.get_msg lang "plugin_seen_changed_nick"
                               [text; String.concat ", " !result]
                         else
-                          Lang.get_msg ~xml "plugin_seen_never_seen" [text]
+                          Lang.get_msg lang "plugin_seen_never_seen" [text]
                   )
             in
               make_msg out xml reply
       | _ ->
-          make_msg out xml (Lang.get_msg ~xml "plugin_seen_not_in_room" [])
+          make_msg out xml (Lang.get_msg lang "plugin_seen_not_in_room" [])
             
 let _ =
   Hooks.register_handle (Command ("greet", add_greet));

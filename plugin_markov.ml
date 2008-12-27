@@ -245,7 +245,7 @@ let get_markov_queue room =
       markovrooms := MarkovMap.add room m !markovrooms;
       m
         
-let markov_chain event from xml out =
+let markov_chain event from xml lang out =
   match event with
     | MUC_message _ ->
         (try
@@ -261,7 +261,7 @@ let markov_chain event from xml out =
          with _ -> ())
     | _ -> ()
         
-let markov_count text event from xml out =
+let markov_count text event from xml lang out =
   match event with
     | MUC_message _ ->
         (try
@@ -270,7 +270,7 @@ let markov_count text event from xml out =
          with _ -> ())
     | _ -> ()
         
-let markov_top text event from xml out =
+let markov_top text event from xml lang out =
   match event with
     | MUC_message _ ->
         (try

@@ -16,30 +16,28 @@ let process_error xml lang entity from text =
       | `ERR_FEATURE_NOT_IMPLEMENTED ->
           (match entity with
              | `Host _ ->
-                 Lang.get_msg ~lang 
-                   "error_server_feature_not_implemented" [text]
+                 Lang.get_msg lang "error_server_feature_not_implemented" [text]
              | _ ->
-                 Lang.get_msg ~lang 
-                   "error_client_feature_not_implemented" [text])
+                 Lang.get_msg lang "error_client_feature_not_implemented" [text])
       | `ERR_REMOTE_SERVER_TIMEOUT ->
-          Lang.get_msg ~lang "error_remote_server_timeout" [from.ldomain]
+          Lang.get_msg lang "error_remote_server_timeout" [from.ldomain]
       | `ERR_REMOTE_SERVER_NOT_FOUND ->
-          Lang.get_msg ~lang "error_remote_server_not_found" [from.ldomain]
+          Lang.get_msg lang "error_remote_server_not_found" [from.ldomain]
       | `ERR_SERVICE_UNAVAILABLE ->
           (match entity with
              | `Host _ ->
-                 Lang.get_msg ~lang "error_server_service_unavailable" 
+                 Lang.get_msg lang "error_server_service_unavailable" 
                    [text]
              | `You ->
-                 Lang.get_msg ~lang"error_your_service_unavailable" []
+                 Lang.get_msg lang"error_your_service_unavailable" []
              | _ ->
-                 Lang.get_msg ~lang "error_client_service_unavailable" 
+                 Lang.get_msg lang "error_client_service_unavailable" 
                    [text]
           )
       | `ERR_RECIPIENT_UNAVAILABLE ->
-          Lang.get_msg ~lang "error_recipient_unavailable" [text]
+          Lang.get_msg lang "error_recipient_unavailable" [text]
       | `ERR_NOT_ALLOWED ->
-          Lang.get_msg ~lang "error_not_allowed" [text]
+          Lang.get_msg lang "error_not_allowed" [text]
             
       | `ERR_BAD_REQUEST
       | `ERR_CONFLICT
@@ -60,7 +58,7 @@ let process_error xml lang entity from text =
           try 
             get_cdata ~path:["error"; "text"] xml
           with _ ->
-            Lang.get_msg ~lang "error_any_error" [text]
+            Lang.get_msg lang "error_any_error" [text]
               
 let simple_query_entity ?me ?entity_to_jid success ?query_subels
     ?query_tag xmlns =
@@ -86,20 +84,18 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
               | _ ->
                   raise BadEntity
   in
-    fun text event from xml (out:element -> unit) ->
+    fun text event from xml lang out ->
       try
         let entity = get_entity text event from in
           match entity, me with
             | `Mynick _, Some f ->
-                f text event from xml out
+                f text event from xml lang out
             | _, _ ->
                 let to_ = fun_entity_to_jid entity event from in
-                let lang = Lang.get_lang xml in
                 let proc e f x o =
                   match e with
                     | Iq (_, `Result, _) ->
-                        make_msg o xml 
-                          (success text entity lang x)
+                        make_msg o xml (success text entity lang x)
                     | Iq (_, `Error, _) ->
                         make_msg o xml 
                           (process_error x lang entity f
@@ -118,7 +114,7 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
                   out (make_iq ~to_ ~id ~type_:`Get ?query_tag ~xmlns 
                          ?subels:query_subels ())
       with _ ->
-        make_msg out xml (Lang.get_msg ~xml "invalid_entity" [])
+        make_msg out xml (Lang.get_msg lang "invalid_entity" [])
           
 let _ =
   Hooks.register_handle 

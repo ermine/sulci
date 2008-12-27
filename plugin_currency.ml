@@ -92,7 +92,7 @@ let _ =
 let rex = Pcre.regexp 
   "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
   
-let currency text event from xml out =
+let currency text event from xml lang out =
   if text = "list" then 
     make_msg out xml !list_curr
   else
@@ -106,7 +106,7 @@ let currency text event from xml out =
         let x = try List.assoc (String.uppercase val1) !curr
         with Not_found ->
           make_msg out xml 
-            (Lang.get_msg ~xml "plugin_currency_no_currency" [val1]);
+            (Lang.get_msg lang "plugin_currency_no_currency" [val1]);
           raise Not_found
         in x.value /. float_of_int x.nominal
       in
@@ -114,7 +114,7 @@ let currency text event from xml out =
         let x = try List.assoc (String.uppercase val2) !curr 
         with Not_found ->
           make_msg out xml 
-            (Lang.get_msg ~xml "plugin_currency_no_currency" [val2]);
+            (Lang.get_msg lang "plugin_currency_no_currency" [val2]);
           raise Not_found
         in x.value /. float_of_int x.nominal
       in
@@ -124,7 +124,7 @@ let currency text event from xml out =
     with
       | Failure "int_of_string" ->
           make_msg out xml 
-            (Lang.get_msg ~xml "plugin_currency_toobig_number" [])
+            (Lang.get_msg lang "plugin_currency_toobig_number" [])
       | Not_found ->
           ()
       | exn ->
