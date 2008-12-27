@@ -9,9 +9,9 @@ open Common
 open Types
 open Hooks
 
-let ping text event from xml lang out =
+let ping text from xml lang out =
   try
-    let entity = get_entity text event from in
+    let entity = get_entity text from in
     let to_ =
       match entity with
         | `Mynick nick
@@ -57,8 +57,8 @@ let ping text event from xml lang out =
                      Iq.process_error x (Lang.get_lang xml) 
                        entity f 
                        (if text = "" then
-                          match event, entity with
-                            | MUC_message _, `You ->
+                          match Muc.is_groupchat from, entity with
+                            | true, `You ->
                                 f.resource
                             | _ ->
                                 f.string

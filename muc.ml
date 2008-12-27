@@ -258,8 +258,11 @@ let register_room ?lang nick (lnode, ldomain) =
         | None -> Lang.deflang
         | Some l -> l } !groupchats
     
+let is_groupchat jid =
+  GroupchatMap.mem (jid.lnode, jid.ldomain) !groupchats
+
 let get_lang from xml =
-  if GroupchatMap.mem (from.lnode, from.ldomain) !groupchats then
+  if is_groupchat from then
     match safe_get_attr_s xml "type" with
       | "groupchat" ->
           (GroupchatMap.find (from.lnode, from.ldomain) !groupchats).lang

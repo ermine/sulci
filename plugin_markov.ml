@@ -261,23 +261,17 @@ let markov_chain event from xml lang out =
          with _ -> ())
     | _ -> ()
         
-let markov_count text event from xml lang out =
-  match event with
-    | MUC_message _ ->
-        (try
-           let m = get_markov_queue (from.lnode, from.ldomain) in
-             add_queue m (MCount (from, xml, out))
-         with _ -> ())
-    | _ -> ()
+let markov_count text from xml lang out =
+  (try
+     let m = get_markov_queue (from.lnode, from.ldomain) in
+       add_queue m (MCount (from, xml, out))
+   with _ -> ())
         
-let markov_top text event from xml lang out =
-  match event with
-    | MUC_message _ ->
-        (try
-           let m = get_markov_queue (from.lnode, from.ldomain) in
-             add_queue m (MTop (from, xml, out))
-         with _ -> ())
-    | _ -> ()
+let markov_top text from xml lang out =
+  (try
+     let m = get_markov_queue (from.lnode, from.ldomain) in
+       add_queue m (MTop (from, xml, out))
+   with _ -> ())
         
 let _ =
   register_handle (Catch markov_chain);

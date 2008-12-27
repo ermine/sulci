@@ -66,7 +66,7 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
     match entity_to_jid with
       | Some f -> f
       | None ->
-          fun entity event from ->
+          fun entity from ->
             match entity with
               | `Mynick mynick ->
                   string_of_jid {from with resource = mynick; lresource = mynick}
@@ -84,14 +84,14 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
               | _ ->
                   raise BadEntity
   in
-    fun text event from xml lang out ->
+    fun text from xml lang out ->
       try
-        let entity = get_entity text event from in
+        let entity = get_entity text from in
           match entity, me with
             | `Mynick _, Some f ->
-                f text event from xml lang out
+                f text from xml lang out
             | _, _ ->
-                let to_ = fun_entity_to_jid entity event from in
+                let to_ = fun_entity_to_jid entity from in
                 let proc e f x o =
                   match e with
                     | Iq (_, `Result, _) ->
@@ -99,9 +99,9 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
                     | Iq (_, `Error, _) ->
                         make_msg o xml 
                           (process_error x lang entity f
-                             (if text = "" then 
-                                match event, entity with
-                                  | MUC_message _, `You ->
+                             (if text = "" then
+                                match Muc.is_groupchat from, entity with
+                                  | true, `You ->
                                       f.resource
                                   | _ ->
                                       f.string

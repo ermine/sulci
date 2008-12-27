@@ -14,27 +14,25 @@ open Nicks
 open Muc
 open Iq
 
-let status text event from xml lang out =
-  match event with
-    | MUC_message (msg_type, _, _) ->
-        let entity = if text = "" then from.lresource else
-          Stringprep.resourceprep text in
-          (try
-             let item = Nicks.find entity
-               (GroupchatMap.find (from.lnode, from.ldomain) 
-                  !groupchats).nicks in
-               make_msg out xml ((if item.status = "" then ""
-                                  else item.status ^ " ") ^
-                                   "[" ^ (match item.show with
-                                            | `Online -> "online"
-                                            | `Away -> "away"
-                                            | `DND -> "dnd"
-                                            | `Chat -> "free for chat"
-                                            | `XA -> "xa") ^ "]")
-           with _ ->
-             make_msg out xml 
-               (Lang.get_msg lang "plugin_userinfo_status_whose" []))
-    | _ -> ()
+let status text from xml lang out =
+  if is_groupchat from then
+    let entity = if text = "" then from.lresource else
+      Stringprep.resourceprep text in
+      (try
+         let item = Nicks.find entity
+           (GroupchatMap.find (from.lnode, from.ldomain) 
+              !groupchats).nicks in
+           make_msg out xml ((if item.status = "" then ""
+                              else item.status ^ " ") ^
+                               "[" ^ (match item.show with
+                                        | `Online -> "online"
+                                        | `Away -> "away"
+                                        | `DND -> "dnd"
+                                        | `Chat -> "free for chat"
+                                        | `XA -> "xa") ^ "]")
+       with _ ->
+         make_msg out xml 
+           (Lang.get_msg lang "plugin_userinfo_status_whose" []))
         
 let idle =
   let print_idle lang xml =
@@ -42,10 +40,10 @@ let idle =
       Lang.expand_time lang "idle"  (int_of_string seconds)
   in
   let me =
-    fun text event from xml lang out ->
+    fun text from xml lang out ->
       make_msg out xml (Lang.get_msg lang "plugin_userinfo_idle_me" [])
   in
-  let entity_to_jid entity event from =
+  let entity_to_jid entity from =
     match entity with
       | `Mynick nick
       | `Nick nick ->
@@ -74,7 +72,7 @@ let idle =
     simple_query_entity ~me ~entity_to_jid success "jabber:iq:last"
       
 let uptime =
-  let entity_to_jid entity event from =
+  let entity_to_jid entity from =
     match entity with
       | `Host host ->
           if host.lresource <> "" then
@@ -102,7 +100,7 @@ let version =
       Lang.get_msg lang msgid (arg @ [client; version; os])
   in
   let me =
-    fun text event from xml lang out ->
+    fun text from xml lang out ->
       make_msg out xml 
         (Printf.sprintf "%s %s - %s" Version.name Version.version Jeps.os)
   in
@@ -147,7 +145,7 @@ let time =
       Lang.get_msg lang msgid (arg @ [resp])
   in
   let me =
-    fun text event from xml lang out ->
+    fun text from xml lang out ->
       make_msg out xml 
         (Lang.get_msg lang "plugin_userinfo_time_me"
            [Strftime.strftime ~tm:(localtime (gettimeofday ())) 
@@ -171,7 +169,7 @@ let time =
     simple_query_entity ~me success "jabber:iq:time"
       
 let stats =
-  let entity_to_jid entity event from =
+  let entity_to_jid entity from =
     match entity with
       | `Host host ->
           if host.lresource = "" then

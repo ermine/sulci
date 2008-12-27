@@ -39,8 +39,7 @@ type reg_handle =
       string * (xmpp_event -> jid -> element -> (element -> unit) -> unit)
   | Id of string * (xmpp_event -> jid -> element -> (element -> unit) -> unit)
   | Command of string * 
-      (string -> xmpp_event -> jid -> element -> string -> (element -> unit) ->
-         unit)
+      (string -> jid -> element -> string -> (element -> unit) -> unit)
   | OnStart of ((element -> unit) -> unit)
   | OnQuit of ((element -> unit) -> unit)
   | Catch of (xmpp_event -> jid -> element -> string -> (element -> unit) ->
@@ -98,7 +97,7 @@ let do_command text event from xml lang out =
     try String.sub text 0 (String.index text ' ') with Not_found -> text in
   let f = CommandMap.find word !commands in
   let params = try string_after text (String.index text ' ') with _ -> "" in
-    try f (trim params) event from xml lang out with exn -> 
+    try f (trim params) from xml lang out with exn -> 
       log#error "[executing command callback] %s: %s"
         (Printexc.to_string exn) (element_to_string xml)
         
@@ -152,17 +151,16 @@ exception Filtered
 let rec process_xml next_xml out =
   let xml = next_xml () in
   let from = jid_of_string (get_attr_s xml "from") in
-  let room = (from.lnode, from.ldomain) in
   let tag = get_tagname xml in
   let get_event () =
     match tag with
       | "presence" ->
-          if GroupchatMap.mem room !groupchats then
+          if Muc.is_groupchat from then
             Muc.process_presence from xml out
           else
             Presence
       | "message" ->
-          if GroupchatMap.mem room !groupchats then
+          if Muc.is_groupchat from then
             Muc.process_message from xml out
           else
             Message
@@ -242,11 +240,20 @@ type entity = [
 
 exception BadEntity
 
-let get_entity text event from =
-  match event with
-    | Message ->
-        if text = "" then
-          `You
+let get_entity text from =
+  if Muc.is_groupchat from then
+    if text = "" then
+      `You
+    else
+      let room = from.lnode, from.ldomain in
+      let room_env = GroupchatMap.find room !groupchats in
+        if room_env.mynick = text then
+          `Mynick text
+        else if Nicks.mem text room_env.nicks then
+          if from.resource = text then
+            `You
+          else
+            `Nick text
         else (
           try
             let jid = jid_of_string text in
@@ -254,38 +261,24 @@ let get_entity text event from =
                 dnsprep jid.ldomain;
                 `Host jid
               )
-              else if from.string = jid.string then
-                `You
               else
                 `User jid
           with _ ->
             raise BadEntity
         )
-    | MUC_message _ ->
-        if text = "" then
-          `You
-        else
-          let room = from.lnode, from.ldomain in
-          let room_env = GroupchatMap.find room !groupchats in
-            if room_env.mynick = text then
-              `Mynick text
-            else if Nicks.mem text room_env.nicks then
-              if from.resource = text then
-                `You
-              else
-                `Nick text
-            else (
-              try
-                let jid = jid_of_string text in
-                  if jid.lnode = "" then (
-                    dnsprep jid.ldomain;
-                    `Host jid
-                  )
-                  else
-                    `User jid
-              with _ ->
-                raise BadEntity
-            )
-    | _ ->
+  else
+    if text = "" then
+      `You
+    else
+      try
+        let jid = jid_of_string text in
+          if jid.lnode = "" then (
+            dnsprep jid.ldomain;
+            `Host jid
+          )
+          else if from.string = jid.string then
+            `You
+          else
+            `User jid
+      with _ ->
         raise BadEntity
-          

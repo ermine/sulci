@@ -7,7 +7,7 @@ open Xmpp
 open Common
 open Http_suck
 
-let blogs text event from xml lang out =
+let blogs text from xml lang out =
   if text = "" then
     make_msg out xml (Lang.get_msg lang "plugin_yandex_bad_syntax" [])
   else

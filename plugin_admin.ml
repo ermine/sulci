@@ -12,23 +12,21 @@ open Hooks
 open Types
 open Nicks
 
-let msg text event from xml lang out =
+let msg text from xml lang out =
   if check_access from "admin" then
     let s = String.index text ' ' in
     let to_ = jid_of_string (String.sub text 0 s) in
     let msg_body = string_after text (s+1) in
       out (Xmlelement ("message", 
                        ["to", to_.string; 
-                        "type", 
-                        if GroupchatMap.mem (to_.lnode, to_.ldomain) 
-                          !groupchats then
-                            "groupchat" else "chat"
+                        "type",
+                        if is_groupchat to_ then "groupchat" else "chat"
                        ],
                        [make_simple_cdata "body" msg_body]))
   else
     make_msg out xml ":-P"
       
-let quit text event from xml lang out =
+let quit text from xml lang out =
   if check_access from "admin" then (
     make_msg out xml (Lang.get_msg lang "plugin_admin_quit_bye" []);
     Hooks.quit out
@@ -38,7 +36,7 @@ let quit text event from xml lang out =
       
 let join_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let join text event from xml lang out =
+let join text from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:join_rex text in
@@ -60,7 +58,7 @@ let join text event from xml lang out =
       
 let leave_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let leave text event from xml lang out =
+let leave text from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
@@ -68,7 +66,7 @@ let leave text event from xml lang out =
       and reason = 
         try Some (Pcre.get_substring r 3) with Not_found -> None in
       let room = jid_of_string room_s in
-        if GroupchatMap.mem (room.lnode, room.ldomain) !groupchats then
+        if is_groupchat room then
           out (Muc.leave_room (room.lnode, room.ldomain) ?reason)
         else
           raise Not_found
@@ -78,7 +76,7 @@ let leave text event from xml lang out =
         
 let invite_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let invite text event from xml lang out =
+let invite text from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
@@ -111,7 +109,7 @@ let invite text event from xml lang out =
     with exn ->
       make_msg out xml "hmm?"
         
-let lang_update text event from xml lang out =
+let lang_update text from xml lang out =
   if check_access from "admin" then
     if text = "" then
       make_msg out xml "What language?"
@@ -120,7 +118,7 @@ let lang_update text event from xml lang out =
         
 let lr = Pcre.regexp "([a-z][a-z])\\s+(\\w+)(\\s+(.+))?"
   
-let lang_admin text event from xml lang out =
+let lang_admin text from xml lang out =
   if check_access from "admin" then
     if text = "" then
       make_msg out xml "en msgid string"
@@ -148,7 +146,7 @@ let variables = [
   "msg_limit", (fun i -> Common.msg_limit := i);
 ]
   
-let sulci_set text event from xml lang out =
+let sulci_set text from xml lang out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:sulci_set_rex text in

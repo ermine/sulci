@@ -46,7 +46,7 @@ let vsearch =
                         with Not_found -> []) [] in
       result_vcard res
   in
-  let entity_to_jid entity event from =
+  let entity_to_jid entity from =
     match entity with
       | `Mynick nick
       | `Nick nick ->

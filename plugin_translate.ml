@@ -92,7 +92,7 @@ let do_request language text xml lang out =
   in
     Http_suck.http_get (url language text) callback
       
-let translate text event from xml lang out =
+let translate text from xml lang out =
   match trim(text) with
     | "list" ->
         do_list xml out

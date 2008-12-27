@@ -132,7 +132,7 @@ let one_message item =
     
 let xmldecl = "<?xml version='1.0' encoding='UTF-8' ?>\r\n"
   
-let gspell text event from xml lang out =
+let gspell text from xml lang out =
   if text = "" then
     make_msg out xml (Lang.get_msg lang "plugin_google_invalid_syntax" [])
   else
@@ -186,7 +186,7 @@ let gspell text event from xml lang out =
         ["Content-Type", "text/xml; charset=utf-8"] 
         (xmldecl ^ query) callback
         
-let google ?(start="0") ?(items="1") text event from xml lang out =
+let google ?(start="0") ?(items="1") text from xml lang out =
   if text = "" then
     make_msg out xml (Lang.get_msg lang "plugin_google_invalid_syntax" [])
   else
@@ -242,13 +242,13 @@ let google ?(start="0") ?(items="1") text event from xml lang out =
         
 let rx = Pcre.regexp "([0-9]+) ([1-9]{1}) (.+)"
   
-let google_adv text event from xml lang out =
+let google_adv text from xml lang out =
   try
     let r = Pcre.exec ~rex:rx text in
     let start = Pcre.get_substring r 1 in
     let items = Pcre.get_substring r 2 in
     let request = Pcre.get_substring r 3 in
-      google ~start ~items request event from xml lang out
+      google ~start ~items request from xml lang out
   with Not_found ->
     make_msg out xml (Lang.get_msg lang "plugin_google_adv_invalid_syntax" [])
       

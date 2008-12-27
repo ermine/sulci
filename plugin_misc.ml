@@ -5,7 +5,7 @@
 open Unix
 open Common
 
-let dns text event from xml lang out =
+let dns text from xml lang out =
   if text = "" then
     make_msg out xml (Lang.get_msg lang "plugin_misc_dns_invalid_syntax" [])
   else

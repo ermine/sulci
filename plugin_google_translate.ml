@@ -165,7 +165,7 @@ let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8]
   
 let rm_newlines = Pcre.regexp "[\n\r]"
   
-let translate text event from xml lang out =
+let translate text from xml lang out =
   match trim(text) with
     | "list" ->
         make_msg out xml list_languages

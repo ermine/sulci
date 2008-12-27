@@ -143,7 +143,7 @@ let process_dict db word lang =
 let rex1 = Pcre.regexp ~iflags:(cflags [`UTF8]) "([^\\s]+)[\\s]*$"
 let rex2 = Pcre.regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
   
-let dict text event from xml lang out =
+let dict text from xml lang out =
   if text = "" then
     make_msg out xml (Lang.get_msg lang "plugin_dict_invalid_syntax" [])
   else

@@ -10,7 +10,7 @@ open Netconversion
 
 let rex = Pcre.regexp "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
 
-let hostip text event from xml lang out =
+let hostip text from xml lang out =
   let ip =
     try
       let h = gethostbyname text in

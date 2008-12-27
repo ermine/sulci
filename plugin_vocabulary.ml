@@ -39,7 +39,7 @@ CREATE INDEX dfnidx ON %s (key)"
         
 let dfn_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)\\s*=\\s*(.*)"
 
-let dfn text event from xml lang out =
+let dfn text from xml lang out =
   let key, value=
     try
       let res = Pcre.exec ~rex:dfn_re text in
@@ -55,7 +55,7 @@ let dfn text event from xml lang out =
     else
       let room = from.lnode, from.ldomain in
       let nick, lnode, ldomain, cond =
-        if GroupchatMap.mem room !groupchats then
+        if Muc.is_groupchat from then
           let room_env = GroupchatMap.find room !groupchats in
           let item = Nicks.find from.lresource room_env.nicks in
             match item.jid with
@@ -114,7 +114,7 @@ let dfn text event from xml lang out =
                 make_msg out xml
                   (Lang.get_msg lang "plugin_vocabulary_nothing_to_remove" [])
 
-let wtf text event from xml lang out =
+let wtf text from xml lang out =
   if text = "" then
     make_msg out xml 
       (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
@@ -163,7 +163,7 @@ let output_records sql xml lang out =
     with Sqlite3.Error _ ->
       exit_with_rc file db sql
 
-let wtfall text event from xml lang out =
+let wtfall text from xml lang out =
   if text = "" then
     make_msg out xml 
       (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
@@ -179,7 +179,7 @@ let wtfall text event from xml lang out =
     in
       output_records sql xml lang out
       
-let wtfrand text event from xml lang out =
+let wtfrand text from xml lang out =
   let key = trim(text) in
     if key = "" then
       let rand = string_of_int (Random.int (!total)) in
@@ -218,7 +218,7 @@ let wtfrand text event from xml lang out =
               make_msg out xml 
                 (Lang.get_msg lang "plugin_vocabulary_not_found" [])
                 
-let wtfcount text event from xml lang out =
+let wtfcount text from xml lang out =
   let key = trim(text) in
   let sql =
     if key = "" then
@@ -239,7 +239,7 @@ let wtfcount text event from xml lang out =
     else
       make_msg out xml (Lang.get_msg lang "plugin_vocabulary_db_is_empty" [])
         
-let wtffind text event from xml lang out =
+let wtffind text from xml lang out =
   if text = "" then
     make_msg out xml 
       (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
@@ -252,7 +252,7 @@ let wtffind text event from xml lang out =
 
 let wtfremove_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)(\\s*=\\s*(.*))?"
 
-let wtfremove text event from xml lang out =
+let wtfremove text from xml lang out =
   let key, value =
     try
       let res = Pcre.exec ~rex:wtfremove_re text in
@@ -267,7 +267,7 @@ let wtfremove text event from xml lang out =
     else
       let room = from.lnode, from.ldomain in
       let cond =
-        if GroupchatMap.mem room !groupchats then
+        if Muc.is_groupchat from then
           let room_env = GroupchatMap.find room !groupchats in
           let item = Nicks.find from.lresource room_env.nicks in
             if item.role = `Moderator then

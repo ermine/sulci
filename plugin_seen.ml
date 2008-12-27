@@ -46,7 +46,7 @@ CREATE INDEX gr_index ON %s (jid, room)"
 let cmd_greet =
   Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^\\s]+)\\s+([^\\s]+)\\s+(.+)"
     
-let add_greet text event from xml lang out =
+let add_greet text from xml lang out =
   if check_access from "admin" then (
     if text <> "" then
       try
@@ -171,76 +171,75 @@ let verify_nick nick jid nicks xml lang =
     else
       raise Not_found
         
-let seen text event from xml lang out =
+let seen text from xml lang out =
   if text = "" then
     make_msg out xml (Lang.get_msg lang "plugin_seen_whom" [])
   else
-    match event with
-      | MUC_message (msg_type, _, _) ->
-          if text = from.resource then
-            make_msg out xml (Lang.get_msg lang "plugin_seen_you" [])
-          else
-            let room  = from.lnode, from.ldomain in
-            let nicks = (GroupchatMap.find room !groupchats).nicks in
-            let sql = Printf.sprintf
-              "SELECT jid, last, action, reason FROM %s WHERE nick=%s AND room=%s ORDER BY last DESC LIMIT 1"
-              table_users
-              (escape text)
-              (escape (string_of_jid (bare_jid from))) in
-            let reply =
-              match get_one_row file db sql with
-                | Some r -> (
-                    try
-                      verify_nick text (string_of_data r.(0)) nicks xml lang
-                    with Not_found ->
-                      let stamp = Int64.to_float (int64_of_data r.(1)) in
-                      let diff = 
-                        Lang.expand_time ~lang:(Lang.get_lang xml) "seen"
-                          (int_of_float 
-                             (Unix.gettimeofday () -. stamp)) in
-                        if string_of_data r.(3) = "" then
-                          Lang.get_msg lang 
-                            (match string_of_data r.(2) with
-                               | "kick" -> "plugin_seen_kicked"
-                               | "ban" -> "plugin_seen_banned"
-                               | "unmember" -> "plugin_seen_unmembered"
-                               | _ -> "plugin_seen_left")
-                            [text; diff]
-                        else
-                          Lang.get_msg lang 
-                            (match string_of_data r.(2) with
-                               | "kick" -> 
-                                   "plugin_seen_kicked_reason"
-                               | "ban" -> 
-                                   "plugin_seen_banned_reason"
-                               | "unmember" ->
-                                   "plugin_seen_unmembered_reason"
-                               | _ -> 
-                                   "plugin_seen_left_reason")
-                            [text; diff; string_of_data r.(3)]
-                  )
-                | None -> (
-                    if Nicks.mem text nicks then
-                      Lang.get_msg lang "plugin_seen_is_here" [text]
+    if Muc.is_groupchat from then
+      if text = from.resource then
+        make_msg out xml (Lang.get_msg lang "plugin_seen_you" [])
+      else
+        let room  = from.lnode, from.ldomain in
+        let nicks = (GroupchatMap.find room !groupchats).nicks in
+        let sql = Printf.sprintf
+          "SELECT jid, last, action, reason FROM %s WHERE nick=%s AND room=%s ORDER BY last DESC LIMIT 1"
+          table_users
+          (escape text)
+          (escape (string_of_jid (bare_jid from))) in
+        let reply =
+          match get_one_row file db sql with
+            | Some r -> (
+                try
+                  verify_nick text (string_of_data r.(0)) nicks xml lang
+                with Not_found ->
+                  let stamp = Int64.to_float (int64_of_data r.(1)) in
+                  let diff = 
+                    Lang.expand_time ~lang:(Lang.get_lang xml) "seen"
+                      (int_of_float 
+                         (Unix.gettimeofday () -. stamp)) in
+                    if string_of_data r.(3) = "" then
+                      Lang.get_msg lang 
+                        (match string_of_data r.(2) with
+                           | "kick" -> "plugin_seen_kicked"
+                           | "ban" -> "plugin_seen_banned"
+                           | "unmember" -> "plugin_seen_unmembered"
+                           | _ -> "plugin_seen_left")
+                        [text; diff]
                     else
-                      let result = ref [] in
-                        Nicks.iter (fun (nick, item) ->
-                                      if item.orig_nick = text then
-                                        result := nick :: !result
-                                   ) nicks;
-                        if !result <> [] then
-                          if List.mem from.resource !result then
-                            Lang.get_msg lang "plugin_seen_you" []
-                          else
-                            Lang.get_msg lang "plugin_seen_changed_nick"
-                              [text; String.concat ", " !result]
-                        else
-                          Lang.get_msg lang "plugin_seen_never_seen" [text]
-                  )
-            in
-              make_msg out xml reply
-      | _ ->
-          make_msg out xml (Lang.get_msg lang "plugin_seen_not_in_room" [])
+                      Lang.get_msg lang 
+                        (match string_of_data r.(2) with
+                           | "kick" -> 
+                               "plugin_seen_kicked_reason"
+                           | "ban" -> 
+                               "plugin_seen_banned_reason"
+                           | "unmember" ->
+                               "plugin_seen_unmembered_reason"
+                           | _ -> 
+                               "plugin_seen_left_reason")
+                        [text; diff; string_of_data r.(3)]
+              )
+            | None -> (
+                if Nicks.mem text nicks then
+                  Lang.get_msg lang "plugin_seen_is_here" [text]
+                else
+                  let result = ref [] in
+                    Nicks.iter (fun (nick, item) ->
+                                  if item.orig_nick = text then
+                                    result := nick :: !result
+                               ) nicks;
+                    if !result <> [] then
+                      if List.mem from.resource !result then
+                        Lang.get_msg lang "plugin_seen_you" []
+                      else
+                        Lang.get_msg lang "plugin_seen_changed_nick"
+                          [text; String.concat ", " !result]
+                    else
+                      Lang.get_msg lang "plugin_seen_never_seen" [text]
+              )
+        in
+          make_msg out xml reply
+    else
+      make_msg out xml (Lang.get_msg lang "plugin_seen_not_in_room" [])
             
 let _ =
   Hooks.register_handle (Command ("greet", add_greet));
