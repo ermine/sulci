@@ -2,12 +2,13 @@
  * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Common
 open Unix
 open Pcre
-open Muc
-open Types
 open Jid
+open Types
+open Config
+open Common
+open Muc
 
 let basedir = 
   let dir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"]) in
@@ -53,7 +54,7 @@ let get_next_noun () =
     noun
 
 let rotate_logs () =
-  Logger.out "MUC Log: Rotating chatlogs";
+  log#info "MUC Log: Rotating chatlogs";
   logmap :=
     LogMap.mapi (fun room lf ->
                    let old = lf in

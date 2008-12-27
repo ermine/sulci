@@ -2,13 +2,13 @@
  * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Types
-open Nicks
-open Common
-open Config
-open Hooks
 open Xmpp
 open Error
+open Types
+open Config
+open Common
+open Nicks
+open Hooks
 
 let _ = 
   let server = try 
@@ -52,7 +52,7 @@ let _ =
       Xmpp.client ~username ~password ~resource ~server ~port 
         ?rawxml_log () in
       
-      Logger.out (Printf.sprintf "Connected to %s!" server);
+      log#info "Connected to %s!" server;
       
       Sys.set_signal Sys.sigint
         (Sys.Signal_handle (function x -> Hooks.quit out));
@@ -64,8 +64,8 @@ let _ =
       out (make_presence ());
       
       List.iter (fun proc -> 
-                   try proc out with exn -> 
-                     Logger.print_exn "sulci.ml" exn) !onstart;
+                   try proc out with exn ->
+                     log#error "sulci.ml: %s" (Printexc.to_string exn)) !onstart;
       process_xml next_xml out
   in
     
@@ -97,45 +97,38 @@ let _ =
         ()
     with
       | Unix.Unix_error (code, "connect", _) ->
-          Logger.out
-            (Printf.sprintf "Unable to connect to %s:%d: %s"
-               server port (Unix.error_message code));
+          log#info "Unable to connect to %s:%d: %s"
+            server port (Unix.error_message code);
           if times > 0 then (
             Unix.sleep reconnect_interval;
-            Logger.out 
-              (Printf.sprintf "Reconnecting. Attempts remains: %d" 
-                 times);
+            log#info "Reconnecting. Attempts remains: %d" times;
           );
           reconnect (times - 1)
       | Sasl.Failure cond ->
-          Logger.out ("Auth.Failure: " ^ cond);
+          log#info "Auth.Failure: %s" cond;
           (match cond with
              | "non-authorized" ->
                  print_endline "will register"
              | _ -> ()
           )
       | Sasl.AuthError reason ->
-          Logger.out ("Authorization failed: " ^ reason);
+          log#crit "Authorization failed: %s" reason;
           Pervasives.exit 127
       | Xmpp.XMPPStreamEnd ->
-          Logger.out "The connection to the server is lost";
+          log#info"The connection to the server is lost";
           cleanup_for_reconnect ();
           reconnect count
       | Xmpp.XMPPStreamError els ->
           let cond, text, _ = parse_stream_error els in
             (match cond with
                | `ERR_CONFLICT ->
-                   Logger.out 
-                     (Printf.sprintf 
-                        "Connection to the server closed: %s" text)
+                   log#info "Connection to the server closed: %s" text
                | _ ->
-                   Logger.out 
-                     (Printf.sprintf 
-                        "The server reject us: %s" text)
+                   log#info "The server reject us: %s" text
             );
             Pervasives.exit 127
       | exn ->
-          Logger.print_exn "sulci.ml" exn;
-          Logger.out "Probably it is a bug, please send me a bugreport"
+          log#error "sulci.ml: %s" (Printexc.to_string exn);
+          log#error "Probably it is a bug, please send me a bugreport"
   in
     reconnect count

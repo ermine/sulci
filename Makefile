@@ -6,7 +6,7 @@ VERSION=0.6-alpha-20081227
 
 include Makefile.conf
 
-SOURCES = version.ml config.ml logger.ml common.ml types.ml lang.ml muc.ml \
+SOURCES = version.ml config.ml common.ml types.ml lang.ml muc.ml \
 	  find_url.ml muc_log.ml hooks.ml iq.ml 
 
 SUBDIRS = lang
@@ -118,7 +118,7 @@ endif
 
 THREADS = yes
 
-PACKS = ulex unix xmpp getopt xmlstring strftime scheduler pcre
+PACKS = ulex unix xmpp logger getopt xmlstring strftime scheduler pcre
 
 ifdef XMLSTRING_NETSTRING
    NETSTRING = yes

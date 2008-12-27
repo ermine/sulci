@@ -5,8 +5,9 @@
 open Xml
 open Xmpp
 open Jid
-open Common
 open Types
+open Config
+open Common
 open Nicks
 open Muc
 open Hooks
@@ -314,9 +315,8 @@ let cerberus event from xml out =
             raise Hooks.Filtered
       with
         | Ulexing.Error ->
-            Logger.out (Printf.sprintf
-                          "cerberus: Lexing error at offset %i"
-                          (Ulexing.lexeme_end lexbuf))
+            log#error "cerberus: Lexing error at offset %i"
+              (Ulexing.lexeme_end lexbuf)
   in
   let room = from.lnode, from.ldomain in
     match event with
@@ -370,12 +370,10 @@ let cerberus event from xml out =
                   | Bad word -> ()
                 with
                   | Ulexing.Error ->
-                      Logger.out
-                        (Printf.sprintf
-                           "cerberus: Lexing error at offset %i" 
-                           (Ulexing.lexeme_end lexbuf));
+                      log#error "cerberus: Lexing error at offset %i" 
+                        (Ulexing.lexeme_end lexbuf);
             with exn ->
-              (* Logger.print_exn "cerberus" exn *) ()
+              (* log#error "cerberus" exn *) ()
           )
       | _ -> ()
           

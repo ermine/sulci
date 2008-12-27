@@ -5,10 +5,10 @@
 open Xml
 open Xmpp
 open Jid
+open Types
+open Config
 open Common
 open Hooks
-open Types
-open Xmpp
 open Sqlite3
 open Sqlite_util
 
@@ -104,7 +104,7 @@ let add file db words =
     try
       cycle1 "" words
     with exn ->
-      Logger.print_exn "Plugin_markov" exn
+      log#error "Plugin_markov %s" (Printexc.to_string exn)
         
 let seek file db (w1:string) =
   let sum =
@@ -160,7 +160,7 @@ let generate file db word =
     try
       cycle3 word 0 []
     with exn ->
-      Logger.print_exn "Plugin_markov: generate a phrase" exn;
+      log#error "Plugin_markov: generate a phrase: %s" (Printexc.to_string exn);
       ""
         
 let split_words body =
@@ -226,7 +226,7 @@ let rec markov_thread (file, db, m) =
              | Sqlite3.Error _ ->
                  exit_with_rc file db sql
              | exn ->
-                 Logger.print_exn "Plugin_markov: !!!top" exn
+                 log#error "Plugin_markov: !!!top: %s" (Printexc.to_string exn)
        )
      | MStop -> 
          db_close db;

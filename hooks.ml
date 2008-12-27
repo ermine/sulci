@@ -6,8 +6,9 @@ open Xml
 open Xmpp
 open Jid
 open Jid
-open Common
 open Types
+open Config
+open Common
 open Nicks
 
 module IdMap = Map.Make(Id)
@@ -77,7 +78,8 @@ let process_iq event from xml out =
                  (try
                     let f = IdMap.find id !idmap in
                       (try f event from xml out with exn -> 
-                         Logger.print_exn "hooks.ml" exn ~xml);
+                         log#error "[executing iq callback] %s: %s"
+                           (Printexc.to_string exn) (element_to_string xml));
                       idmap := IdMap.remove id !idmap
                   with Not_found -> 
                     ())
@@ -86,7 +88,8 @@ let process_iq event from xml out =
                (try      
                   let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
                     (try f event from xml out with exn -> 
-                       Logger.print_exn "hooks.ml" exn ~xml);
+                       log#error "[executing xmlns callback] %s: %s"
+                         (Printexc.to_string exn) (element_to_string xml));
                 with Not_found -> ()))
     | _ -> ()
         
@@ -96,7 +99,8 @@ let do_command text event from xml lang out =
   let f = CommandMap.find word !commands in
   let params = try string_after text (String.index text ' ') with _ -> "" in
     try f (trim params) event from xml lang out with exn -> 
-      Logger.print_exn "hooks.ml" exn ~xml
+      log#error "[executing command callback] %s: %s"
+        (Printexc.to_string exn) (element_to_string xml)
         
 let process_message event from xml out =
   let lang = Muc.get_lang from xml in
@@ -119,12 +123,16 @@ let process_message event from xml out =
               with Not_found ->
                 List.iter  (fun f -> 
                               try f event from xml lang out with exn ->
-                                Logger.print_exn "hooks.ml" exn ~xml
+                                log#error "[executing catch callback] %s: %s"
+                                  (Printexc.to_string exn)
+                                  (element_to_string xml)
                            ) !catchset 
             else
               List.iter  (fun f -> 
                             try f event from xml lang out with exn ->
-                              Logger.print_exn "hooks.ml" exn ~xml
+                              log#error "[executing catch callback] %s: %s"
+                                (Printexc.to_string exn)
+                                (element_to_string xml)
                          ) !catchset 
       | Message ->
           if safe_get_attr_s xml "type" <> "error" then
@@ -133,7 +141,9 @@ let process_message event from xml out =
               (try do_command text event from xml lang out with Not_found ->
                  List.iter  (fun f -> 
                                try f event from xml lang out with exn ->
-                                 Logger.print_exn "hooks.ml" exn ~xml
+                                 log#error "[executing catch callback] %s: %s"
+                                   (Printexc.to_string exn)
+                                   (element_to_string xml)
                             ) !catchset)
       | _ -> ()
         
@@ -176,21 +186,28 @@ let rec process_xml next_xml out =
                 let lang = Muc.get_lang from xml in
                   List.iter (fun proc -> 
                                try proc event from xml lang out with exn ->
-                                 Logger.print_exn "hooks.ml" exn ~xml
+                                 log#error "[executing catch callback] %s: %s"
+                                   (Printexc.to_string exn)
+                                   (element_to_string xml)
                             ) !catchset
          );
      with
        | InvalidStanza as exn ->
-           Logger.print_exn "hooks.ml" exn ~xml
+           log#error "[Invalid stanza] %s: %s"
+             (Printexc.to_string exn)
+             (element_to_string xml)
        | Filtered -> ()
        | exn ->
-           Logger.print_exn "hooks.ml" exn ~xml
+           log#error "[process_xml] %s: %s"
+             (Printexc.to_string exn)
+             (element_to_string xml)
     );
     process_xml next_xml out
       
 let quit out =
   List.iter (fun proc -> try proc out with exn -> 
-               Logger.print_exn "hooks.ml" exn) !onquit;
+               log#error "[quit] %s" (Printexc.to_string exn)
+            ) !onquit;
   Pervasives.exit 0
     
 let check_access (jid:jid) classname =

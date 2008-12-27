@@ -3,10 +3,11 @@
  *)
 
 open Unix
-open Common
-open Xml
-open Netconversion
 open Pcre
+open Xml
+open Config
+open Common
+open Netconversion
 
 exception Recursive
 
@@ -17,12 +18,11 @@ let _ =
         let f = get_attr_s Config.config ~path:["plugins"; 
                                                 "mueller"] "file" in
           if Sys.file_exists f then f else (
-            Logger.out 
-              (Printf.sprintf "Mueller dictonary %s does not exists" f);
+            log#crit "Mueller dictonary %s does not exists" f;
             Pervasives.exit 127
           )
       with Not_found ->
-        Logger.out "Invalid mueller stanza in config file";
+        log#crit "Invalid mueller stanza in config file";
         Pervasives.exit 127
       in
       let idx =
@@ -32,9 +32,7 @@ let _ =
       in
       let hash = 
         let fhash = try open_in idx with Sys_error err ->
-          Logger.out
-            (Printf.sprintf 
-               "Cannot open Mueller Dictonary's hash file: %s" err);
+          log#crit "Cannot open Mueller Dictonary's hash file: %s" err;
           Pervasives.exit 127
         in
         let rec cycle () =
@@ -65,9 +63,8 @@ let _ =
         let fdict = 
           try openfile dict [O_RDONLY] 0o644 
           with Unix_error (err, _, _) ->
-            Logger.out
-              (Printf.sprintf "plugin_mueller.ml: Cannot open %s: %s" 
-                 dict (Unix.error_message err));
+            log#crit "plugin_mueller.ml: Cannot open %s: %s"
+              dict (Unix.error_message err);
             Pervasives.exit 127
         in
         let rec cycle i =

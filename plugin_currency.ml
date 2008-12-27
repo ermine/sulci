@@ -3,8 +3,9 @@
  *)
 
 open Xml
-open Common
 open Unix
+open Config
+open Common
 open Http_suck
 
 let url = "http://www.cbr.ru/scripts/XML_daily.asp"
@@ -39,7 +40,8 @@ let parse_content content =
                         let pos = String.index x ',' in
                           String.set x pos '.';
                           try float_of_string (x) with exn ->
-                            Logger.print_exn "plugin_currency.ml" exn; 
+                            log#error "plugin_currency.ml: %s"
+                              (Printexc.to_string exn);
                             raise exn
                     }
                  ) z in
@@ -62,11 +64,12 @@ let load_curr () =
   let callback data =
     match data with
       | OK (_media, _charset, content) -> (
-          Logger.out "Plugin_currency: successfully fetched data";
+          log#info "Plugin_currency: successfully fetched data";
           try
             parse_content content;
-          with _exn ->
-            Logger.out "Plugin_currency: Unable to parse data"
+          with exn ->
+            log#error "Plugin_currency: Unable to parse data: %s"
+              (Printexc.to_string exn)
         )
       | Exception exn ->
           ()
@@ -128,7 +131,8 @@ let currency text event from xml lang out =
       | Not_found ->
           ()
       | exn ->
-          Logger.print_exn ("plugin_currency.ml (" ^ text ^ ")") exn
+          log#error "plugin_currency.ml (:%s) %s"
+            text (Printexc.to_string exn)
             
 let _ =
   Hooks.register_handle (Hooks.Command ("curr", currency))

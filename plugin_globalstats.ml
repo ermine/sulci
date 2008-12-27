@@ -2,14 +2,15 @@
  * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Common
-open Xmpp
 open Xml
+open Xmpp
 open Error
 open Types
+open Config
+open Common
 
 let stats_sum serverlist result out =
-  Logger.out "Globalstats: Start polling";
+  log#info "Globalstats: Start polling";
   let totals = ref 0 in
   let onlines = ref 0 in
   let servers = ref 0 in
@@ -32,10 +33,9 @@ let stats_sum serverlist result out =
         let server = input_line sin in
           each_server server
       with End_of_file ->
-        Logger.out 
-          (Printf.sprintf 
-             "Globalstats: end polling, results: %d total, %d onlines, %d servers" 
-             !totals !onlines !servers);
+        log#error
+          "Globalstats: end polling, results: %d total, %d onlines, %d servers" 
+          !totals !onlines !servers;
         let sout = open_out result in
           output_string sout (Printf.sprintf "%d\n%d\n%d\n"
                                 !totals !onlines !servers);
@@ -70,7 +70,7 @@ let _ =
     let start_stats out =
       let _ = Scheduler.add_task Types.timerQ
         (fun () -> try stats_sum serverlist result out with exn ->
-           Logger.print_exn "Plugin_globalstats" exn)
+           log#error "Plugin_globalstats: %s" (Printexc.to_string exn))
         (Unix.gettimeofday () +. 10.) (fun () -> interval)
       in ()
     in

@@ -2,11 +2,12 @@
  * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
-open Common
 open Xml
 open Xmpp
 open Jid
 open Types
+open Config
+open Common
 
 let ext = ".htbl"
 let deflang = try trim (Xml.get_attr_s Config.config 
@@ -92,8 +93,7 @@ let get_msg lang msgid args =
       let hashtbl = LangMap.find deflang !langmsgs in
         Hashtbl.find hashtbl msgid
     with Not_found ->
-      Logger.out
-        (Printf.sprintf "lang not found: [%s]\n" msgid);
+      log#error "lang not found: [%s]\n" msgid;
       "[not found in lang pack: " ^ msgid ^ "]"
   in
     process str args

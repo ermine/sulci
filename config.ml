@@ -50,3 +50,11 @@ let logger_options =
            (get_subels el))
   with Not_found -> []
 
+let log =
+  let report_log =
+    try List.assoc "report" logger_options with Not_found -> "/dev/null" in
+    new Logger.logger ~max_level:"debug" 
+      (* ~destination:(new syslog "local0") () in *)
+      ~destination:(new Logger.logfile report_log) ()
+
+

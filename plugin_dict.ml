@@ -3,6 +3,7 @@
 *)
 
 open Pcre
+open Config
 open Common
 
 exception DictError of string
@@ -24,21 +25,16 @@ let connect server port =
   let sock_addr = Unix.ADDR_INET (inet_addr, port) in
     try
       let pair = Unix.open_connection sock_addr in
-        Logger.out
-          (Printf.sprintf "plugin_dict.ml: %s:%d connected" server port);
+        log#info "plugin_dict.ml: %s:%d connected" server port;
         pair
     with 
       | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect", _) ->
           let rec cycle () = 
-            Logger.out 
-              (Printf.sprintf 
-                 "plugin_dict.ml: attempting to connect [%s][%d]" 
-                 server port);
+            log#info "plugin_dict.ml: attempting to connect [%s][%d]"
+              server port;
             try 
               let pair = Unix.open_connection sock_addr in
-                Logger.out (Printf.sprintf 
-                              "plugin_dict.ml: again: %s:%d" 
-                              server port);
+                log#info "plugin_dict.ml: again: %s:%d" server port;
                 pair
             with 
               | Unix.Unix_error ((Unix.EINTR|Unix.EAGAIN), "connect",_) ->
