@@ -1,16 +1,17 @@
 (*
- * (c) 2006-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2006-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Unix
-open Common
 open Types
+open Common
+open Hooks
 open Http_suck
 open Netconversion
 
 let rex = Pcre.regexp "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
 
-let hostip text from xml lang out =
+let hostip text from xml env out =
   let ip =
     try
       let h = gethostbyname text in
@@ -24,7 +25,7 @@ let hostip text from xml lang out =
     match ip with
       | None ->
           make_msg out xml
-            (Lang.get_msg lang "plugin_hostip_bad_syntax" []);
+            (Lang.get_msg env.env_lang "plugin_hostip_bad_syntax" []);
       | Some ip ->
           let url = Printf.sprintf 
             "http://api.hostip.info/get_html.php?ip=%s&position=true" 
@@ -47,14 +48,14 @@ let hostip text from xml lang out =
                       in
                         "\n" ^ Xml.encode resp
                     with exn ->
-                      Lang.get_msg lang "conversation_trouble" []
+                      Lang.get_msg env.env_lang "conversation_trouble" []
                   )
                 | _ ->
-                    Lang.get_msg lang "plugin_hostip_failed" []
+                    Lang.get_msg env.env_lang "plugin_hostip_failed" []
             in
               make_msg out xml response
           in
             Http_suck.http_get url callback
               
 let _ =
-  Hooks.register_handle (Hooks.Command ("hostip", hostip));
+  register_command "hostip" hostip

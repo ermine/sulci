@@ -1,10 +1,12 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
-open Common
 open Pcre
+open Xml
+open Types
+open Common
+open Hooks
 open Http_suck
 
 (* http://weather.noaa.gov/pub/data/observations/metar/decoded/ULLI.TXT *)
@@ -83,7 +85,7 @@ let parse_weather content =
       
 let r = Pcre.regexp "[a-zA-Z]{4}"
   
-let weather text from xml lang out =
+let weather text from xml env out =
   if pmatch ~rex:r text then
     let callback data =
       let resp = match data with
@@ -91,16 +93,16 @@ let weather text from xml lang out =
             try
               parse_weather body
             with _exn ->
-              Lang.get_msg lang "plugin_weather_not_parsed" []
+              Lang.get_msg env.env_lang "plugin_weather_not_parsed" []
           )
         | Exception exn ->
             match exn with 
               | ClientError ->
-                  Lang.get_msg lang "plugin_weather_404" []
+                  Lang.get_msg env.env_lang "plugin_weather_404" []
               | ServerError ->
-                  Lang.get_msg lang "plugin_weather_server_error" []
+                  Lang.get_msg env.env_lang "plugin_weather_server_error" []
               | _ ->
-                  Lang.get_msg lang "plugin_weather_server_error" []
+                  Lang.get_msg env.env_lang "plugin_weather_server_error" []
       in
         make_msg out xml resp
     in
@@ -110,7 +112,7 @@ let weather text from xml lang out =
         callback
   else
     make_msg out xml 
-      (Lang.get_msg lang "plugin_weather_invalid_syntax" [])
+      (Lang.get_msg env.env_lang "plugin_weather_invalid_syntax" [])
       
 let _ =
-  Hooks.register_handle (Hooks.Command ("wz", weather))
+  register_command "wz" weather

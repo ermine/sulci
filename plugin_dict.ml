@@ -1,10 +1,12 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
 open Pcre
+open Types
 open Config
 open Common
+open Hooks
 
 exception DictError of string
 
@@ -102,7 +104,7 @@ let process_cmd_dict cmd =
   else
     "Unknown command"
       
-let process_dict db word lang =
+let process_dict db word env =
   let in_dict, out_dict = connect dictd_server dictd_port in
   let reply = match get_status in_dict with
     | "220", _ ->
@@ -111,9 +113,9 @@ let process_dict db word lang =
         flush out_dict;
         (match get_status in_dict with
            | "550", err -> 
-               Lang.get_msg lang "plugin_dict_db_not_found" []
+               Lang.get_msg env.env_lang "plugin_dict_db_not_found" []
            | "552", err -> 
-               Lang.get_msg lang "plugin_dict_word_not_found" []
+               Lang.get_msg env.env_lang "plugin_dict_word_not_found" []
            | "150", rsp -> 
                let rec cycle acc =
                  match get_status in_dict with
@@ -143,9 +145,9 @@ let process_dict db word lang =
 let rex1 = Pcre.regexp ~iflags:(cflags [`UTF8]) "([^\\s]+)[\\s]*$"
 let rex2 = Pcre.regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
   
-let dict text from xml lang out =
+let dict text from xml env out =
   if text = "" then
-    make_msg out xml (Lang.get_msg lang "plugin_dict_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg env.env_lang "plugin_dict_invalid_syntax" [])
   else
     if String.get text 0 = '-' then
       let proc () =
@@ -163,7 +165,7 @@ let dict text from xml lang out =
         let word = Pcre.get_substring r 2 in
         let proc () =
           let response = try
-            process_dict db word lang
+            process_dict db word env
           with (DictError error) -> error
           in
             make_msg out xml (Xml.encode response)
@@ -175,14 +177,15 @@ let dict text from xml lang out =
           let word = Pcre.get_substring r 1 in
           let proc () =
             let response = try
-              process_dict "*" word lang
+              process_dict "*" word env
             with (DictError error) -> error
             in
               make_msg out xml (Xml.encode response)
           in
             ignore (Thread.create proc ())
         with Not_found ->
-          make_msg out xml (Lang.get_msg lang "plugin_dict_invalid_syntax" [])
+          make_msg out xml
+            (Lang.get_msg env.env_lang "plugin_dict_invalid_syntax" [])
             
 let _ =
-  Hooks.register_handle (Hooks.Command ("dict", dict))
+  register_command "dict" dict

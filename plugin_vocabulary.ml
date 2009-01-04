@@ -1,12 +1,15 @@
 (*
- * (c) 2004-2008  Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009  Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
 open Xml
 open Xmpp
 open Jid
-open Common
 open Types
+open Common
+open Hooks
+open Muc_types
+open Muc
 open Nicks
 open Sqlite3
 open Sqlite_util
@@ -39,7 +42,7 @@ CREATE INDEX dfnidx ON %s (key)"
         
 let dfn_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)\\s*=\\s*(.*)"
 
-let dfn text from xml lang out =
+let dfn text from xml env out =
   let key, value=
     try
       let res = Pcre.exec ~rex:dfn_re text in
@@ -51,12 +54,11 @@ let dfn text from xml lang out =
   in
     if key = "" then
       make_msg out xml 
-        (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
+        (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
     else
-      let room = from.lnode, from.ldomain in
       let nick, lnode, ldomain, cond =
-        if Muc.is_groupchat from then
-          let room_env = GroupchatMap.find room !groupchats in
+        if env.env_groupchat then
+          let room_env = get_room_env from in
           let item = Nicks.find from.lresource room_env.nicks in
             match item.jid with
               | Some jid ->
@@ -79,14 +81,14 @@ let dfn text from xml lang out =
           | Some r ->
               if value = (string_of_data r.(0)) then
                 make_msg out xml 
-                  (Lang.get_msg lang "plugin_vocabulary_dfn_again" [])
+                  (Lang.get_msg env.env_lang "plugin_vocabulary_dfn_again" [])
               else if value = "" then (
                 simple_exec file db
                   (Printf.sprintf
                      "DELETE FROM %s WHERE key=%s %s" table (escape key) cond);
                 decr total;
                 make_msg out xml 
-                  (Lang.get_msg lang "plugin_vocabulary_removed" [])
+                  (Lang.get_msg env.env_lang "plugin_vocabulary_removed" [])
               )
               else
                 let stamp =
@@ -96,7 +98,7 @@ let dfn text from xml lang out =
                        "UPDATE %s SET stamp=%s, nick=%s, value=%s WHERE key=%s %s"
                        table stamp (escape nick) (escape value) (escape key) cond);
                   make_msg out xml
-                    (Lang.get_msg lang "plugin_vocabulary_replaced" [])
+                    (Lang.get_msg env.env_lang "plugin_vocabulary_replaced" [])
           | None ->
               if value <> "" then
                 let stamp = Int32.to_string (Int32.of_float 
@@ -109,15 +111,16 @@ let dfn text from xml lang out =
                        (escape key) (escape value));
                   incr total;
                   make_msg out xml 
-                    (Lang.get_msg lang "plugin_vocabulary_recorded" [])
+                    (Lang.get_msg env.env_lang "plugin_vocabulary_recorded" [])
               else
                 make_msg out xml
-                  (Lang.get_msg lang "plugin_vocabulary_nothing_to_remove" [])
+                  (Lang.get_msg env.env_lang
+                     "plugin_vocabulary_nothing_to_remove" [])
 
-let wtf text from xml lang out =
+let wtf text from xml env out =
   if text = "" then
     make_msg out xml 
-      (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
+      (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
   else
     let key =
       try
@@ -130,19 +133,19 @@ let wtf text from xml lang out =
       match get_one_row file db sql with
         | Some r ->
             make_msg out xml 
-              (Lang.get_msg lang "plugin_vocabulary_answer"
+              (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
                  [string_of_data r.(0); key; string_of_data r.(1)])
         | None ->
             make_msg out xml 
-              (Lang.get_msg lang "plugin_vocabulary_not_found" [])
+              (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
               
-let output_records sql xml lang out =
+let output_records sql xml env out =
   let rec aux_acc i acc stmt =
     match step stmt with
       | Rc.ROW ->
           let str = Printf.sprintf "%d) %s"
             i
-            (Lang.get_msg lang "plugin_vocabulary_answer"
+            (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
                [Data.to_string (column stmt 0);
                 Data.to_string (column stmt 1);
                 Data.to_string (column stmt 2)])
@@ -157,16 +160,16 @@ let output_records sql xml lang out =
       let reply = aux_acc 1 [] stmt in
         if reply = "" then
           make_msg out xml 
-            (Lang.get_msg lang "plugin_vocabulary_not_found" [])
+            (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
         else
           make_msg out xml reply
     with Sqlite3.Error _ ->
       exit_with_rc file db sql
 
-let wtfall text from xml lang out =
+let wtfall text from xml env out =
   if text = "" then
     make_msg out xml 
-      (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
+      (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
   else
     let key =
       try
@@ -174,12 +177,13 @@ let wtfall text from xml lang out =
           String.sub text 0 q
       with Not_found -> text in
     let sql =
-      Printf.sprintf "SELECT nick, key, value FROM %s WHERE key=%s ORDER BY stamp"
+      Printf.sprintf
+        "SELECT nick, key, value FROM %s WHERE key=%s ORDER BY stamp"
         table (escape key)
     in
-      output_records sql xml lang out
+      output_records sql xml env out
       
-let wtfrand text from xml lang out =
+let wtfrand text from xml env out =
   let key = trim(text) in
     if key = "" then
       let rand = string_of_int (Random.int (!total)) in
@@ -188,9 +192,9 @@ let wtfrand text from xml lang out =
       let reply =
         match get_one_row file db sql with
           | None ->
-              Lang.get_msg lang "plugin_vocabulary_db_is_empty" []
+              Lang.get_msg env.env_lang "plugin_vocabulary_db_is_empty" []
           | Some r ->
-              Lang.get_msg lang "plugin_vocabulary_answer"
+              Lang.get_msg env.env_lang "plugin_vocabulary_answer"
                 [string_of_data r.(0);
                  string_of_data r.(1);
                  string_of_data r.(2);]
@@ -208,17 +212,18 @@ let wtfrand text from xml lang out =
                 match get_one_row file db sql with
                   | Some q ->
                       make_msg out xml 
-                        (Lang.get_msg lang "plugin_vocabulary_answer"
+                        (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
                            [string_of_data q.(0); key; string_of_data q.(1)])
                   | None ->
                       make_msg out xml 
-                        (Lang.get_msg lang "plugin_vocabulary_not_found" [])
+                        (Lang.get_msg env.env_lang
+                           "plugin_vocabulary_not_found" [])
             )
           | None ->
               make_msg out xml 
-                (Lang.get_msg lang "plugin_vocabulary_not_found" [])
+                (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
                 
-let wtfcount text from xml lang out =
+let wtfcount text from xml env out =
   let key = trim(text) in
   let sql =
     if key = "" then
@@ -234,25 +239,26 @@ let wtfcount text from xml lang out =
     if key = "" then
       total := i;
     if i > 0 then
-      make_msg out xml (Lang.get_msg lang "plugin_vocabulary_records"
+      make_msg out xml (Lang.get_msg env.env_lang "plugin_vocabulary_records"
                           [string_of_int i])
     else
-      make_msg out xml (Lang.get_msg lang "plugin_vocabulary_db_is_empty" [])
+      make_msg out xml (Lang.get_msg env.env_lang
+                          "plugin_vocabulary_db_is_empty" [])
         
-let wtffind text from xml lang out =
+let wtffind text from xml env out =
   if text = "" then
     make_msg out xml 
-      (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
+      (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
   else
     let sql = Printf.sprintf
       "SELECT nick, key, value FROM %s WHERE key LIKE %s OR value LIKE %s"
       table (escape text) (escape text)
     in
-      output_records sql xml lang out
+      output_records sql xml env out
 
 let wtfremove_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)(\\s*=\\s*(.*))?"
 
-let wtfremove text from xml lang out =
+let wtfremove text from xml env out =
   let key, value =
     try
       let res = Pcre.exec ~rex:wtfremove_re text in
@@ -263,12 +269,11 @@ let wtfremove text from xml lang out =
       ("", "") in
     if key = "" then
       make_msg out xml 
-        (Lang.get_msg lang "plugin_vocabulary_invalid_syntax" [])
+        (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
     else
-      let room = from.lnode, from.ldomain in
       let cond =
-        if Muc.is_groupchat from then
-          let room_env = GroupchatMap.find room !groupchats in
+        if env.env_groupchat then
+          let room_env = get_room_env from in
           let item = Nicks.find from.lresource room_env.nicks in
             if item.role = `Moderator then
               ""
@@ -301,15 +306,16 @@ let wtfremove text from xml lang out =
         in
           if records > 0 then (
             simple_exec file db (sql "DELETE");
-            make_msg out xml (Lang.get_msg lang "plugin_vocabulary_removed" [])
+            make_msg out xml (Lang.get_msg env.env_lang
+                                "plugin_vocabulary_removed" [])
           )
           else
-            make_msg out xml (Lang.get_msg lang
+            make_msg out xml (Lang.get_msg env.env_lang
                                 "plugin_vocabulary_nothing_to_remove" [])
 
 let _ =
   List.iter (fun (command, callback) ->
-               Hooks.register_handle (Hooks.Command (command, callback)))
+               register_command command callback)
     ["wtf", wtf;
      "wtfall", wtfall;
      "wtfrand", wtfrand;

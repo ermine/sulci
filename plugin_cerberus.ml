@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
@@ -8,9 +8,10 @@ open Jid
 open Types
 open Config
 open Common
-open Nicks
-open Muc
 open Hooks
+open Muc_types
+open Muc
+open Nicks
 
 let regexp ca          = 0x430 | 0x410 | 'a' | 'A'
 let regexp cb          = 0x431 | 0x411
@@ -259,10 +260,8 @@ let do_kick =
     "true" then true else false
   with _ -> true
     
-let report word (from:jid) phrase msg_type out =
-  let item = Nicks.find from.lresource 
-    (GroupchatMap.find (from.lnode, from.ldomain)
-       !groupchats).nicks in
+let report word from phrase msg_type out =
+  let item = Nicks.find from.lresource (get_room_env from).nicks in
     List.iter (fun jid ->
                  out (make_message ~to_:jid ~type_:`Chat
                         ~body:(Printf.sprintf 
@@ -279,31 +278,31 @@ Nick: %s (%s)
                                  msg_type phrase) ())
               ) notify_jids
       
-let kill (from:jid) xml out =
+let kill (from:jid) xml env out =
   if from.resource = "" then ()
   else
     let room = from.lnode, from.ldomain in
-    let room_env = GroupchatMap.find room !groupchats in
-    let lang = (GroupchatMap.find room !groupchats).lang in
+    let room_env = get_room_env from in
     let myitem = Nicks.find room_env.mynick room_env.nicks in
       if myitem.role = `Moderator then
         let item = Nicks.find from.lresource room_env.nicks in
           if item.role = `Moderator then
-            make_msg out xml (Lang.get_msg lang
+            make_msg out xml (Lang.get_msg env.env_lang
                                 "plugin_cerberus_cannot_kick_admin" [])
           else
-            let proc event f x o = () in
+            let proc t f x o = () in
             let id = new_id () in
-            let reason = Lang.get_msg lang "plugin_markov_kick_reason" [] in
-              Hooks.register_handle (Hooks.Id (id, proc));
+            let reason = Lang.get_msg env.env_lang
+              "plugin_markov_kick_reason" [] in
+              register_iq_query_callback id proc;
               out (Muc.kick ~reason id room from.resource)
       else
-        make_msg out xml (Lang.get_msg lang
+        make_msg out xml (Lang.get_msg env.env_lang
                             "plugin_cerberus_cannot_kick_admin" [])
 
 let topics = Hashtbl.create 5
   
-let cerberus event from xml out =
+let cerberus event from xml env out =
   let check text msg_type =
     let lexbuf = Ulexing.from_utf8_string text in
       try match analyze lexbuf with
@@ -311,8 +310,8 @@ let cerberus event from xml out =
         | Bad word ->
             report word from text msg_type out;
             if do_kick then
-              kill from xml out;
-            raise Hooks.Filtered
+              kill from xml env out;
+            raise Filtered
       with
         | Ulexing.Error ->
             log#error "cerberus: Lexing error at offset %i"
@@ -321,8 +320,7 @@ let cerberus event from xml out =
   let room = from.lnode, from.ldomain in
     match event with
       | MUC_join item ->
-          if from.lresource <> 
-            (GroupchatMap.find room !groupchats).mynick then (
+          if from.lresource <> (get_room_env from).mynick then (
               check from.resource "resource";
               check item.status "status";
               match item.jid with
@@ -331,34 +329,31 @@ let cerberus event from xml out =
                     check j.lresource "jid";
             )
       | MUC_change_nick (nick, item) ->
-          if nick <> (GroupchatMap.find room !groupchats).mynick then
+          if nick <> (get_room_env from).mynick then
             check nick "nick"
       | MUC_presence item ->
-          if from.lresource <> 
-            (GroupchatMap.find room !groupchats).mynick then
-              check item.status "presence"
+          if from.lresource <> (get_room_env from).mynick then
+            check item.status "presence"
       | MUC_topic subject ->
-          if from.lresource <> 
-            (GroupchatMap.find room !groupchats).mynick then (
-              try
-                check subject "topic";
-                Hashtbl.replace topics (from.lnode, from.ldomain) subject;
-              with Hooks.Filtered ->
-                let saved_topic =
-                  try Hashtbl.find topics (from.lnode, from.ldomain) with
-                      Not_found -> " " in
-                  out (Muc.set_topic from saved_topic);
-                  raise Filtered
-            )
+          if from.lresource <> (get_room_env from).mynick then (
+            try
+              check subject "topic";
+              Hashtbl.replace topics (from.lnode, from.ldomain) subject;
+            with Filtered ->
+              let saved_topic =
+                try Hashtbl.find topics (from.lnode, from.ldomain) with
+                    Not_found -> " " in
+                out (Muc.set_topic from saved_topic);
+                raise Filtered
+          )
       | MUC_message (msg_type, nick, body) ->
           if msg_type <> `Error then
-            if body <> "" &&
-              from.lresource <> (GroupchatMap.find room !groupchats).mynick  then
-                check body (match msg_type with
-                              | `Groupchat -> 
-                                  "groupchat public"
-                              | _ ->
-                                  "groupchat private")
+            if body <> "" && from.lresource <> (get_room_env from).mynick then
+              check body (match msg_type with
+                            | `Groupchat -> 
+                                "groupchat public"
+                            | _ ->
+                                "groupchat private")
       | MUC_history ->
           if get_tagname xml = "message" then (
             try
@@ -378,5 +373,4 @@ let cerberus event from xml out =
       | _ -> ()
           
 let _ = 
-  Hooks.register_handle (Filter cerberus)
-    
+  Muc.register_filter "cerberus" cerberus

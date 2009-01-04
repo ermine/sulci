@@ -1,10 +1,11 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Common
-open Xml
 open Dbm
+open Xml
+open Common
+open Hooks
 
 let tlds = 
   let name = try
@@ -28,4 +29,4 @@ let tld text from xml lang out =
                             "неизвестный домен")
           
 let _ =   
-  Hooks.register_handle (Hooks.Command ("tld", tld))
+  register_command "tld" tld

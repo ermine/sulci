@@ -1,5 +1,5 @@
 (*
- * (c) 2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2008-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Sqlite3

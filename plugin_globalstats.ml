@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
@@ -16,9 +16,9 @@ let stats_sum serverlist result out =
   let servers = ref 0 in
   let sin = open_in serverlist in
   let rec each_server server =
-    let proc e f x o =
-      (match e with
-         | Iq (_, `Result, _) ->
+    let proc t f x o =
+      (match t with
+         | `Result ->
              let stats = get_subels ~path:["query"] ~tag:"stat" x in
              let data = List.map (fun z ->
                                     get_attr_s z "name",
@@ -43,15 +43,11 @@ let stats_sum serverlist result out =
           close_out sout
     in
     let id = new_id () in
-      Hooks.register_handle (Hooks.Id (id, proc));
-      out (Xmlelement 
-             ("iq", ["to", server; "type", "get"; "id", id],
-              [Xmlelement 
-                 ("query", ["xmlns", 
-                            "http://jabber.org/protocol/stats"],
-                  [Xmlelement ("stat", ["name", "users/online"], []);
-                   Xmlelement ("stat", ["name", "users/total"], [])
-                  ])]))
+      Hooks.register_iq_query_callback id proc;
+      out (make_element "iq" ["to", server; "type", "get"; "id", id]
+             [make_element "query" ["xmlns", "http://jabber.org/protocol/stats"]
+                [make_element "stat" ["name", "users/online"] [];
+                 make_element "stat" ["name", "users/total"] []]])
   in
   let server = input_line sin in
     each_server server
@@ -74,5 +70,5 @@ let _ =
         (Unix.gettimeofday () +. 10.) (fun () -> interval)
       in ()
     in
-      Hooks.register_handle (Hooks.OnStart start_stats)
+      Hooks.register_on_connect start_stats
   )

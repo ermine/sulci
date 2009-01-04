@@ -1,5 +1,5 @@
 (*
- * (c) 2005-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2005-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 (*
@@ -9,8 +9,9 @@
 
 open Pcre
 open Xml
-open Printf
+open Types
 open Common
+open Hooks
 open Http_suck
 
 let langpairs = [
@@ -73,26 +74,26 @@ let process_doc wml =
   in
     aux_find wml
       
-let do_request language text xml lang out =
+let do_request language text xml env out =
   let callback data =
     let resp = match data with
       | OK (_media, _charset, content) -> (
           try
             let wml = Xmlstring.parse_string content in
               match process_doc (get_subels wml) with
-                | None -> Lang.get_msg lang "plugin_translate_not_parsed" []
+                | None -> Lang.get_msg env.env_lang "plugin_translate_not_parsed" []
                 | Some r -> r
           with exc ->
-            Lang.get_msg lang "plugin_translate_not_parsed" []
+            Lang.get_msg env.env_lang "plugin_translate_not_parsed" []
         )
       | Exception exn ->
-          Lang.get_msg lang "plugin_translate_server_error" []
+          Lang.get_msg env.env_lang "plugin_translate_server_error" []
     in
       make_msg out xml resp
   in
     Http_suck.http_get (url language text) callback
       
-let translate text from xml lang out =
+let translate text from xml env out =
   match trim(text) with
     | "list" ->
         do_list xml out
@@ -101,14 +102,14 @@ let translate text from xml lang out =
           let res = exec ~rex:cmd ~pos:0 text in
           let language = String.lowercase (get_substring res 1)
           and str = get_substring res 2 in
-            if List.mem_assoc lang langpairs then
-              do_request language str xml lang out
+            if List.mem_assoc language langpairs then
+              do_request language str xml env out
             else
               make_msg out xml 
-                (Lang.get_msg lang "plugin_translate_bad_language" [])
+                (Lang.get_msg env.env_lang "plugin_translate_bad_language" [])
         with Not_found ->
           make_msg out xml 
-            (Lang.get_msg lang "plugin_translate_bad_syntax" [])
+            (Lang.get_msg env.env_lang "plugin_translate_bad_syntax" [])
             
 let _ =
-  Hooks.register_handle (Hooks.Command ("tr", translate))
+  register_command "tr" translate

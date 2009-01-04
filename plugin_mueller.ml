@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Unix
@@ -7,6 +7,7 @@ open Pcre
 open Xml
 open Config
 open Common
+open Hooks
 open Netconversion
 
 exception Recursive
@@ -128,5 +129,5 @@ let _ =
             in
               make_msg out xml reply
     in
-      Hooks.register_handle (Hooks.Command ("mueller", mueller))
+      register_command "mueller" mueller
         

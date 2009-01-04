@@ -25,10 +25,8 @@
  <max_message_length value="4000"/>
 
  <muc msg_limit="400">
-  <!--  <room nick="sulci-test" jid="z@conference.jabber.ru" lang="ru"/> -->
-  <room nick="sulci" jid="some@conference.jabber.ru" lang="en"/>
-
-  <chatlogs>./chatlogs</chatlogs>
+   <db>./sulci_muc.db</db>
+   <chatlogs>./chatlogs</chatlogs>
  </muc>
 
  <plugins>

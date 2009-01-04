@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
@@ -9,16 +9,18 @@ open Types
 open Config
 open Common
 open Hooks
+open Muc_types
+open Muc
 open Sqlite3
 open Sqlite_util
 
 let table = "words"
 
 type mevent = 
-  | MMessage of xmpp_event * jid * Xml.element * (Xml.element -> unit) 
+  | MMessage of muc_event * jid * Xml.element * local_env * (Xml.element -> unit) 
   | MStop 
-  | MCount of jid * Xml.element * (Xml.element -> unit)
-  | MTop of jid * Xml.element * (Xml.element -> unit)
+  | MCount of jid * Xml.element * local_env * (Xml.element -> unit)
+  | MTop of jid * Xml.element * local_env * (Xml.element -> unit)
 
 type t = {
   queue: mevent Queue.t;
@@ -166,11 +168,10 @@ let generate file db word =
 let split_words body =
   Pcre.split ~pat:"[ \t\n]+" body
     
-let process_markov file db event from xml out =
+let process_markov file db event from xml env out =
   match event with
     | MUC_message (msg_type, nick, body) ->
-        let room = from.lnode, from.ldomain in
-        let room_env = GroupchatMap.find room !groupchats in
+        let room_env = get_room_env from in
           if from.lresource <> room_env.mynick then
             let words = split_words body in
               if words = [] then (
@@ -189,12 +190,12 @@ let process_markov file db event from xml out =
           else
             ()
     | _ -> ()
-        
+          
 let rec markov_thread (file, db, m) =
   (match take_queue m with
-     | MMessage (event, from, xml, out) ->
-         process_markov file db event from xml out
-     | MCount (from, xml, out) ->
+     | MMessage (event, from, xml, env, out) ->
+         process_markov file db event from xml env out
+     | MCount (from, xml, env, out) ->
          let sql = Printf.sprintf "SELECT COUNT(*) FROM %s" table in
          let result =
            match get_one_row file db sql with
@@ -202,7 +203,7 @@ let rec markov_thread (file, db, m) =
              | Some r -> Int64.to_int (int64_of_data r.(0))
          in
            make_msg out xml (string_of_int result)
-     | MTop (from, xml, out) -> (
+     | MTop (from, xml, env, out) -> (
          let sql = Printf.sprintf
            "SELECT word1, word2, counter FROM %s WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10" table in
          let rec aux_top acc stmt =
@@ -245,12 +246,12 @@ let get_markov_queue room =
       markovrooms := MarkovMap.add room m !markovrooms;
       m
         
-let markov_chain event from xml lang out =
+let markov_chain event from xml env out =
   match event with
     | MUC_message _ ->
         (try
            let m = get_markov_queue (from.lnode, from.ldomain) in
-             add_queue m (MMessage (event, from, xml, out))
+             add_queue m (MMessage (event, from, xml, env, out))
          with _ -> ())
     | MUC_leave (true, _, _, _) ->
         (try
@@ -261,20 +262,20 @@ let markov_chain event from xml lang out =
          with _ -> ())
     | _ -> ()
         
-let markov_count text from xml lang out =
+let markov_count text from xml env out =
   (try
      let m = get_markov_queue (from.lnode, from.ldomain) in
-       add_queue m (MCount (from, xml, out))
+       add_queue m (MCount (from, xml, env, out))
    with _ -> ())
         
-let markov_top text from xml lang out =
+let markov_top text from xml env out =
   (try
      let m = get_markov_queue (from.lnode, from.ldomain) in
-       add_queue m (MTop (from, xml, out))
+       add_queue m (MTop (from, xml, env, out))
    with _ -> ())
         
 let _ =
-  register_handle (Catch markov_chain);
-  register_handle (Command ("!!!count", markov_count));
-  register_handle (Command ("!!!top", markov_top))
+  register_catcher markov_chain;
+  register_command "!!!count", markov_count;
+  register_command "!!!top", markov_top
     

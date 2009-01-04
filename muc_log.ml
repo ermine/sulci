@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Unix
@@ -8,7 +8,7 @@ open Jid
 open Types
 open Config
 open Common
-open Muc
+open Muc_types
 
 let basedir = 
   let dir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"]) in
@@ -67,13 +67,10 @@ let rotate_logs () =
 let _ =
   Scheduler.add_task Types.timerQ rotate_logs (get_next_noun ()) get_next_noun
   
-let get_logfile room =
-  try 
-    LogMap.find room !logmap 
-  with Not_found -> 
-    let out_log = open_log room in
-      logmap := LogMap.add room out_log !logmap;
-      out_log
+let add_chatlog room_jid =
+  let room = room_jid.lnode, room_jid.ldomain in
+  let out_log = open_log room in
+    logmap := LogMap.add room out_log !logmap
 
 (*
 let rex = regexp ~flags:[`CASELESS;]
@@ -120,7 +117,7 @@ let make_message author body =
 
 let write (room:string * string) text =
   if text <> "" then
-    let out_log = get_logfile room in
+    let out_log = LogMap.find room !logmap in
     let curtime = 
       Strftime.strftime ~tm:(localtime (gettimeofday ())) "%H:%M" in
       output_string out_log 
@@ -129,78 +126,73 @@ let write (room:string * string) text =
            curtime text);
       flush out_log
         
-let process_log event (from:jid) xml =
-  let lang room = (GroupchatMap.find room !groupchats).lang in
+let process_log event (from:jid) xml env =
   let room = from.lnode, from.ldomain in
-    match event with
-      | MUC_history -> ()
-      | MUC_topic subject ->
-          if from.resource <> "" then
-            write room 
-              (Lang.get_msg (lang room) "muc_log_set_subject" 
-                 [from.resource;  html_url subject])
-          else
-            write room 
-              (Lang.get_msg (lang room) "muc_log_subject" [html_url subject])
-      | MUC_message (msg_type, _, _) when msg_type = `Groupchat  ->
-          let body = Xml.get_cdata xml ~path:["body"] in
-            if body <> "" then
-              write room (
-                if String.length body = 3 && body = "/me" then
-                  Printf.sprintf "* %s" from.resource
-                else if String.length body > 3 && 
-                  String.sub body 0 4 = "/me " then
-                    Printf.sprintf "* %s %s" from.resource
-                      (html_url (string_after body 4))
-                else
-                  make_message from.resource body)
-      | MUC_join item ->
-          write room
-            ("-- " ^ Lang.get_msg (lang room) "muc_log_join" 
-               [from.resource])
-      | MUC_leave (me, t, reason, item) ->
-          write room
-            ("-- " ^
-               (if reason = "" then
-                  Lang.get_msg (lang room)
-                    (match t with
-                       | `Kick -> "muc_log_kick"
-                       | `Ban -> "muc_log_ban"
-                       | `UnMember -> "muc_log_unmember"
-                       | `Normal -> "muc_log_leave")
-                    [from.resource]
-                else
-                  Lang.get_msg (lang room)
-                    (match t with
-                       | `Kick -> "muc_log_kick_reason"
-                       | `Ban -> "muc_log_ban_reason"
-                       | `UnMember -> "muc_log_unmember_reason"
-                       | `Normal -> "muc_log_leave_reason")
-                    [from.resource; html_url reason]));
-          if me then
-            let lf = LogMap.find room !logmap in
-              output_string lf "</body>\n</html>";
-              flush lf;
-              close_out lf;
-              logmap := LogMap.remove room !logmap
-                
-      | MUC_change_nick (newnick, item) ->
-          write room
-            ("-- " ^
-               (Lang.get_msg (lang room) 
-                  "muc_log_change_nick" [from.resource; newnick]))
-            (*
-              | MUC_presence (room, user, item) ->
-            (* Lang.get_msg (lang room) "muc_log_presence" 
-              [user; item.show; item.status] *)
-              write room
+    if LogMap.mem room !logmap then
+      match event with
+        | MUC_history -> ()
+        | MUC_topic subject ->
+            if from.resource <> "" then
+              write room 
+                (Lang.get_msg env.env_lang "muc_log_set_subject" 
+                   [from.resource;  html_url subject])
+            else
+              write room 
+                (Lang.get_msg env.env_lang "muc_log_subject" [html_url subject])
+        | MUC_message (msg_type, _, _) when msg_type = `Groupchat  ->
+            let body = Xml.get_cdata xml ~path:["body"] in
+              if body <> "" then
+                write room (
+                  if String.length body = 3 && body = "/me" then
+                    Printf.sprintf "* %s" from.resource
+                  else if String.length body > 3 && 
+                    String.sub body 0 4 = "/me " then
+                      Printf.sprintf "* %s %s" from.resource
+                        (html_url (string_after body 4))
+                  else
+                    make_message from.resource body)
+        | MUC_join item ->
+            write room
+              ("-- " ^ Lang.get_msg env.env_lang "muc_log_join" 
+                 [from.resource])
+        | MUC_leave (me, t, reason, item) ->
+            write room
+              ("-- " ^
+                 (if reason = "" then
+                    Lang.get_msg env.env_lang
+                      (match t with
+                         | `Kick -> "muc_log_kick"
+                         | `Ban -> "muc_log_ban"
+                         | `UnMember -> "muc_log_unmember"
+                         | `Normal -> "muc_log_leave")
+                      [from.resource]
+                  else
+                    Lang.get_msg env.env_lang
+                      (match t with
+                         | `Kick -> "muc_log_kick_reason"
+                         | `Ban -> "muc_log_ban_reason"
+                         | `UnMember -> "muc_log_unmember_reason"
+                         | `Normal -> "muc_log_leave_reason")
+                      [from.resource; html_url reason]));
+            if me then
+              let lf = LogMap.find room !logmap in
+                output_string lf "</body>\n</html>";
+                flush lf;
+                close_out lf;
+                logmap := LogMap.remove room !logmap
+                  
+        | MUC_change_nick (newnick, item) ->
+            write room
+              ("-- " ^
+                 (Lang.get_msg env.env_lang 
+                    "muc_log_change_nick" [from.resource; newnick]))
+              (*
+                | MUC_presence (room, user, item) ->
+              (* Lang.get_msg env.env_lang "muc_log_presence" 
+                [user; item.show; item.status] *)
+                write room
               (Printf.sprintf "-- %s [%s] %s" user item.show 
-              html_url item.status)
-            *)
-      | _ -> ()
-          
-(*
-  let _ =
-     Hooks.register_handle (Filter process_log
-*)
-          
+                html_url item.status)
+              *)
+        | _ -> ()
+            

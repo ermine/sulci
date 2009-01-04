@@ -1,17 +1,17 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
 open Xmpp
 open Jid
-open Common
 open Types
+open Common
 open Hooks
 
-let ping text from xml lang out =
+let ping text from xml env out =
   try
-    let entity = get_entity text from in
+    let entity = get_entity text from env in
     let to_ =
       match entity with
         | `Mynick nick
@@ -30,34 +30,34 @@ let ping text from xml lang out =
             raise BadEntity
     in
     let success starttime =
-      let diff = Lang.float_seconds lang "ping" 
+      let diff = Lang.float_seconds env.env_lang "ping" 
         (Unix.gettimeofday () -. starttime) in
         (match entity with
            | `Mynick _ ->
-               Lang.get_msg lang "plugin_ping_pong_from_me" 
+               Lang.get_msg env.env_lang "plugin_ping_pong_from_me" 
                  [diff]
            | `You ->
-               Lang.get_msg lang "plugin_ping_pong_from_you" 
+               Lang.get_msg env.env_lang "plugin_ping_pong_from_you" 
                  [diff]
            | _ ->
-               Lang.get_msg lang "plugin_ping_pong_from_somebody"
+               Lang.get_msg env.env_lang "plugin_ping_pong_from_somebody"
                  [text; diff])
     in
     let starttime = Unix.gettimeofday () in
-    let proc e f x _ =
-      let reply = match e with
-        | Iq (_, `Result, _) ->
+    let proc t f x _ =
+      let reply = match t with
+        | `Result ->
             success starttime
-        | Iq (_, `Error, _) ->
+        | `Error ->
             (let cond,_,_,_ = Error.parse_error x in
                match cond with
                  | `ERR_FEATURE_NOT_IMPLEMENTED ->
                      success starttime
                  | _ ->
-                     Iq.process_error x (Lang.get_lang xml) 
+                     Iq.process_error x env
                        entity f 
                        (if text = "" then
-                          match Muc.is_groupchat from, entity with
+                          match env.env_groupchat, entity with
                             | true, `You ->
                                 f.resource
                             | _ ->
@@ -70,10 +70,10 @@ let ping text from xml lang out =
         make_msg out xml reply
     in
     let id = new_id () in
-      register_handle (Id (id, proc));
+      register_iq_query_callback id proc;
       out (make_iq ~to_ ~xmlns:"jabber:iq:version" ~id ~type_:`Get ())
   with _ ->
-    make_msg out xml (Lang.get_msg lang "invalid_entity" [])
+    make_msg out xml (Lang.get_msg env.env_lang "invalid_entity" [])
       
 let _ =
-  register_handle (Command ("ping", ping))
+  register_command "ping" ping

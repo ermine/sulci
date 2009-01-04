@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
@@ -138,32 +138,29 @@ let make_msg out xml ?response_tail response =
             else 
               false, resp ^ tail
           in
-            out (Xmlelement
-                   ("message", ["to", string_of_jid (bare_jid from);
-                                "type", "groupchat"],
-                    [make_simple_cdata "body" 
-                       (if Pcre.pmatch ~pat:"/me" response then
-                          respo
-                        else
-                          if nick = "" then respo
-                          else (nick ^ ": " ^ respo)
-                       )]));
+            out (make_element "message" ["to", string_of_jid (bare_jid from);
+                                         "type", "groupchat"]
+                   [make_simple_cdata "body" 
+                      (if Pcre.pmatch ~pat:"/me" response then
+                         respo
+                       else
+                         if nick = "" then respo
+                         else (nick ^ ": " ^ respo)
+                      )]);
             if cutted then
               let msgs = split_long_message !max_message_length response tail in
                 List.iter (fun m ->
-                             out (Xmlelement
-                                    ("message", ["to", from.string;
-                                                 "type", "chat"],
-                                     [make_simple_cdata "body" m]))) msgs
+                             out (make_element "message"
+                                    ["to", from.string; "type", "chat"]
+                                    [make_simple_cdata "body" m])) msgs
        | other ->
           let msgs = split_long_message !max_message_length response tail in
             List.iter (fun m ->
-                         out (Xmlelement
-                                ("message", 
-                                 (match other with
-                                    | "" -> ["to", from.string]
-                                    | o -> ["to", from.string; "type", other]),
-                                 [make_simple_cdata "body" m]))) msgs
+                         out (make_element "message"
+                                (match other with
+                                   | "" -> ["to", from.string]
+                                   | o -> ["to", from.string; "type", other])
+                                [make_simple_cdata "body" m])) msgs
 
 (* temp code *)
 exception DNSPrepError

@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xmpp
@@ -7,7 +7,6 @@ open Error
 open Types
 open Config
 open Common
-open Nicks
 open Hooks
 
 let _ = 
@@ -65,7 +64,8 @@ let _ =
       
       List.iter (fun proc -> 
                    try proc out with exn ->
-                     log#error "sulci.ml: %s" (Printexc.to_string exn)) !onstart;
+                     log#error "sulci.ml: %s" (Printexc.to_string exn))
+        !on_connect;
       process_xml next_xml out
   in
     
@@ -78,16 +78,6 @@ let _ =
     try int_of_string (trim (Xml.get_attr_s Config.config
                                ~path:["reconnect"] "count"))
     with Not_found -> 0
-  in
-  let cleanup_for_reconnect () =
-    (* hooks related *)
-    idmap := IdMap.empty;
-    xmlnsmap := XmlnsMap.empty;
-    presencemap := [];
-    (* muc related; clean only nicks *)
-    groupchats := 
-      GroupchatMap.map (fun env -> {env with nicks = [];})
-        !groupchats
   in
   let rec reconnect times =
     try
@@ -116,7 +106,7 @@ let _ =
           Pervasives.exit 127
       | Xmpp.XMPPStreamEnd ->
           log#info"The connection to the server is lost";
-          cleanup_for_reconnect ();
+          List.iter (fun proc -> proc ()) !on_disconnect;
           reconnect count
       | Xmpp.XMPPStreamError els ->
           let cond, text, _ = parse_stream_error els in

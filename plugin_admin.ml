@@ -1,64 +1,64 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
 open Xmpp
 open Jid
 open Error
-open Common
-open Muc
-open Hooks
 open Types
+open Common
+open Hooks
+open Muc_types
+open Muc
 open Nicks
 
-let msg text from xml lang out =
+let msg text from xml env out =
   if check_access from "admin" then
     let s = String.index text ' ' in
     let to_ = jid_of_string (String.sub text 0 s) in
     let msg_body = string_after text (s+1) in
-      out (Xmlelement ("message", 
-                       ["to", to_.string; 
-                        "type",
-                        if is_groupchat to_ then "groupchat" else "chat"
-                       ],
-                       [make_simple_cdata "body" msg_body]))
+      out (make_element "message"
+             ["to", to_.string; 
+              "type", if env.env_groupchat then "groupchat" else "chat"]
+             [make_simple_cdata "body" msg_body])
   else
     make_msg out xml ":-P"
       
-let quit text from xml lang out =
+let quit text from xml env out =
   if check_access from "admin" then (
-    make_msg out xml (Lang.get_msg lang "plugin_admin_quit_bye" []);
+    make_msg out xml (Lang.get_msg env.env_lang "plugin_admin_quit_bye" []);
     Hooks.quit out
   )
   else
-    make_msg out xml (Lang.get_msg lang "plugin_admin_quit_no_access" [])
+    make_msg out xml (Lang.get_msg env.env_lang "plugin_admin_quit_no_access" [])
       
 let join_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let join text from xml lang out =
+let join text from xml env out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:join_rex text in
-      let room_s = Pcre.get_substring r 1
-      and nick = try Pcre.get_substring r 3 with Not_found ->
-        trim (get_cdata Config.config ~path:["jabber"; "user"]) in
-      let room = jid_of_string room_s in
-        if not (GroupchatMap.mem (room.lnode, room.ldomain) !groupchats) 
-        then (
-          Muc.register_room nick (room.lnode, room.ldomain);
-          out (Muc.join_room nick (room.lnode, room.ldomain))
-        )
+      let room = jid_of_string (Pcre.get_substring r 1) in
+        if not (is_groupchat room) then
+          let nick = try Pcre.get_substring r 3 with Not_found ->
+            trim (get_cdata Config.config ~path:["jabber"; "user"]) in
+          let lang = Lang.deflang in
+          let chatlog = true in
+          let filter = "cerberus" in
+            Muc.register_room ~lang ~filter nick room;
+            Muc.add_room room nick lang chatlog filter;
+            out (Muc.join_room nick (room.lnode, room.ldomain))
         else
           make_msg out xml "again?"
     with _ ->
       ()
   else
-    make_msg out xml (Lang.get_msg lang "plugin_admin_join_no_access" [])
+    make_msg out xml (Lang.get_msg env.env_lang "plugin_admin_join_no_access" [])
       
 let leave_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let leave text from xml lang out =
+let leave text from xml env out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
@@ -76,40 +76,36 @@ let leave text from xml lang out =
         
 let invite_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
-let invite text from xml lang out =
+let invite text from xml env out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
       let who = Pcre.get_substring r 1
       and room_dst = try Pcre.get_substring r 3 with Not_found -> "" in
-        if room_dst = "" && 
-          GroupchatMap.mem (from.lnode, from.ldomain) !groupchats then
-            let _ = jid_of_string who in
-              out (Muc.invite (from.lnode, from.ldomain) who)
+        if room_dst = "" && env.env_groupchat then
+          let _ = jid_of_string who in
+            out (Muc.invite (from.lnode, from.ldomain) who)
         else
           let rjid = jid_of_string room_dst in
-            if rjid.lresource = "" &&
-              GroupchatMap.mem (rjid.lnode, rjid.ldomain) 
-              !groupchats then
-                let room_env = GroupchatMap.find
-                  (from.lnode, from.ldomain) !groupchats in
-                  try
-                    match (Nicks.find who room_env.nicks).jid with
-                      | Some j ->
-                          out (Muc.invite (rjid.lnode, rjid.ldomain)
-                                 (j.lnode ^ "@" ^ j.ldomain))
-                      | None ->
-                          raise Not_found
-                  with Not_found ->
-                    let _ = jid_of_string who in
-                      out (Muc.invite (rjid.lnode, rjid.ldomain) 
-                             who)
+            if rjid.lresource = "" && env.env_groupchat then
+              let room_env = get_room_env from in
+                try
+                  match (Nicks.find who room_env.nicks).jid with
+                    | Some j ->
+                        out (Muc.invite (rjid.lnode, rjid.ldomain)
+                               (j.lnode ^ "@" ^ j.ldomain))
+                    | None ->
+                        raise Not_found
+                with Not_found ->
+                  let _ = jid_of_string who in
+                    out (Muc.invite (rjid.lnode, rjid.ldomain) 
+                           who)
             else
               raise Not_found
     with exn ->
       make_msg out xml "hmm?"
         
-let lang_update text from xml lang out =
+let lang_update text from xml env out =
   if check_access from "admin" then
     if text = "" then
       make_msg out xml "What language?"
@@ -118,7 +114,7 @@ let lang_update text from xml lang out =
         
 let lr = Pcre.regexp "([a-z][a-z])\\s+(\\w+)(\\s+(.+))?"
   
-let lang_admin text from xml lang out =
+let lang_admin text from xml env out =
   if check_access from "admin" then
     if text = "" then
       make_msg out xml "en msgid string"
@@ -146,7 +142,7 @@ let variables = [
   "msg_limit", (fun i -> Common.msg_limit := i);
 ]
   
-let sulci_set text from xml lang out =
+let sulci_set text from xml env out =
   if check_access from "admin" then
     try
       let r = Pcre.exec ~rex:sulci_set_rex text in
@@ -166,11 +162,11 @@ let sulci_set text from xml lang out =
       make_msg out xml "Hm?"
         
 let _ =
-  register_handle (Command ("msg", msg));
-  register_handle (Command ("quit", quit));
-  register_handle (Command ("join", join));
-  register_handle (Command ("leave", leave));
-  register_handle (Command ("invite", invite));
-  register_handle (Command ("lang_update", lang_update));
-  register_handle (Command ("lang_msgid", lang_admin));
-  register_handle (Command ("sulci_set", sulci_set));
+  register_command "msg" msg;
+  register_command "quit" quit;
+  register_command "join" join;
+  register_command "leave" leave;
+  register_command "invite" invite;
+  register_command "lang_update" lang_update;
+  register_command "lang_msgid" lang_admin;
+  register_command "sulci_set" sulci_set

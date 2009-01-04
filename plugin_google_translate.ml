@@ -1,12 +1,14 @@
 (*
- * (c) 2008 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2008-2009 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
 open Nethtml
 open Netconversion
 open Pcre
 open Xml
+open Types
 open Common
+open Hooks
 open Http_suck
 
 let slist = [
@@ -122,7 +124,7 @@ let process_result doc =
   in
     aux_find doc
       
-let translate_text sl tl text xml lang out =
+let translate_text sl tl text xml env out =
   let callback data =
     let resp = match data with
       | OK (media, charset, content) -> (
@@ -146,10 +148,10 @@ let translate_text sl tl text xml lang out =
                 | None -> ""
                 | Some v -> v
           with exn ->
-            Lang.get_msg lang "plugin_google_translate_not_parsed" []
+            Lang.get_msg env.env_lang "plugin_google_translate_not_parsed" []
         )
       | Exception exn ->
-          Lang.get_msg lang "plugin_google_translate_server_error" []
+          Lang.get_msg env.env_lang "plugin_google_translate_server_error" []
     in
       make_msg out xml resp
   in
@@ -165,7 +167,7 @@ let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8]
   
 let rm_newlines = Pcre.regexp "[\n\r]"
   
-let translate text from xml lang out =
+let translate text from xml env out =
   match trim(text) with
     | "list" ->
         make_msg out xml list_languages
@@ -177,14 +179,14 @@ let translate text from xml lang out =
           let str = get_substring res 3 in
             if List.mem_assoc lg1 slist then
               if List.mem_assoc lg2 tlist then
-                translate_text lg1 lg2 str xml lang out
+                translate_text lg1 lg2 str xml env out
               else
                 raise Not_found
             else
               raise Not_found
         with Not_found ->
           make_msg out xml 
-            (Lang.get_msg lang "plugin_google_translate_bad_syntax" [])
+            (Lang.get_msg env.env_lang "plugin_google_translate_bad_syntax" [])
             
 let _ = 
-  Hooks.register_handle (Hooks.Command ("gtr", translate))
+  register_command "gtr" translate

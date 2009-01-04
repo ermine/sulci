@@ -1,13 +1,16 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Unix
+open Types
 open Common
+open Hooks
 
-let dns text from xml lang out =
+let dns text from xml env out =
   if text = "" then
-    make_msg out xml (Lang.get_msg lang "plugin_misc_dns_invalid_syntax" [])
+    make_msg out xml
+      (Lang.get_msg env.env_lang "plugin_misc_dns_invalid_syntax" [])
   else
     make_msg out xml
       (try
@@ -24,10 +27,11 @@ let dns text from xml lang out =
                   String.concat " "
                     (List.map (fun addr -> string_of_inet_addr addr) hl)
               with Not_found ->  
-                Lang.get_msg lang "plugin_misc_dns_not_resolved" []
+                Lang.get_msg env.env_lang "plugin_misc_dns_not_resolved" []
              ) 
          | Not_found ->
-             Lang.get_msg lang "plugin_misc_dns_not_resolved" [])
+             Lang.get_msg env.env_lang "plugin_misc_dns_not_resolved" [])
       
+
 let _ =
-  Hooks.register_handle (Hooks.Command ("dns", dns))
+  register_command "dns" dns

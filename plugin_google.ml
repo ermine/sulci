@@ -1,9 +1,11 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
 open Xmpp
+open Types
+open Hooks
 open Common
 open Http_suck
 
@@ -29,49 +31,37 @@ let google_key =
       
 let make_query start maxResults query =
   let filter = "false" in
-    Xmlelement
-      ("SOAP-ENV:Envelope",
-       ["xmlns:SOAP-ENV", "http://schemas.xmlsoap.org/soap/envelope/";
-        "xmlns:xsi", "http://www.w3.org/1999/XMLSchema-instance";
-        "xmlns:xsd", "http://www.w3.org/1999/XMLSchema"],
-       [Xmlelement 
-          ("SOAP-ENV:Body", [], 
-           [Xmlelement ("ns1:doGoogleSearch",
-                        ["xmlns:ns1", "urn:GoogleSearch";
-                         "SOAP-ENV:encodingStyle",
-                         "http://schemas.xmlsoap.org/soap/encoding/"],
-                        [Xmlelement ("key", 
-                                     ["xsi:type", "xsd:string"], 
-                                     [Xmlcdata google_key]);
-                         Xmlelement ("q", 
-                                     ["xsi:type", "xsd:string"],
-                                     [Xmlcdata query]);
-                         Xmlelement ("start",
-                                     ["xsi:type", "xsd:int"], 
-                                     [Xmlcdata start]);
-                         Xmlelement ("maxResults",
-                                     ["xsi:type", "xsd:int"],
-                                     [Xmlcdata maxResults]);
-                         Xmlelement ("filter",
-                                     ["xsi:type", "xsd:boolean"],
-                                     [Xmlcdata filter]);
-                         Xmlelement ("restrict",
-                                     ["xsi:type", "xsd:string"], 
-                                     []);
-                         Xmlelement ("safeSearch", 
-                                     ["xsi:type", "xsd:boolean"],
-                                     [Xmlcdata "false"]);
-                         Xmlelement ("lr",
-                                     ["xsi:type", "xsd:string"], 
-                                     []);
-                         (* [Xmlcdata "lang_ru"]; *)
-                         Xmlelement ("ie",
-                                     ["xsi:type", "xsd:string"],
-                                     []);
-                         Xmlelement ("oe", 
-                                     ["xsi:type", "xsd:string"],
-                                     [])
-                        ])])])
+    make_element "SOAP-ENV:Envelope"
+      ["xmlns:SOAP-ENV", "http://schemas.xmlsoap.org/soap/envelope/";
+       "xmlns:xsi", "http://www.w3.org/1999/XMLSchema-instance";
+       "xmlns:xsd", "http://www.w3.org/1999/XMLSchema"]
+      [make_element "SOAP-ENV:Body" []
+         [make_element "ns1:doGoogleSearch"
+            ["xmlns:ns1", "urn:GoogleSearch";
+             "SOAP-ENV:encodingStyle",
+             "http://schemas.xmlsoap.org/soap/encoding/"]
+            [make_element "key"
+               ["xsi:type", "xsd:string"] [Xmlcdata google_key];
+             make_element "q"
+               ["xsi:type", "xsd:string"] [Xmlcdata query];
+             make_element "start"
+               ["xsi:type", "xsd:int"] [Xmlcdata start];
+             make_element "maxResults"
+               ["xsi:type", "xsd:int"] [Xmlcdata maxResults];
+             make_element "filter"
+               ["xsi:type", "xsd:boolean"] [Xmlcdata filter];
+             make_element "restrict"
+               ["xsi:type", "xsd:string"] [];
+             make_element "safeSearch"
+               ["xsi:type", "xsd:boolean"] [Xmlcdata "false"];
+             make_element "lr"
+               ["xsi:type", "xsd:string"] [];
+             (* [Xmlcdata "lang_ru"]; *)
+             make_element "ie"
+               ["xsi:type", "xsd:string"] [];
+             make_element "oe"
+               ["xsi:type", "xsd:string"] []
+            ]]]
       
 (*
 let html_ent = Pcre.regexp "&amp;#([0-9]+);"
@@ -132,28 +122,25 @@ let one_message item =
     
 let xmldecl = "<?xml version='1.0' encoding='UTF-8' ?>\r\n"
   
-let gspell text from xml lang out =
+let gspell text from xml env out =
   if text = "" then
-    make_msg out xml (Lang.get_msg lang "plugin_google_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg env.env_lang
+                        "plugin_google_invalid_syntax" [])
   else
     let soap = 
-      Xmlelement 
-        ("SOAP-ENV:Envelope", 
-         ["xmlns:SOAP-ENV","http://schemas.xmlsoap.org/soap/envelope/";
-          "xmlns:xsi", "http://www.w3.org/1999/XMLSchema-instance";
-          "xmlns:xsd", "http://www.w3.org/1999/XMLSchema"],
-         [Xmlelement ("SOAP-ENV:Body", [],
-                      [Xmlelement 
-                         ("ns1:doSpellingSuggestion", 
-                          ["xmlns:ns1", "urn:GoogleSearch";
-                           "SOAP-ENV:encodingStyle", 
-                           "http://schemas.xmlsoap.org/soap/encoding/"],
-                          [Xmlelement ("key", ["xsi:type", "xsd:string"],
-                                       [Xmlcdata google_key]);
-                           Xmlelement ("phrase", 
-                                       ["xsi:type", "xsd:string"],
-                                       [Xmlcdata text])
-                          ])])]) in
+      make_element "SOAP-ENV:Envelope"
+        ["xmlns:SOAP-ENV","http://schemas.xmlsoap.org/soap/envelope/";
+         "xmlns:xsi", "http://www.w3.org/1999/XMLSchema-instance";
+         "xmlns:xsd", "http://www.w3.org/1999/XMLSchema"]
+      [make_element "SOAP-ENV:Body" []
+         [make_element "ns1:doSpellingSuggestion"
+            ["xmlns:ns1", "urn:GoogleSearch";
+             "SOAP-ENV:encodingStyle", 
+             "http://schemas.xmlsoap.org/soap/encoding/"]
+            [make_element"key" ["xsi:type", "xsd:string"]
+               [Xmlcdata google_key];
+             make_element "phrase"
+               ["xsi:type", "xsd:string"] [Xmlcdata text]]]] in
     let query = element_to_string soap in
     let callback data =
       let resp = match data with
@@ -166,19 +153,19 @@ let gspell text from xml lang out =
                          "ns1:doSpellingSuggestionResponse";
                          "return"] in
                 if response = "" then 
-                  Lang.get_msg lang "plugin_google_no_answer" []
+                  Lang.get_msg env.env_lang "plugin_google_no_answer" []
                 else response
             with _exn ->
-              Lang.get_msg lang "plugin_google_no_answer" []
+              Lang.get_msg env.env_lang "plugin_google_no_answer" []
           )
         | Exception exn ->
             match exn with
               | ClientError ->
-                  Lang.get_msg lang "plugin_google_server_404" []
+                  Lang.get_msg env.env_lang "plugin_google_server_404" []
               | ServerError -> 
-                  Lang.get_msg lang "plugin_google_server_error" []
+                  Lang.get_msg env.env_lang "plugin_google_server_error" []
               | _ ->
-                  Lang.get_msg lang "plugin_google_server_error" []
+                  Lang.get_msg env.env_lang "plugin_google_server_error" []
       in
         make_msg out xml resp
     in
@@ -186,9 +173,10 @@ let gspell text from xml lang out =
         ["Content-Type", "text/xml; charset=utf-8"] 
         (xmldecl ^ query) callback
         
-let google ?(start="0") ?(items="1") text from xml lang out =
+let google ?(start="0") ?(items="1") text from xml env out =
   if text = "" then
-    make_msg out xml (Lang.get_msg lang "plugin_google_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg env.env_lang
+                        "plugin_google_invalid_syntax" [])
   else
     let callback data =
       let resp, tail =
@@ -202,32 +190,34 @@ let google ?(start="0") ?(items="1") text from xml lang out =
                                       "return";
                                       "resultElements"] in
                   if get_subels result = [] then
-                    (Lang.get_msg lang "plugin_google_not_found" [], "")
+                    (Lang.get_msg env.env_lang "plugin_google_not_found" [], "")
                   else
                     if items = "1" then
                       let item = get_tag result ["item"] in
                       let r1, r2 = one_message item in
                         if r1 = "" && r2 = "" then
-                          (Lang.get_msg lang "plugin_google_not_found" [], "")
+                          (Lang.get_msg env.env_lang
+                             "plugin_google_not_found" [], "")
                         else
                           r1, r2
                     else
                       let r = message (get_subels result) in
                         if r = "" then
-                          (Lang.get_msg lang "plugin_google_not_found" [],
+                          (Lang.get_msg env.env_lang
+                             "plugin_google_not_found" [],
                            "")
                         else r, ""
               with _exn ->
-                (Lang.get_msg lang "plugin_google_not_found" [], "")
+                (Lang.get_msg env.env_lang "plugin_google_not_found" [], "")
             )
           | Exception exn ->
               match exn with
                 | ClientError ->
-                    Lang.get_msg lang "plugin_google_server_404" [], ""
+                    Lang.get_msg env.env_lang "plugin_google_server_404" [], ""
                 | ServerError ->
-                    Lang.get_msg lang "plugin_google_server_error" [], ""
+                    Lang.get_msg env.env_lang "plugin_google_server_error" [], ""
                 | _ ->
-                    Lang.get_msg lang "plugin_google_server_error" [], ""
+                    Lang.get_msg env.env_lang "plugin_google_server_error" [], ""
       in
       let response_tail = if tail = "" then None else Some tail in
         make_msg out xml ?response_tail resp 
@@ -242,17 +232,18 @@ let google ?(start="0") ?(items="1") text from xml lang out =
         
 let rx = Pcre.regexp "([0-9]+) ([1-9]{1}) (.+)"
   
-let google_adv text from xml lang out =
+let google_adv text from xml env out =
   try
     let r = Pcre.exec ~rex:rx text in
     let start = Pcre.get_substring r 1 in
     let items = Pcre.get_substring r 2 in
     let request = Pcre.get_substring r 3 in
-      google ~start ~items request from xml lang out
+      google ~start ~items request from xml env out
   with Not_found ->
-    make_msg out xml (Lang.get_msg lang "plugin_google_adv_invalid_syntax" [])
+    make_msg out xml (Lang.get_msg env.env_lang
+                        "plugin_google_adv_invalid_syntax" [])
       
 let _ =
-  Hooks.register_handle (Hooks.Command ("google", google));
-  Hooks.register_handle (Hooks.Command ("google_adv", google_adv));
-  Hooks.register_handle (Hooks.Command ("gspell", gspell))
+  register_command "google" google;
+  register_command "google_adv" google_adv;
+  register_command "gspell" gspell

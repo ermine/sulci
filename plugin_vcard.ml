@@ -1,5 +1,5 @@
 (*
- * (c) 2005-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2005-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
@@ -59,5 +59,5 @@ let vsearch =
       "vcard-temp"
       
 let _ =
-  register_handle (Command ("vcard", vsearch))
+  register_command "vcard" vsearch
     

@@ -2,18 +2,18 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.6-alpha-20081228
+VERSION=0.6-alpha-20090104
 
 include Makefile.conf
 
-SOURCES = version.ml config.ml common.ml types.ml lang.ml muc.ml \
-	  find_url.ml muc_log.ml hooks.ml iq.ml 
+SOURCES = version.ml config.ml common.ml types.ml lang.ml hooks.ml iq.ml
 
 SUBDIRS = lang
 
-#ifdef MUC_LOG
-#  SOURCES += muc_log.ml
-#endif
+ifdef MUC
+   SOURCES1 += muc_types.ml find_url.ml muc_log.ml muc.ml
+   SQLITE = yes
+endif
 
 ifdef PLUGIN_CERBERUS
   SOURCES1 += plugin_cerberus.ml

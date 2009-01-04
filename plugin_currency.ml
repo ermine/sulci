@@ -1,11 +1,13 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
 open Unix
+open Xml
+open Types
 open Config
 open Common
+open Hooks
 open Http_suck
 
 let url = "http://www.cbr.ru/scripts/XML_daily.asp"
@@ -95,7 +97,7 @@ let _ =
 let rex = Pcre.regexp 
   "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
   
-let currency text from xml lang out =
+let currency text from xml env out =
   if text = "list" then 
     make_msg out xml !list_curr
   else
@@ -109,7 +111,7 @@ let currency text from xml lang out =
         let x = try List.assoc (String.uppercase val1) !curr
         with Not_found ->
           make_msg out xml 
-            (Lang.get_msg lang "plugin_currency_no_currency" [val1]);
+            (Lang.get_msg env.env_lang "plugin_currency_no_currency" [val1]);
           raise Not_found
         in x.value /. float_of_int x.nominal
       in
@@ -117,7 +119,7 @@ let currency text from xml lang out =
         let x = try List.assoc (String.uppercase val2) !curr 
         with Not_found ->
           make_msg out xml 
-            (Lang.get_msg lang "plugin_currency_no_currency" [val2]);
+            (Lang.get_msg env.env_lang "plugin_currency_no_currency" [val2]);
           raise Not_found
         in x.value /. float_of_int x.nominal
       in
@@ -127,7 +129,7 @@ let currency text from xml lang out =
     with
       | Failure "int_of_string" ->
           make_msg out xml 
-            (Lang.get_msg lang "plugin_currency_toobig_number" [])
+            (Lang.get_msg env.env_lang "plugin_currency_toobig_number" [])
       | Not_found ->
           ()
       | exn ->
@@ -135,4 +137,4 @@ let currency text from xml lang out =
             text (Printexc.to_string exn)
             
 let _ =
-  Hooks.register_handle (Hooks.Command ("curr", currency))
+  register_command "curr" currency

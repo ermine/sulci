@@ -1,43 +1,44 @@
 (*
- * (c) 2004-2008 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
 open Xmpp
 open Jid
 open Jeps
+open Types
 open Common
 open Hooks
-open Types
 
-let process_error xml lang entity from text =
+let process_error xml env entity from text =
   let cond,_,_,_ = Error.parse_error xml in
     match cond with
       | `ERR_FEATURE_NOT_IMPLEMENTED ->
           (match entity with
              | `Host _ ->
-                 Lang.get_msg lang "error_server_feature_not_implemented" [text]
+                 Lang.get_msg env.env_lang "error_server_feature_not_implemented" [text]
              | _ ->
-                 Lang.get_msg lang "error_client_feature_not_implemented" [text])
+                 Lang.get_msg env.env_lang "error_client_feature_not_implemented" [text])
       | `ERR_REMOTE_SERVER_TIMEOUT ->
-          Lang.get_msg lang "error_remote_server_timeout" [from.ldomain]
+          Lang.get_msg env.env_lang "error_remote_server_timeout" [from.ldomain]
       | `ERR_REMOTE_SERVER_NOT_FOUND ->
-          Lang.get_msg lang "error_remote_server_not_found" [from.ldomain]
+          Lang.get_msg env.env_lang
+            "error_remote_server_not_found" [from.ldomain]
       | `ERR_SERVICE_UNAVAILABLE ->
           (match entity with
              | `Host _ ->
-                 Lang.get_msg lang "error_server_service_unavailable" 
+                 Lang.get_msg env.env_lang "error_server_service_unavailable" 
                    [text]
              | `You ->
-                 Lang.get_msg lang"error_your_service_unavailable" []
+                 Lang.get_msg env.env_lang"error_your_service_unavailable" []
              | _ ->
-                 Lang.get_msg lang "error_client_service_unavailable" 
+                 Lang.get_msg env.env_lang "error_client_service_unavailable" 
                    [text]
           )
       | `ERR_RECIPIENT_UNAVAILABLE ->
-          Lang.get_msg lang "error_recipient_unavailable" [text]
+          Lang.get_msg env.env_lang "error_recipient_unavailable" [text]
       | `ERR_NOT_ALLOWED ->
-          Lang.get_msg lang "error_not_allowed" [text]
+          Lang.get_msg env.env_lang "error_not_allowed" [text]
             
       | `ERR_BAD_REQUEST
       | `ERR_CONFLICT
@@ -58,7 +59,7 @@ let process_error xml lang entity from text =
           try 
             get_cdata ~path:["error"; "text"] xml
           with _ ->
-            Lang.get_msg lang "error_any_error" [text]
+            Lang.get_msg env.env_lang "error_any_error" [text]
               
 let simple_query_entity ?me ?entity_to_jid success ?query_subels
     ?query_tag xmlns =
@@ -84,23 +85,23 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
               | _ ->
                   raise BadEntity
   in
-    fun text from xml lang out ->
+    fun text from xml env out ->
       try
-        let entity = get_entity text from in
+        let entity = get_entity text from env in
           match entity, me with
             | `Mynick _, Some f ->
-                f text from xml lang out
+                f text from xml env out
             | _, _ ->
                 let to_ = fun_entity_to_jid entity from in
-                let proc e f x o =
-                  match e with
-                    | Iq (_, `Result, _) ->
-                        make_msg o xml (success text entity lang x)
-                    | Iq (_, `Error, _) ->
+                let proc t f x o =
+                  match t with
+                    | `Result ->
+                        make_msg o xml (success text entity env x)
+                    | `Error ->
                         make_msg o xml 
-                          (process_error x lang entity f
+                          (process_error x env entity f
                              (if text = "" then
-                                match Muc.is_groupchat from, entity with
+                                match env.env_groupchat, entity with
                                   | true, `You ->
                                       f.resource
                                   | _ ->
@@ -110,11 +111,11 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
                     | _ -> ()
                 in
                 let id = new_id () in
-                  register_handle (Id (id, proc));
+                  register_iq_query_callback id proc;
                   out (make_iq ~to_ ~id ~type_:`Get ?query_tag ~xmlns 
                          ?subels:query_subels ())
       with _ ->
-        make_msg out xml (Lang.get_msg lang "invalid_entity" [])
+        make_msg out xml (Lang.get_msg env.env_lang "invalid_entity" [])
           
 let _ =
   Hooks.register_handle 
