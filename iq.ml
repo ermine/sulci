@@ -10,6 +10,8 @@ open Types
 open Common
 open Hooks
 
+exception NoError
+  
 let process_error xml env entity from text =
   let cond,_,_,_ = Error.parse_error xml in
     match cond with
@@ -61,8 +63,8 @@ let process_error xml env entity from text =
           with _ ->
             Lang.get_msg env.env_lang "error_any_error" [text]
               
-let simple_query_entity ?me ?entity_to_jid success ?query_subels
-    ?query_tag xmlns =
+let simple_query_entity ?me ?entity_to_jid ?(error_exceptions=[])
+    success ?query_subels ?query_tag xmlns =
   let fun_entity_to_jid =
     match entity_to_jid with
       | Some f -> f
@@ -87,7 +89,7 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
   in
     fun text from xml env out ->
       try
-        let entity = get_entity text from env in
+        let entity = env.env_get_entity text from in
           match entity, me with
             | `Mynick _, Some f ->
                 f text from xml env out
@@ -97,17 +99,26 @@ let simple_query_entity ?me ?entity_to_jid success ?query_subels
                   match t with
                     | `Result ->
                         make_msg o xml (success text entity env x)
-                    | `Error ->
-                        make_msg o xml 
-                          (process_error x env entity f
-                             (if text = "" then
-                                match env.env_groupchat, entity with
-                                  | true, `You ->
+                    | `Error -> (
+                        try
+                          if error_exceptions <> [] then (
+                            let cond,_,_,_ = Error.parse_error x in
+                              if List.mem cond error_exceptions then
+                                raise NoError;
+                          );
+                          make_msg o xml 
+                            (process_error x env entity f
+                               (if text = "" then
+                                  match env.env_groupchat, entity with
+                                    | true, `You ->
                                       f.resource
-                                  | _ ->
-                                      f.string
-                              else
-                                text))
+                                    | _ ->
+                                        f.string
+                                else
+                                  text))
+                        with NoError ->
+                          make_msg o xml (success text entity env x)
+                      )
                     | _ -> ()
                 in
                 let id = new_id () in

@@ -5,7 +5,6 @@
 open Xml
 open Xmpp
 open Jid
-open Jid
 open Types
 open Config
 open Common
@@ -116,22 +115,49 @@ let process_message from xml env out =
 let process_presence from xml env out =
     ()
         
+let default_check_access (jid:jid) classname =
+  List.exists (fun (jid', name) ->
+                 if name = classname &&
+                   jid'.lnode = jid.lnode && 
+                   jid'.ldomain = jid.ldomain then
+                     true
+                 else
+                   false
+              ) Config.acls
+
+let default_get_entity text from =
+  if text = "" then
+    `You
+  else
+    try
+      let jid = jid_of_string text in
+        if jid.lnode = "" then (
+          dnsprep jid.ldomain;
+          `Host jid
+        )
+        else if Jid.equal from jid then
+          `You
+        else
+          `User jid
+    with _ ->
+      raise BadEntity
+    
 let default_dispatch_xml from xml out =
   let tag = get_tagname xml in
+  let env = { env_groupchat = false;
+              env_lang = safe_get_attr_s xml "xml:lang";
+              env_check_access = default_check_access;
+              env_get_entity = default_get_entity } in
     match tag with
       | "message" ->
-          let lang = safe_get_attr_s xml "xml:lang" in
-          let env = { env_groupchat = false; env_lang = lang } in
-            process_message from xml env out
+          process_message from xml env out
       | "presence" ->
-          let lang = safe_get_attr_s xml "xml:lang" in
-          let env = { env_groupchat = false; env_lang = lang } in
-            process_presence from xml env out
+          process_presence from xml env out
       | "iq" ->
           process_iq from xml out
       | _ ->
           ()
-      
+
 let rec process_xml next_xml out =
   let xml = next_xml () in
   let from = jid_of_string (get_attr_s xml "from") in
@@ -151,44 +177,3 @@ let quit out =
                log#error "[quit] %s" (Printexc.to_string exn)
             ) !on_quit;
   Pervasives.exit 0
-    
-let check_access (jid:jid) classname =
-  let find_acl who =
-    let acls = get_subels Config.config ~tag:"acl" in
-      if List.exists (fun a -> 
-                        let jid = jid_of_string (get_attr_s a "jid") in
-                          if jid.lnode = who.lnode && 
-                            jid.ldomain = who.ldomain &&
-                            get_attr_s a "class" = classname then
-                              true else false) acls 
-      then true else false
-  in
-    find_acl jid
-        
-        
-type entity = [
-| `User of jid
-| `Nick of string
-| `Mynick of string
-| `You
-| `Host of jid
-]
-
-exception BadEntity
-
-let get_entity text from env =
-  if text = "" then
-    `You
-  else
-    try
-      let jid = jid_of_string text in
-        if jid.lnode = "" then (
-          dnsprep jid.ldomain;
-          `Host jid
-        )
-        else if from.string = jid.string then
-          `You
-        else
-          `User jid
-    with _ ->
-      raise BadEntity

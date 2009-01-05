@@ -11,7 +11,7 @@ open Hooks
 
 let ping text from xml env out =
   try
-    let entity = get_entity text from env in
+    let entity = env.env_get_entity text from in
     let to_ =
       match entity with
         | `Mynick nick

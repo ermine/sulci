@@ -50,7 +50,7 @@ let cmd_greet =
   Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^\\s]+)\\s+([^\\s]+)\\s+(.+)"
     
 let add_greet text from xml env out =
-  if check_access from "admin" then (
+  if env.env_check_access from "admin" then (
     if text <> "" then
       try
         let res = Pcre.exec ~rex:cmd_greet ~pos:0 text in
@@ -196,7 +196,7 @@ let seen text from xml env out =
                 with Not_found ->
                   let stamp = Int64.to_float (int64_of_data r.(1)) in
                   let diff = 
-                    Lang.expand_time ~lang:(Lang.get_lang xml) "seen"
+                    Lang.expand_time env.env_lang "seen"
                       (int_of_float 
                          (Unix.gettimeofday () -. stamp)) in
                     if string_of_data r.(3) = "" then

@@ -280,26 +280,65 @@ let process_event event from xml env out =
     else
       process_plugins event from xml env out
 
+let muc_check_access (jid:jid) classname =
+  try 
+    let room_env = get_room_env jid in
+    let nick = jid.lresource in
+    let item = Nicks.find nick room_env.nicks in
+      match item.jid with
+        | None -> false (* TODO? *)
+        | Some j -> Hooks.default_check_access j classname
+  with Not_found ->
+    Hooks.default_check_access jid classname
+
+let muc_get_entity text from =
+  if text = "" then
+    `You
+  else
+    let room_env = get_room_env from in
+      if room_env.mynick = text then
+        `Mynick text
+      else if Nicks.mem text room_env.nicks then
+        if from.resource = text then
+          `You
+        else
+          `Nick text
+      else (
+        try
+          let jid = jid_of_string text in
+            if jid.lnode = "" then (
+              dnsprep jid.ldomain;
+              `Host jid
+            )
+            else
+              `User jid
+        with _ ->
+          raise BadEntity
+      )
+            
 let dispatch_xml from xml out =
   let groupchat = is_groupchat from in
-  let env = {env_groupchat = true; env_lang = get_lang from xml } in
+  let env = {env_groupchat = true;
+             env_lang = get_lang from xml;
+             env_check_access = muc_check_access;
+             env_get_entity = muc_get_entity } in
   let tag = get_tagname xml in
-    match tag with
-      | "message" ->
-          if groupchat then
+    if groupchat then
+      match tag with
+        | "message" ->
             let event = process_message from xml out in
               process_event event from xml env out
-          else
-            Hooks.process_message from xml env out
-      | "presence" ->
+        | "presence" ->
           if groupchat then
             let event = process_presence from xml out in
               process_event event from xml env out
-          else
-            Hooks.process_presence from xml env out
-      | "iq" ->
-          Hooks.process_iq from xml out
-              
+        | "iq" ->
+            Hooks.process_iq from xml out
+        | _ ->
+            () (* todo: log *)
+    else
+      Hooks.default_dispatch_xml from xml out
+
 let invite ?reason (lnode, ldomain) who =
   make_message ~to_: (lnode ^ "@" ^ ldomain) 
     ~subels:[make_element "x"
@@ -352,29 +391,6 @@ let register_room ?lang ?filter nick jid  =
                   | Some v -> v)
     } !groupchats
     
-let check_access (jid:jid) classname =
-  let find_acl who =
-    let acls = get_subels Config.config ~tag:"acl" in
-      if List.exists (fun a -> 
-                        let jid = jid_of_string (get_attr_s a "jid") in
-                          if jid.lnode = who.lnode && 
-                            jid.ldomain = who.ldomain &&
-                            get_attr_s a "class" = classname then
-                              true else false) acls 
-      then true else false
-  in
-    try 
-      let env = GroupchatMap.find (jid.lnode, jid.ldomain) !groupchats in
-      let nick = jid.lresource in
-      let item = Nicks.find nick env.nicks in
-        match item.jid with
-          | None -> false (* TODO? *)
-          | Some j -> find_acl j
-    with Not_found ->
-      find_acl jid
-
-
-
 let file =
   try trim (Xml.get_cdata Config.config ~path:["muc"; "db"])
   with Not_found -> "sulci_muc.db"

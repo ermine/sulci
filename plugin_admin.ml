@@ -14,7 +14,7 @@ open Muc
 open Nicks
 
 let msg text from xml env out =
-  if check_access from "admin" then
+  if env.env_check_access from "admin" then
     let s = String.index text ' ' in
     let to_ = jid_of_string (String.sub text 0 s) in
     let msg_body = string_after text (s+1) in
@@ -27,7 +27,7 @@ let msg text from xml env out =
     make_msg out xml ":-P"
       
 let quit text from xml env out =
-  if check_access from "admin" then (
+  if env.env_check_access from "admin" then (
     make_msg out xml (Lang.get_msg env.env_lang "plugin_admin_quit_bye" []);
     Hooks.quit out
   )
@@ -37,7 +37,7 @@ let quit text from xml env out =
 let join_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
 let join text from xml env out =
-  if check_access from "admin" then
+  if env.env_check_access from "admin" then
     try
       let r = Pcre.exec ~rex:join_rex text in
       let room = jid_of_string (Pcre.get_substring r 1) in
@@ -60,7 +60,7 @@ let join text from xml env out =
 let leave_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
 let leave text from xml env out =
-  if check_access from "admin" then
+  if env.env_check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
       let room_s = Pcre.get_substring r 1
@@ -78,7 +78,7 @@ let leave text from xml env out =
 let invite_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
   
 let invite text from xml env out =
-  if check_access from "admin" then
+  if env.env_check_access from "admin" then
     try
       let r = Pcre.exec ~rex:leave_rex text in
       let who = Pcre.get_substring r 1
@@ -107,7 +107,7 @@ let invite text from xml env out =
       make_msg out xml "hmm?"
         
 let lang_update text from xml env out =
-  if check_access from "admin" then
+  if env.env_check_access from "admin" then
     if text = "" then
       make_msg out xml "What language?"
     else
@@ -116,7 +116,7 @@ let lang_update text from xml env out =
 let lr = Pcre.regexp "([a-z][a-z])\\s+(\\w+)(\\s+(.+))?"
   
 let lang_admin text from xml env out =
-  if check_access from "admin" then
+  if env.env_check_access from "admin" then
     if text = "" then
       make_msg out xml "en msgid string"
     else
@@ -144,7 +144,7 @@ let variables = [
 ]
   
 let sulci_set text from xml env out =
-  if check_access from "admin" then
+  if env.env_check_access from "admin" then
     try
       let r = Pcre.exec ~rex:sulci_set_rex text in
       let var = Pcre.get_substring r 1

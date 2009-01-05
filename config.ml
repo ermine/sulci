@@ -58,3 +58,9 @@ let log =
       ~destination:(new Logger.logfile report_log) ()
 
 
+let acls =
+  let acls = get_subels config ~tag:"acl" in
+    List.map (fun a ->
+                Jid.jid_of_string (get_attr_s a "jid"), get_attr_s a "class"
+             ) acls
+  
