@@ -20,8 +20,9 @@ let msg text from xml env out =
     let msg_body = string_after text (s+1) in
       out (make_element "message"
              ["to", to_.string; 
-              "type", if env.env_groupchat then "groupchat" else "chat"]
-             [make_simple_cdata "body" msg_body])
+              "type", if is_groupchat to_ then "groupchat" else "chat"]
+             [make_simple_cdata "body" msg_body]);
+      make_msg out xml "done"
   else
     make_msg out xml ":-P"
       

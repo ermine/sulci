@@ -244,7 +244,7 @@ let seen text from xml env out =
       make_msg out xml (Lang.get_msg env.env_lang "plugin_seen_not_in_room" [])
             
 let _ =
-  register_command "greet", add_greet;
-  register_command "seen", seen;
+  register_command "greet" add_greet;
+  register_command "seen" seen;
   Muc.register_catcher catch_seen
     
