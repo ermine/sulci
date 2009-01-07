@@ -57,7 +57,6 @@ let log =
       (* ~destination:(new syslog "local0") () in *)
       ~destination:(new Logger.logfile report_log) ()
 
-
 let acls =
   let acls = get_subels config ~tag:"acl" in
     List.map (fun a ->

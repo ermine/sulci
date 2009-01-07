@@ -17,10 +17,12 @@ let process_error xml env entity from text =
     match cond with
       | `ERR_FEATURE_NOT_IMPLEMENTED ->
           (match entity with
-             | `Host _ ->
-                 Lang.get_msg env.env_lang "error_server_feature_not_implemented" [text]
+             | EntityHost ->
+                 Lang.get_msg env.env_lang
+                   "error_server_feature_not_implemented" [text]
              | _ ->
-                 Lang.get_msg env.env_lang "error_client_feature_not_implemented" [text])
+                 Lang.get_msg env.env_lang
+                   "error_client_feature_not_implemented" [text])
       | `ERR_REMOTE_SERVER_TIMEOUT ->
           Lang.get_msg env.env_lang "error_remote_server_timeout" [from.ldomain]
       | `ERR_REMOTE_SERVER_NOT_FOUND ->
@@ -28,10 +30,10 @@ let process_error xml env entity from text =
             "error_remote_server_not_found" [from.ldomain]
       | `ERR_SERVICE_UNAVAILABLE ->
           (match entity with
-             | `Host _ ->
+             | EntityHost ->
                  Lang.get_msg env.env_lang "error_server_service_unavailable" 
                    [text]
-             | `You ->
+             | EntityYou ->
                  Lang.get_msg env.env_lang"error_your_service_unavailable" []
              | _ ->
                  Lang.get_msg env.env_lang "error_client_service_unavailable" 
@@ -63,71 +65,49 @@ let process_error xml env entity from text =
           with _ ->
             Lang.get_msg env.env_lang "error_any_error" [text]
               
-let simple_query_entity ?me ?entity_to_jid ?(error_exceptions=[])
-    success ?query_subels ?query_tag xmlns =
-  let fun_entity_to_jid =
-    match entity_to_jid with
-      | Some f -> f
-      | None ->
-          fun entity from ->
-            match entity with
-              | `Mynick mynick ->
-                  string_of_jid {from with resource = mynick; lresource = mynick}
-              | `You ->
-                  string_of_jid from
-              | `User user ->
-                  if user.lresource = "" then
-                    raise BadEntity
-                  else
-                    user.string
-              | `Nick nick ->
-                  string_of_jid {from with resource = nick; lresource = nick}
-              | `Host host ->
-                  host.domain
-              | _ ->
-                  raise BadEntity
-  in
-    fun text from xml env out ->
-      try
-        let entity = env.env_get_entity text from in
-          match entity, me with
-            | `Mynick _, Some f ->
-                f text from xml env out
-            | _, _ ->
-                let to_ = fun_entity_to_jid entity from in
-                let proc t f x o =
-                  match t with
-                    | `Result ->
-                        make_msg o xml (success text entity env x)
-                    | `Error -> (
-                        try
-                          if error_exceptions <> [] then (
-                            let cond,_,_,_ = Error.parse_error x in
-                              if List.mem cond error_exceptions then
-                                raise NoError;
-                          );
-                          make_msg o xml 
-                            (process_error x env entity f
-                               (if text = "" then
-                                  match env.env_groupchat, entity with
-                                    | true, `You ->
+let simple_query_entity ?me ?(error_exceptions=[]) success
+    ?query_subels ?query_tag xmlns =
+  fun text from xml env out ->
+    try
+      let entity, entity_jid = env.env_get_entity text from in
+        match entity, me with
+          | EntityMe, Some f ->
+              f text from xml env out
+          | _, _ ->
+              let proc t f x o =
+                match t with
+                  | `Result ->
+                      make_msg o xml (success text entity env x)
+                  | `Error -> (
+                      try
+                        if error_exceptions <> [] then (
+                          let cond,_,_,_ = Error.parse_error x in
+                            if List.mem cond error_exceptions then
+                              raise NoError;
+                        );
+                        make_msg o xml 
+                          (process_error x env entity f
+                             (if text = "" then
+                                match env.env_groupchat, entity with
+                                  | true, EntityYou ->
                                       f.resource
-                                    | _ ->
-                                        f.string
-                                else
-                                  text))
-                        with NoError ->
-                          make_msg o xml (success text entity env x)
-                      )
-                    | _ -> ()
-                in
-                let id = new_id () in
-                  register_iq_query_callback id proc;
-                  out (make_iq ~to_ ~id ~type_:`Get ?query_tag ~xmlns 
-                         ?subels:query_subels ())
-      with _ ->
-        make_msg out xml (Lang.get_msg env.env_lang "invalid_entity" [])
-          
+                                  | _ ->
+                                      f.string
+                              else
+                                text))
+                      with NoError ->
+                        make_msg o xml (success text entity env x)
+                    )
+                  | _ -> ()
+              in
+              let id = new_id () in
+                register_iq_query_callback id proc;
+                out (make_iq ~to_:(string_of_jid entity_jid)
+                       ~id ~type_:`Get ?query_tag ~xmlns 
+                       ?subels:query_subels ())
+    with _ ->
+      make_msg out xml (Lang.get_msg env.env_lang "invalid_entity" [])
+        
 let _ =
   Hooks.register_handle 
     (Xmlns ("jabber:iq:version", 

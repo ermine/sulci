@@ -46,17 +46,7 @@ let vsearch =
                         with Not_found -> []) [] in
       result_vcard res
   in
-  let entity_to_jid entity from =
-    match entity with
-      | `Mynick nick
-      | `Nick nick ->
-          string_of_jid {from with resource = nick; lresource = nick }
-      | `You -> from.string
-      | `User user -> user.string
-      | `Host host -> host.domain
-  in
-    Iq.simple_query_entity ~entity_to_jid success ~query_tag:"vCard"
-      "vcard-temp"
+    Iq.simple_query_entity success ~query_tag:"vCard" "vcard-temp"
       
 let _ =
   register_command "vcard" vsearch

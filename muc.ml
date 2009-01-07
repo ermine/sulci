@@ -293,28 +293,29 @@ let muc_check_access (jid:jid) classname =
 
 let muc_get_entity text from =
   if text = "" then
-    `You
+    EntityYou, from
   else
     let room_env = get_room_env from in
       if room_env.mynick = text then
-        `Mynick text
+        EntityMe, {from with resource = text; lresource = text}
       else if Nicks.mem text room_env.nicks then
         if from.resource = text then
-          `You
+          EntityYou, from
         else
-          `Nick text
-      else (
+          EntityUser, {from with resource = text; lresource = text}
+      else
         try
           let jid = jid_of_string text in
-            if jid.lnode = "" then (
+            if Jid.equal jid from then
+              EntityYou, jid
+            else if jid.lnode = "" then (
               dnsprep jid.ldomain;
-              `Host jid
+              EntityHost, jid
             )
             else
-              `User jid
+              EntityUser, jid
         with _ ->
           raise BadEntity
-      )
             
 let dispatch_xml from xml out =
   let groupchat = is_groupchat from in

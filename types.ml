@@ -18,19 +18,17 @@ type id = string
 
 exception BadEntity
 
-type entity = [
-| `User of jid
-| `Nick of string
-| `Mynick of string
-| `You
-| `Host of jid
-]
-    
+type entity =
+  | EntityMe
+  | EntityYou
+  | EntityUser
+  | EntityHost
+
 type local_env = {
   env_groupchat: bool;
   env_lang: string;
   env_check_access: Jid.jid -> string -> bool;
-  env_get_entity: string -> Jid.jid -> entity
+  env_get_entity: string -> Jid.jid -> (entity * Jid.jid)
 }
 
 module Id =

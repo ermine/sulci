@@ -86,7 +86,9 @@ let process_iq from xml out =
                (try f (Iq (id, type_, xmlns)) from xml out with exn -> 
                   log#error "[executing xmlns callback] %s: %s"
                     (Printexc.to_string exn) (element_to_string xml));
-           with Not_found -> ())
+           with Not_found ->
+             out (Error.make_error_reply xml `ERR_FEATURE_NOT_IMPLEMENTED)
+          )
         
 let do_command text from xml env out =
   let word = 
@@ -127,18 +129,18 @@ let default_check_access (jid:jid) classname =
 
 let default_get_entity text from =
   if text = "" then
-    `You
+    EntityYou, from
   else
     try
       let jid = jid_of_string text in
         if jid.lnode = "" then (
           dnsprep jid.ldomain;
-          `Host jid
+          EntityHost, jid
         )
-        else if Jid.equal from jid then
-          `You
+        else if from.lnode = jid.lnode && from.ldomain = jid.ldomain then
+          EntityYou, jid
         else
-          `User jid
+          EntityUser, jid
     with _ ->
       raise BadEntity
     

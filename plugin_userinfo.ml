@@ -42,50 +42,28 @@ let idle =
     fun text from xml env out ->
       make_msg out xml (Lang.get_msg env.env_lang "plugin_userinfo_idle_me" [])
   in
-  let entity_to_jid entity from =
-    match entity with
-      | `Mynick nick
-      | `Nick nick ->
-          string_of_jid {from with resource = nick; lresource = nick}
-      | `You ->
-          string_of_jid from
-      | `User user ->
-          user.string
-      | `Host _ ->
-          raise BadEntity
-  in
   let success text entity env xml =
     match entity with
-      | `Mynick mynick ->
+      | EntityMe ->
           Lang.get_msg env.env_lang "plugin_userinfo_idle_me" []
-      | `You ->
+      | EntityYou ->
           Lang.get_msg env.env_lang "plugin_userinfo_idle_you" 
             [print_idle env xml]
-      | `Nick _
-      | `User _ ->
+      | EntityUser ->
           Lang.get_msg env.env_lang "plugin_userinfo_idle_somebody" 
             [text; print_idle env xml]
       | _ ->
           raise BadEntity
   in
-    simple_query_entity ~me ~entity_to_jid success "jabber:iq:last"
+    simple_query_entity ~me success "jabber:iq:last"
       
 let uptime =
-  let entity_to_jid entity from =
-    match entity with
-      | `Host host ->
-          if host.lresource <> "" then
-            raise BadEntity
-          else
-            host.domain
-      | _ -> raise BadEntity
-  in
   let success text entity env xml =
     let seconds = get_attr_s xml ~path:["query"] "seconds" in
     let last = Lang.expand_time env.env_lang "uptime" (int_of_string seconds) in
       Lang.get_msg env.env_lang "plugin_userinfo_uptime" [text; last]
   in
-    simple_query_entity ~entity_to_jid success "jabber:iq:last"
+    simple_query_entity success "jabber:iq:last"
       
 let version =
   let print_version env xml msgid arg =
@@ -105,16 +83,16 @@ let version =
   in
   let success text entity env xml =
     match entity with
-      | `Mynick mynick ->
+      | EntityMe ->
           Printf.sprintf "%s %s - %s" Version.name Version.version Jeps.os
-      | `You ->
+      | EntityYou ->
           print_version env xml "plugin_userinfo_version_you" []
-      | `Nick nick ->
-          print_version env xml "plugin_userinfo_version_somebody" [text]
-      | `Host host ->
+      | EntityHost ->
           print_version env xml "plugin_userinfo_version_server" [text]
-      | `User user ->
+      | EntityUser ->
           print_version env xml "plugin_userinfo_version_somebody" [text]
+      | _ ->
+          raise BadEntity
   in
     simple_query_entity ~me success "jabber:iq:version"
       
@@ -152,32 +130,21 @@ let time =
   in
   let success text entity env xml =
     match entity with
-      | `Mynick mynick ->
+      | EntityMe ->
           Lang.get_msg env.env_lang "plugin_userinfo_time_me"
             [Strftime.strftime ~tm:(localtime (gettimeofday ())) 
                "%H:%M"]
-      | `You ->
+      | EntityYou ->
           print_time env xml "plugin_userinfo_time_you" []
-      | `Nick nick ->
-          print_time env xml "plugin_userinfo_time_somebody" [text]
-      | `Host host ->
+      | EntityHost ->
           print_time env xml "plugin_userinfo_time_server" [text]
-      | `User user ->
+      | EntityUser ->
           print_time env xml "plugin_userinfo_time_somebody" [text]
+
   in
     simple_query_entity ~me success "jabber:iq:time"
       
 let stats =
-  let entity_to_jid entity from =
-    match entity with
-      | `Host host ->
-          if host.lresource = "" then
-            host.domain
-          else
-            raise BadEntity
-      | _ ->
-          raise BadEntity
-  in
   let success text entity env xml =
     let stats_data = get_subels xml ~path:["query"] ~tag:"stat" in
     let data = List.map (fun z -> get_attr_s z "name",     
@@ -191,7 +158,7 @@ let stats =
   in
   let query_subels = Some [make_element "stat" ["name", "users/online"] [];
                            make_element "stat" ["name", "users/total"] []] in
-    simple_query_entity ~entity_to_jid success
+    simple_query_entity success
       ?query_subels "http://jabber.org/protocol/stats"
       
 let _ =
