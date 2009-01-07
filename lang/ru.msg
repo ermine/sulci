@@ -50,7 +50,7 @@ plugin_userinfo_version_server     на %s запущен %s %s (%s)
 plugin_userinfo_time_me            Щас у меня в компе %s
 plugin_userinfo_time_you           У тебя в компе показываются %s
 plugin_userinfo_time_somebody      У %s в компе показываются %s
-plugin_userinfo_status_whose       Чей статус?
+plugin_userinfo_time_server        на %s щас %s
 
 plugin_roulette_syntax_error       Возьми у отца ружье и попробуй...
 plugin_roulette_kick_reason        Пшиииик!
@@ -58,7 +58,6 @@ plugin_roulette_bye                Адью.
 plugin_roulette_kick_failed        Ыыыы... у тебя наверное иммунитет....
 plugin_roulette_next_time          Как-нить в следующий раз...
 plugin_roulette_not_allowed        Прав не имею.
-
 plugin_vocabulary_invalid_syntax   ну?
 plugin_vocabulary_recorded         записал.
 plugin_vocabulary_dfn_again        это уже было
