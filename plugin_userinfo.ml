@@ -11,27 +11,6 @@ open Types
 open Common
 open Hooks
 open Iq
-open Muc_types
-open Muc
-open Nicks
-
-let status text from xml env out =
-  if env.env_groupchat then
-    let entity = if text = "" then from.lresource else
-      Stringprep.resourceprep text in
-      (try
-         let item = Nicks.find entity (get_room_env from).nicks in
-           make_msg out xml ((if item.status = "" then ""
-                              else item.status ^ " ") ^
-                               "[" ^ (match item.show with
-                                        | `Online -> "online"
-                                        | `Away -> "away"
-                                        | `DND -> "dnd"
-                                        | `Chat -> "free for chat"
-                                        | `XA -> "xa") ^ "]")
-       with _ ->
-         make_msg out xml 
-           (Lang.get_msg env.env_lang "plugin_userinfo_status_whose" []))
         
 let idle =
   let print_idle env xml =
@@ -166,5 +145,4 @@ let _ =
   register_command"time" time;
   register_command"idle" idle;
   register_command"uptime" uptime;
-  register_command"stats" stats;
-  register_command"status" status;
+  register_command"stats" stats

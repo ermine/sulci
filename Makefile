@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.6-alpha-20090107
+VERSION=0.6-alpha-20090109
 
 include Makefile.conf
 
@@ -10,103 +10,121 @@ SOURCES = version.ml config.ml common.ml types.ml lang.ml hooks.ml iq.ml
 
 SUBDIRS = lang
 
-ifdef MUC
-   SOURCES1 += muc_types.ml find_url.ml muc_log.ml muc.ml
-   SQLITE = yes
+ifeq ($(PLUGIN_ADMIN),yes)
+  SOURCES1 += plugin_admin.ml
 endif
-
-ifdef PLUGIN_CERBERUS
-  SOURCES1 += plugin_cerberus.ml
-endif
-ifdef PLUGIN_GOOGLE
+ifeq ($(PLUGIN_GOOGLE),yes)
   SOURCES1 += plugin_google.ml
   DEHTML = yes
   HTTP_SUCK = yes
 endif
-ifdef PLUGIN_YANDEX
-   SOURCES1 += plugin_yandex.ml
-   DEHTML = yes
+ifeq ($(PLUGIN_GOOGLE_TRANSLATE),yes)
+   SOURCES1 += plugin_google_translate.ml
    HTTP_SUCK = yes
 endif
-ifdef PLUGIN_CALC
+ifeq ($(PLUGIN_CALC),yes)
   SOURCES1 += math.ml pcalc.mly pcalc_lexer.mll icalc.mly icalc_ulex.ml plugin_calc.ml
 endif
-ifdef PLUGIN_MUELLER
+ifeq ($(PLUGIN_MUELLER),yes)
   SOURCES1 += plugin_mueller.ml
   NETSTRING = yes
 endif
-ifdef PLUGIN_MARKOV
-  SOURCES1 += plugin_markov.ml
-  SQLITE = yes
-endif
-ifdef PLUGIN_VOCABULARY
-  SOURCES1 += plugin_vocabulary.ml
-  SQLITE = yes
-endif
-ifdef PLUGIN_PING
+ifeq ($(PLUGIN_PING),yes)
   SOURCES1 += plugin_ping.ml
 endif
-ifdef PLUGIN_USERINFO
+ifeq ($(PLUGIN_USERINFO),yes)
   SOURCES1 += plugin_userinfo.ml
   NETSTRING = yes
 endif
-ifdef PLUGIN_MISC
+ifeq ($(PLUGIN_MISC),yes)
   SOURCES1 += plugin_misc.ml
 endif
-ifdef PLUGIN_ADMIN
-  SOURCES1 += plugin_admin.ml
-endif
-ifdef PLUGIN_DICT
+ifeq ($(PLUGIN_DICT),yes)
   SOURCES1 += plugin_dict.ml
 endif 
-ifdef PLUGIN_WEATHER
+ifeq ($(PLUGIN_WEATHER),yes)
   SOURCES1 += plugin_weather.ml
   HTTP_SUCK = yes
 endif
-ifdef PLUGIN_GLOBALSTATS
+ifeq ($(PLUGIN_GLOBALSTATS),yes)
   SOURCES1 += plugin_globalstats.ml
 endif
-ifdef PLUGIN_CURRENCY
+ifeq ($(PLUGIN_CURRENCY),yes)
   SOURCES1 += plugin_currency.ml
   XMLSTRING_NETSTRING = yes
   HTTP_SUCK = yes
 endif
-ifdef PLUGIN_TLD
+ifeq ($(PLUGIN_TLD),yes)
   SOURCES1 += plugin_tld.ml
   DBM_LIB =  yes
   SUBDIRS += tlds
 endif
-ifdef PLUGIN_ROULETTE
-  SOURCES1 += plugin_roulette.ml
-endif
-ifdef PLUGIN_SEEN
-  SOURCES1 += plugin_seen.ml
-  SQLITE = yes
-endif
-ifdef PLUGIN_TALKERS
-  SOURCES1 += plugin_talkers.ml
-  SQLITE = yes
-endif
-ifdef PLUGIN_TRANSLATE
+ifeq ($(PLUGIN_TRANSLATE),yes)
   SOURCES1 += plugin_translate.ml
   HTTP_SUCK = yes
 endif
-ifdef PLUGIN_GOOGLE_TRANSLATE
-   SOURCES1 += plugin_google_translate.ml
-   HTTP_SUCK = yes
+ifeq ($(PLUGIN_VOCABULARY),yes)
+  SOURCES1 += plugin_vocabulary.ml
+  SQLITE = yes
 endif
-ifdef PLUGIN_VCARD
+ifeq ($(PLUGIN_VCARD),yes)
   SOURCES1 += plugin_vcard.ml
 endif
-ifdef PLUGIN_XMLRPC
+ifeq ($(PLUGIN_XMLRPC),yes)
   SOURCES1 += plugin_xmlrpc.ml
 endif
-ifdef PLUGIN_HOSTIP
+ifeq ($(PLUGIN_HOSTIP),yes)
    SOURCES1 += plugin_hostip.ml
    HTTP_SUCK = yes
 endif
-ifdef PLUGIN_1APRIL
+ifeq ($(PLUGIN_1APRIL),yes)
    SOURCES1 += plugin_1april.ml
+endif
+ifeq ($(PLUGIN_YANDEX),yes)
+   SOURCES1 += plugin_yandex.ml
+   DEHTML = yes
+   HTTP_SUCK = yes
+endif
+
+ifeq ($(MUC),yes)
+   SOURCES1 += muc_types.ml find_url.ml muc_log.ml muc.ml
+   SQLITE = yes
+
+  ifeq ($(PLUGIN_ADMIN),yes)
+    SOURCES1 += plugin_admin_muc.ml
+  endif
+
+  ifeq ($(PLUGIN_CERBERUS),yes)
+    SOURCES1 += plugin_cerberus.ml
+  endif
+
+  ifeq ($(PLUGIN_MARKOV),yes)
+    SOURCES1 += plugin_markov.ml
+    SQLITE = yes
+  endif
+
+  ifeq ($(PLUGIN_ROULETTE),yes)
+    SOURCES1 += plugin_roulette.ml
+  endif
+
+  ifeq ($(PLUGIN_SEEN),yes)
+    SOURCES1 += plugin_seen.ml
+    SQLITE = yes
+  endif
+
+  ifeq ($(PLUGIN_TALKERS),yes)
+    SOURCES1 += plugin_talkers.ml
+    SQLITE = yes
+  endif
+
+  ifeq ($(PLUGIN_VOCABULARY),yes)
+    SOURCES1 += plugin_vocabulary_muc.ml
+    SQLITE = yes
+  endif
+
+  ifeq ($(PLUGIN_USERINFO_MUC),yes)
+    SOURCES1 += plugin_userinfo_muc.ml
+  endif
 endif
 
 LANGPACKS = lang/ru_time.ml lang/en_time.ml lang/es_time.ml

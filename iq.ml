@@ -88,11 +88,10 @@ let simple_query_entity ?me ?(error_exceptions=[]) success
                         make_msg o xml 
                           (process_error x env entity f
                              (if text = "" then
-                                match env.env_groupchat, entity with
-                                  | true, EntityYou ->
-                                      f.resource
-                                  | _ ->
-                                      f.string
+                                if env.env_groupchat && entity = EntityYou then
+                                  f.resource
+                                else
+                                  f.string
                               else
                                 text))
                       with NoError ->

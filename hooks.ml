@@ -24,7 +24,7 @@ let on_connect = ref ([]:((Xml.element -> unit) -> unit) list)
 let on_disconnect = ref ([]:(unit -> unit) list)
 let on_quit = ref ([]:((Xml.element -> unit) -> unit) list)
 
-let commands = ref CommandMap.empty
+let commands:(string, (string -> Jid.jid -> Xml.element -> local_env -> (Xml.element -> unit) -> unit)) Hashtbl.t = Hashtbl.create 10
 let catchset = ref ([]:(Jid.jid -> Xml.element -> local_env ->
                           (Xml.element -> unit) -> unit) list)
 let filters = ref ([]:(string * (Jid.jid -> Xml.element -> local_env ->
@@ -43,8 +43,8 @@ let register_on_quit proc =
 let register_iq_query_callback id proc =
   iqcallbacks := IqCallback.add id proc !iqcallbacks
     
-let register_command command proc =
-  commands := CommandMap.add command proc !commands
+let register_command (command:string) proc =
+  Hashtbl.replace commands command proc
 
 let register_catcher proc =
   catchset := proc :: !catchset
@@ -93,7 +93,7 @@ let process_iq from xml out =
 let do_command text from xml env out =
   let word = 
     try String.sub text 0 (String.index text ' ') with Not_found -> text in
-  let f = CommandMap.find word !commands in
+  let f = Hashtbl.find commands word in
   let params = try string_after text (String.index text ' ') with _ -> "" in
     try f (trim params) from xml env out with exn -> 
       log#error "[executing command callback] %s: %s"

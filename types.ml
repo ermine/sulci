@@ -42,6 +42,4 @@ type xmpp_event =
   | Iq of string * iq_type * string
   | Presence
 
-module CommandMap = Map.Make(Id)
-
 exception Filtered
