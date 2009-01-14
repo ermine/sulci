@@ -269,20 +269,13 @@ let process_plugins event from xml env out =
 let process_event event from xml env out =
   Muc_log.process_log event from xml env;
   let room_env = get_room_env from in
-    if room_env.filter <> "" then (
-      let filter_proc =
-        try Some (Hashtbl.find filters room_env.filter)
-        with Not_found -> None in
-      let good =
-        match filter_proc with
-          | Some f ->
-              (try f event from xml env out; true with Filtered -> false)
-          | None -> false
-      in
-        if good then
-          process_plugins event from xml env out
-    )
-    else
+  let good =
+    match room_env.filter with
+      | Some f ->
+          (try f event from xml env out; true with Filtered -> false)
+      | None -> true
+  in
+    if good then
       process_plugins event from xml env out
 
 let muc_check_access (jid:jid) classname =
@@ -393,8 +386,9 @@ let register_room ?lang ?filter nick jid  =
                 | None -> Lang.deflang
                 | Some l -> l);
       filter = (match filter with
-                  | None -> ""
-                  | Some v -> v)
+                  | None -> None
+                  | Some v ->
+                      try Some (Hashtbl.find filters v) with Not_found -> None)
     } !groupchats
     
 let file =
