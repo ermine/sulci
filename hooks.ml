@@ -24,11 +24,18 @@ let on_connect = ref ([]:((Xml.element -> unit) -> unit) list)
 let on_disconnect = ref ([]:(unit -> unit) list)
 let on_quit = ref ([]:((Xml.element -> unit) -> unit) list)
 
-let commands:(string, (string -> Jid.jid -> Xml.element -> local_env -> (Xml.element -> unit) -> unit)) Hashtbl.t = Hashtbl.create 10
+let commands:
+    (string, (string -> Jid.jid -> Xml.element -> local_env ->
+                (Xml.element -> unit) -> unit)) Hashtbl.t
+    = Hashtbl.create 10
+
 let catchset = ref ([]:(Jid.jid -> Xml.element -> local_env ->
                           (Xml.element -> unit) -> unit) list)
-let filters = ref ([]:(string * (Jid.jid -> Xml.element -> local_env ->
-                                   (Xml.element -> unit) -> unit)) list)
+let filters:
+    (string, (Jid.jid -> Xml.element -> local_env ->
+                 (Xml.element -> unit) -> unit)) Hashtbl.t
+    = Hashtbl.create 5
+  
 let dispatch_xml = ref (fun _from _xml _out -> ())
 
 let register_on_connect proc =
@@ -50,7 +57,7 @@ let register_catcher proc =
   catchset := proc :: !catchset
 
 let register_filter name proc =
-  filters := (name, proc) :: !filters
+  Hashtbl.replace name proc filters
 
 let register_dispatch_xml proc = dispatch_xml := proc
 

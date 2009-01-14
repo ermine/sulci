@@ -15,15 +15,17 @@ open Sqlite3
 open Sqlite_util
 
 let catchers = ref []
-let filters = ref ([]:(string * (Muc_types.muc_event -> Jid.jid ->
-                                   Xml.element -> Types.local_env ->
-                                     (Xml.element -> unit) -> unit)) list)
+let filters:
+    (string, (Muc_types.muc_event -> Jid.jid ->
+                Xml.element -> Types.local_env ->
+                  (Xml.element -> unit) -> unit)) Hashtbl.t
+    = Hashtbl.create 5
 
 let register_catcher proc =
   catchers := proc :: !catchers
 
 let register_filter name proc =
-  filters := (name, proc) :: ! filters
+  Hashtbl.replace filters name proc
 
 let is_groupchat jid =
   GroupchatMap.mem (jid.lnode, jid.ldomain) !groupchats
@@ -51,10 +53,7 @@ let do_catcher event from xml env out =
 
 let is_echo from =
   let room_env = get_room_env from in
-    if room_env.mynick = from.lresource then
-      true
-    else
-      false
+    room_env.mynick = from.lresource
 
 let process_presence (from:jid) xml out =
   let lnode = from.lresource in
@@ -271,9 +270,15 @@ let process_event event from xml env out =
   Muc_log.process_log event from xml env;
   let room_env = get_room_env from in
     if room_env.filter <> "" then (
-      let filter_proc = List.assoc room_env.filter !filters in
+      let filter_proc =
+        try Some (Hashtbl.find filters room_env.filter)
+        with Not_found -> None in
       let good =
-        try filter_proc event from xml env out; true with Filtered -> false in
+        match filter_proc with
+          | Some f ->
+              (try f event from xml env out; true with Filtered -> false)
+          | None -> false
+      in
         if good then
           process_plugins event from xml env out
     )
