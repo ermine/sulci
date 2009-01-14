@@ -77,11 +77,8 @@ type groupchat_t = {
   mynick: string;
   lang: string;
   nicks: Nicks.t;
-  filter: string;
-(*
-  filter: muc_event -> Jid.jid -> Xml.event -> local_env ->
-                  (Xml.element -> unit) -> unit
-*)
+  filter: (muc_event -> Jid.jid -> Xml.element -> Types.local_env ->
+             (Xml.element -> unit) -> unit) option
 }
 
 module GroupchatMap = Map.Make(GID)
