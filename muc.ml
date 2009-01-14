@@ -414,7 +414,8 @@ let add_room room nick lang chatlog filter =
     (if chatlog then "T" else "F") (escape filter) in
     simple_exec file db sql
       
-let _ =
+
+let load_rooms out =
   let sql = Printf.sprintf "SELECT room, nick, lang, chatlog, filter FROM %s"
     table in
   let rec iter_room stmt =
@@ -432,6 +433,7 @@ let _ =
             if chatlog then
               Muc_log.add_chatlog room;
             register_room ~lang ~filter mynick room;
+            out (join_room mynick (room.lnode, room.ldomain)); 
             iter_room stmt
       | Rc.DONE -> ()
       | _ -> exit_with_rc file db sql
@@ -444,15 +446,6 @@ let _ =
 
 let _ =
   Hooks.register_dispatch_xml dispatch_xml;
-  Hooks.register_on_connect
-    (fun out ->
-       GroupchatMap.iter
-         (fun (lnode, ldomain) env ->
-            out (join_room env.mynick (lnode, ldomain)))
-         !groupchats);
-    
-  Hooks.register_on_disconnect
-    (fun () ->
-       groupchats := GroupchatMap.map (fun env -> {env with nicks = [];})
-         !groupchats)
+  Hooks.register_on_connect load_rooms;
+  Hooks.register_on_disconnect (fun () -> groupchats := GroupchatMap.empty)
 
