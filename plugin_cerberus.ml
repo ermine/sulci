@@ -261,7 +261,14 @@ let do_kick =
   with _ -> true
     
 let report word from phrase msg_type out =
-  let item = Nicks.find from.lresource (get_room_env from).nicks in
+  let jid_from =
+    try
+      let item = Nicks.find from.lresource (get_room_env from).nicks in
+        match item.jid with
+          | None -> "unknown jid"
+          | Some j -> j.string
+    with Not_found -> "unknown jid"
+  in
     List.iter (fun jid ->
                  out (make_message ~to_:jid ~type_:`Chat
                         ~body:(Printf.sprintf 
@@ -271,10 +278,7 @@ Nick: %s (%s)
 [%s] %s"
                                  word
                                  from.lnode from.ldomain
-                                 from.resource
-                                 (match item.jid with
-                                    | None -> "unknown jid"
-                                    | Some j -> j.string)
+                                 from.resource jid_from
                                  msg_type phrase) ())
               ) notify_jids
       
