@@ -3,6 +3,7 @@
  *)
 
 open Types
+open Jid
 open Common
 open Muc_types
 open Muc
@@ -27,4 +28,4 @@ let status text from xml env out =
            (Lang.get_msg env.env_lang "plugin_userinfo_status_whose" []))
 
 let _ =
-  register_command"status" status
+  Hooks.register_command"status" status

@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.6-alpha-20090114
+VERSION=0.6-alpha-20090125
 
 include Makefile.conf
 
@@ -122,7 +122,7 @@ ifeq ($(MUC),yes)
     SQLITE = yes
   endif
 
-  ifeq ($(PLUGIN_USERINFO_MUC),yes)
+  ifeq ($(PLUGIN_USERINFO),yes)
     SOURCES1 += plugin_userinfo_muc.ml
   endif
 endif

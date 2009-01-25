@@ -100,6 +100,10 @@ let rex = Pcre.regexp
 let currency text from xml env out =
   if text = "list" then 
     make_msg out xml !list_curr
+  else if text = "refresh" then (
+    load_curr ();
+    make_msg out xml "sent the request"
+  )
   else
     try
       let r = Pcre.exec ~rex text in
