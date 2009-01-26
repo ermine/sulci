@@ -2,7 +2,7 @@ OCAMLMAKEFILE = ../OCamlMakefile
 
 include ../Makefile.global
 
-VERSION=0.6-alpha-20090125
+VERSION=0.6-alpha-20090127
 
 include Makefile.conf
 
@@ -136,7 +136,7 @@ endif
 
 THREADS = yes
 
-PACKS = ulex unix xmpp logger getopt xmlstring strftime scheduler pcre
+PACKS = ulex unix xmpp logger xmlstring strftime scheduler pcre
 
 ifdef XMLSTRING_NETSTRING
    NETSTRING = yes

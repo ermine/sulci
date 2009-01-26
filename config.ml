@@ -2,44 +2,36 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
+open Arg
 open Xml
 open Xmlstring
-open Getopt
+
+let version () =
+  Printf.printf 
+    "%s %s (c) 2004-2009, Anastasia Gornostaeva <ermine@ermine.pp.ru>\n"
+    Version.name
+    Version.version;
+  Pervasives.exit 0
 
 let config =
-  let version arg = 
-    Printf.printf 
-      "%s %s (c) 2004-2005, Anastasia Gornostaeva <ermine@ermine.pp.ru>\n"
-      Version.name
-      Version.version;
-    Pervasives.exit 0
-  in
-  let configfile = ref "./sulci.conf" in
-  let create_account = ref false in
-  let opts = ["v", "version", OptEmpty, "Show version", Some version;
-  "c", "config", OptString !configfile, "Path to config file", None;
-  "r", "register", OptEmpty, "Create an account", None
-             ] in
-  let parsed = Getopt.parse ~help:true opts in
-    List.iter (fun (a,b) ->
-                 match a with
-                   | Shortopt "c"
-                   | Longopt "config" ->
-                       (match b with
-                          | OptString str -> configfile := str
-                          | _ -> ())
-                   | Shortopt "r"
-                   | Longopt "register" ->
-                       create_account := true
-                   | _ -> ()
-              ) parsed;
+  let usage_msg = Filename.basename Sys.argv.(0) ^ " [options]" in
+  let cfile = ref (Filename.basename Sys.argv.(0) ^ ".conf") in
+  let opts = align [
+    "-c", Set_string cfile, "<file>  Path to the config file";
+    "-v", Unit version, " Show version";
+  ] in
+  let () = Arg.parse opts
+    (fun unk -> Printf.eprintf "Unknown option %S\n" unk;
+       usage opts usage_msg;
+       Pervasives.exit 1)
+    usage_msg in
     
-    if not (Sys.file_exists !configfile) then begin
-      Printf.eprintf "Cannot find a configuration file: %s\n" !configfile;
+    if not (Sys.file_exists !cfile) then (
+      Printf.eprintf "Cannot find a configuration file: %s\n" !cfile;
       Pervasives.exit 127
-    end
+    )
     else
-      let xml = Xmlstring.parse_from_file !configfile in
+      let xml = Xmlstring.parse_from_file !cfile in
         xml
           
 let logger_options =
