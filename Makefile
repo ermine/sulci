@@ -183,7 +183,7 @@ $(SUBDIRS):
 	$(MAKE) -C $@
 
 SDIR=/tmp/sulci-$(VERSION)
-LIB_PROJECTS = Makefile.inc xmpp xml xmlstring xmlstring_netstring getopt dehtml cryptokit scheduler scheduler2 strftime
+LIB_PROJECTS = Makefile.inc xmpp xml xmlstring xmlstring_netstring dehtml cryptokit scheduler strftime
 
 tarball::
 	rm -rf $(SDIR)
