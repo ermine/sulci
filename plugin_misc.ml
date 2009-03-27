@@ -32,6 +32,24 @@ let dns text from xml env out =
          | Not_found ->
              Lang.get_msg env.env_lang "plugin_misc_dns_not_resolved" [])
       
+let shell text from xml env out =
+  if env.env_check_access from "admin" then
+    if text = "" then
+      make_msg out xml "shell? yeah!"
+    else
+      let in_ch = Unix.open_process_in text in
+      let buf = Buffer.create 80 in
+        (try
+           while true do
+             Buffer.add_string buf (input_line in_ch);
+             Buffer.add_char buf '\n'
+           done
+         with End_of_file -> close_in in_ch);
+        if Buffer.length buf > 0 then
+          make_msg out xml (Buffer.contents buf);
+  else
+    make_msg out xml "no access"
 
 let _ =
-  register_command "dns" dns
+  register_command "dns" dns;
+  register_command "sh" shell
