@@ -70,8 +70,6 @@ let version =
           print_version env xml "plugin_userinfo_version_server" [text]
       | EntityUser ->
           print_version env xml "plugin_userinfo_version_somebody" [text]
-      | _ ->
-          raise BadEntity
   in
     simple_query_entity ~me success "jabber:iq:version"
       
