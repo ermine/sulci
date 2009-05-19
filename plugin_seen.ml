@@ -181,7 +181,6 @@ let seen text from xml env out =
       if text = from.resource then
         make_msg out xml (Lang.get_msg env.env_lang "plugin_seen_you" [])
       else
-        let room  = from.lnode, from.ldomain in
         let nicks = (get_room_env from).nicks in
         let sql = Printf.sprintf
           "SELECT jid, last, action, reason FROM %s WHERE nick=%s AND room=%s ORDER BY last DESC LIMIT 1"
