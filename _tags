@@ -8,6 +8,8 @@
 <sqlite_util.ml>: use_sqlite3
 
 <*_ulex.ml>: camlp4o, use_ulex.syntax, use_ulex
+<muc.ml>: use_sqlite3
+<plugin_brainfuck.ml>: thread
 <plugin_calc.ml>: use_ulex
 <plugin_cerberus.ml>: camlp4o, use_ulex.syntax, use_ulex
 <plugin_dict.ml>: thread

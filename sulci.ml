@@ -8,6 +8,7 @@ open Types
 open Config
 open Common
 open Hooks
+open Lang
 
 let _ = 
   let server = try 
