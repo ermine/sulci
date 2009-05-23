@@ -3,9 +3,9 @@
 *)
 
 open Unix
-open Xml
+open Light_xml
 
-let proc ev event from (xml:Xml.element) (out:Xml.element -> unit) =
+let proc ev event from (xml:element) (out:element -> unit) =
   Event.sync (Event.send ev xml)
 
 let sulci_rpc out in_chan out_chan () =

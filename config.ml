@@ -3,8 +3,7 @@
  *)
 
 open Arg
-open Xml
-open Xmlstring
+open Light_xml
 
 let version () =
   Printf.printf 
@@ -31,12 +30,21 @@ let config =
       Pervasives.exit 127
     )
     else
-      let xml = Xmlstring.parse_from_file !cfile in
-        xml
+      let f = open_in !cfile in
+      let buf = Buffer.create 1024 in
+      let () =
+        try
+          while true do
+            Buffer.add_string buf (input_line f)
+          done
+        with End_of_file ->
+          close_in f
+      in
+        parse_document (Buffer.contents buf)
           
 let logger_options =
   try 
-    let el = Xml.get_tag config ["log"] in
+    let el = get_tag config ["log"] in
       List.map (fun el -> get_tagname el, get_cdata el)
         (List.find_all (function | Xmlelement _ -> true | _ -> false)
            (get_subels el))

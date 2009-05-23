@@ -1,8 +1,8 @@
 (*
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
-*)
+ *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Types
@@ -11,8 +11,8 @@ open Common
 
 module IqCallback = Map.Make(Id)
 let iqcallbacks = ref (IqCallback.empty:
-                         (Xmpp.iq_type -> Jid.jid -> Xml.element ->
-                            (Xml.element -> unit) -> unit) IqCallback.t)
+                         (Xmpp.iq_type -> Jid.jid -> element ->
+                            (element -> unit) -> unit) IqCallback.t)
 
 
 module XmlnsMap = Map.Make(Id)
@@ -20,20 +20,20 @@ let xmlnsmap = ref XmlnsMap.empty
 
 let presencemap = ref []
 
-let on_connect = ref ([]:((Xml.element -> unit) -> unit) list)
+let on_connect = ref ([]:((element -> unit) -> unit) list)
 let on_disconnect = ref ([]:(unit -> unit) list)
-let on_quit = ref ([]:((Xml.element -> unit) -> unit) list)
+let on_quit = ref ([]:((element -> unit) -> unit) list)
 
 let commands:
-    (string, (string -> Jid.jid -> Xml.element -> local_env ->
-                (Xml.element -> unit) -> unit)) Hashtbl.t
+    (string, (string -> Jid.jid -> element -> local_env ->
+                (element -> unit) -> unit)) Hashtbl.t
     = Hashtbl.create 10
 
-let catchset = ref ([]:(Jid.jid -> Xml.element -> local_env ->
-                          (Xml.element -> unit) -> unit) list)
+let catchset = ref ([]:(Jid.jid -> element -> local_env ->
+                          (element -> unit) -> unit) list)
 let filters:
-    (string, (Jid.jid -> Xml.element -> local_env ->
-                 (Xml.element -> unit) -> unit)) Hashtbl.t
+    (string, (Jid.jid -> element -> local_env ->
+                 (element -> unit) -> unit)) Hashtbl.t
     = Hashtbl.create 5
   
 let dispatch_xml = ref (fun _from _xml _out -> ())

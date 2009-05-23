@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Jid
 
 let string_after s n =
@@ -119,7 +119,7 @@ let split_long_message limit msg tail =
     aux_split [] msg
       
 let make_msg out xml ?response_tail response =
-  let from = jid_of_string (Xml.get_attr_s xml "from") in
+  let from = jid_of_string (get_attr_s xml "from") in
   let nick = from.resource in
   let tail =
     match response_tail with

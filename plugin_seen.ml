@@ -3,7 +3,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Types
@@ -19,7 +19,7 @@ open Sqlite_util
 exception Break
 
 let file = 
-  try trim (Xml.get_attr_s Config.config 
+  try trim (get_attr_s Config.config 
               ~path:["plugins"; "seen"] "db")
   with Not_found -> "sulci_users.db"
 

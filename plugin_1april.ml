@@ -2,9 +2,10 @@
  * (c) 2008 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 
+open Light_xml
 open Types
 open Hooks
 open Common
@@ -220,11 +221,11 @@ let dispatch from body_s out =
     flush log
       
 let my_jid = 
-  let username = trim (Xml.get_cdata Config.config ~path:["jabber"; "user"]) in
-  let server = trim (Xml.get_cdata Config.config ~path:["jabber"; "server"]) in
+  let username = trim (get_cdata Config.config ~path:["jabber"; "user"]) in
+  let server = trim (get_cdata Config.config ~path:["jabber"; "server"]) in
     (*
       let resource = 
-      trim (Xml.get_cdata Config.config ~path:["jabber"; "resource"]) in
+      trim (get_cdata Config.config ~path:["jabber"; "resource"]) in
     *)
     username, server
       

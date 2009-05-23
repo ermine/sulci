@@ -1,4 +1,4 @@
-<*.ml>: use_pcre
+<*.ml>: rectypes, use_pcre
 #<config.ml>: use_getopt
 <sulci.ml>: use_plugins, use_lang
 <sulci.{byte,native}>: thread, use_unix, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm

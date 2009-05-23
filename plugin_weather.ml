@@ -3,7 +3,7 @@
  *)
 
 open Pcre
-open Xml
+open Light_xml
 open Types
 open Common
 open Hooks

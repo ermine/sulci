@@ -4,7 +4,7 @@
 
 open Unix
 open Pcre
-open Xml
+open Light_xml
 open Config
 open Common
 open Hooks
@@ -19,7 +19,7 @@ let _ =
         let f = get_attr_s Config.config ~path:["plugins"; 
                                                 "mueller"] "file" in
           if Sys.file_exists f then f else (
-            log#crit "Mueller dictonary %s does not exists" f;
+            log#crit "Mueller dictonary %s does not exist" f;
             Pervasives.exit 127
           )
       with Not_found ->

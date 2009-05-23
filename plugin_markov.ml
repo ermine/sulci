@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Types
@@ -17,10 +17,10 @@ open Sqlite_util
 let table = "words"
 
 type mevent = 
-  | MMessage of muc_event * jid * Xml.element * local_env * (Xml.element -> unit) 
+  | MMessage of muc_event * jid * element * local_env * (element -> unit) 
   | MStop 
-  | MCount of jid * Xml.element * local_env * (Xml.element -> unit)
-  | MTop of jid * Xml.element * local_env * (Xml.element -> unit)
+  | MCount of jid * element * local_env * (element -> unit)
+  | MTop of jid * element * local_env * (element -> unit)
 
 type t = {
   queue: mevent Queue.t;
@@ -50,7 +50,7 @@ let take_queue (m:t) =
       
 let open_markovdb (lnode, ldomain) =
   let path = 
-    try trim (Xml.get_attr_s Config.config 
+    try trim (get_attr_s Config.config 
                 ~path:["plugins"; "markov"] "dir")
     with Not_found -> "./markov_db"
   in

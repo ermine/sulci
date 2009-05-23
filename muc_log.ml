@@ -4,6 +4,7 @@
 
 open Unix
 open Pcre
+open Light_xml
 open Jid
 open Types
 open Config
@@ -11,7 +12,7 @@ open Common
 open Muc_types
 
 let basedir = 
-  let dir = trim (Xml.get_cdata Config.config ~path:["muc"; "chatlogs"]) in
+  let dir = trim (get_cdata Config.config ~path:["muc"; "chatlogs"]) in
     if not (Sys.file_exists dir) then mkdir dir 0o755;
     dir
 
@@ -140,7 +141,7 @@ let process_log event (from:jid) xml env =
               write room 
                 (Lang.get_msg env.env_lang "muc_log_subject" [html_url subject])
         | MUC_message (msg_type, _, _) when msg_type = `Groupchat  ->
-            let body = Xml.get_cdata xml ~path:["body"] in
+            let body = get_cdata xml ~path:["body"] in
               if body <> "" then
                 write room (
                   if String.length body = 3 && body = "/me" then

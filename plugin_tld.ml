@@ -3,7 +3,7 @@
  *)
 
 open Dbm
-open Xml
+open Light_xml
 open Common
 open Hooks
 

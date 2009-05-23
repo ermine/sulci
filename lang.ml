@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Types
@@ -10,7 +10,7 @@ open Config
 open Common
 
 let ext = ".htbl"
-let deflang = try trim (Xml.get_attr_s Config.config 
+let deflang = try trim (get_attr_s Config.config 
   ~path:["lang"] "default") with Not_found -> "ru"
 
 module LangMap = Map.Make(Id)

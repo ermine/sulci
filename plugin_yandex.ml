@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Types
 open Hooks
@@ -18,14 +18,14 @@ let blogs text from xml env out =
       let resp = match data with
         | OK (_media, _charset, content) -> (
             try
-              let parsed = Xmlstring_netstring.parse_string content in
-              let item = Xml.get_tag parsed ["channel"; "item"] in
+              let parsed = parse_document content in
+              let item = get_tag parsed ["channel"; "item"] in
               let title = Dehtml.html2text 
-                (Xml.get_cdata item ~path:["title"]) in
-              let pubdate = Xml.get_cdata item ~path:["pubDate"] in
-              let link = Xml.get_cdata item ~path:["link"] in
+                (get_cdata item ~path:["title"]) in
+              let pubdate = get_cdata item ~path:["pubDate"] in
+              let link = get_cdata item ~path:["link"] in
               let descr = Dehtml.html2text 
-                (Xml.get_cdata item ~path:["description"]) in
+                (get_cdata item ~path:["description"]) in
                 response_tail := Some (link ^ "\n" ^ pubdate);
                 Printf.sprintf "%s\n%s" (trim title) (trim descr)
             with Not_found ->
@@ -44,7 +44,7 @@ let blogs text from xml env out =
     in
     let url = 
       "http://blogs.yandex.ru/search.rss?how=tm&rd=2&charset=UTF-8&numdoc=1&text=" ^
-        Netencoding.Url.encode (Xml.decode text) in
+        Netencoding.Url.encode (decode text) in
       Http_suck.http_get url callback
         
 let _ =

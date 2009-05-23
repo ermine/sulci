@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Types
@@ -17,8 +17,8 @@ open Sqlite_util
 let catchers = ref []
 let filters:
     (string, (Muc_types.muc_event -> Jid.jid ->
-                Xml.element -> Types.local_env ->
-                  (Xml.element -> unit) -> unit)) Hashtbl.t
+                element -> Types.local_env ->
+                  (element -> unit) -> unit)) Hashtbl.t
     = Hashtbl.create 5
 
 let register_catcher proc =
@@ -392,7 +392,7 @@ let register_room ?lang ?filter nick jid  =
     } !groupchats
     
 let file =
-  try trim (Xml.get_cdata Config.config ~path:["muc"; "db"])
+  try trim (get_cdata Config.config ~path:["muc"; "db"])
   with Not_found -> "sulci_muc.db"
 
 let table = "muc"

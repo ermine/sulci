@@ -2,6 +2,7 @@
  * (c) 2009 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
+open Light_xml
 open Types
 open Common
 open Hooks
@@ -19,7 +20,7 @@ let bf text from xml env out =
   if text = "" then
     make_msg out xml "brain fuck!"
   else
-    let code = Xml.decode text in
+    let code = decode text in
     let getchar () = int_of_char '.' in
     let buf = Buffer.create 1023 in
     let putchar ch = Buffer.add_char buf (Char.chr (ch land 0xFF)) in
@@ -28,7 +29,7 @@ let bf text from xml env out =
         Brainfuck.execute code putchar getchar;
         let result = Buffer.contents buf in
           if result <> "" then
-            make_msg out xml (encode (Xml.encode result))
+            make_msg out xml (encode (encode result))
       with
         | Brainfuck.Error msg ->
             make_msg out xml msg

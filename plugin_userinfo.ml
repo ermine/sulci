@@ -3,7 +3,7 @@
  *)
 
 open Unix
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Error

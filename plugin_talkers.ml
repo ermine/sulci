@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Types
@@ -20,7 +20,7 @@ let split_words text =
   Pcre.split ~pat:"[ \t\n]+" text
 
 let file =
-  try trim (Xml.get_attr_s Config.config  ~path:["plugins"; "talkers"] "db")
+  try trim (get_attr_s Config.config  ~path:["plugins"; "talkers"] "db")
   with Not_found -> "talkers.db"
 
 let table = "talkers"

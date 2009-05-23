@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Error
 open Types
@@ -53,7 +53,7 @@ let stats_sum serverlist result out =
     each_server server
       
 let _ =
-  if Xml.mem_xml Config.config ["sulci"; "plugins"; "globalstats"] "store" [] 
+  if mem_xml Config.config ["sulci"; "plugins"; "globalstats"] "store" [] 
   then (
     let serverlist = get_attr_s Config.config 
       ~path:["plugins"; "globalstats"; "store"] "serverlist" in

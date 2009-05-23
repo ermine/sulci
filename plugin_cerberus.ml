@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Jid
 open Types
@@ -251,12 +251,12 @@ and skip = lexer
       
 let notify_jids =
   let jids = try 
-    Xml.get_subels ~path:["plugins"; "cerberus"] ~tag:"notify" Config.config 
+    get_subels ~path:["plugins"; "cerberus"] ~tag:"notify" Config.config 
   with _ -> [] in
-    List.map (fun j -> Xml.get_attr_s j "jid") jids
+    List.map (fun j -> get_attr_s j "jid") jids
       
 let do_kick =
-  try if Xml.get_attr_s Config.config ~path:["plugins"; "cerberus"] "kick" =
+  try if get_attr_s Config.config ~path:["plugins"; "cerberus"] "kick" =
     "true" then true else false
   with _ -> true
     

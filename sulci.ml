@@ -2,6 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
+open Light_xml
 open Xmpp
 open Error
 open Types
@@ -12,32 +13,32 @@ open Lang
 
 let _ = 
   let server = try 
-    trim (Xml.get_cdata config ~path:["jabber"; "server"]) 
+    trim (get_cdata config ~path:["jabber"; "server"]) 
   with Not_found ->
     Printf.eprintf "Cannot find servername in config file";
     flush stdout;
     Pervasives.exit 127
   in
   let port = try 
-    int_of_string (trim (Xml.get_cdata config ~path:["jabber"; "port"]))
+    int_of_string (trim (get_cdata config ~path:["jabber"; "port"]))
   with Not_found -> 5222 
   in
   let username = try
-    trim (Xml.get_cdata config ~path:["jabber"; "user"]) 
+    trim (get_cdata config ~path:["jabber"; "user"]) 
   with Not_found ->
     Printf.eprintf "Cannot find username in config file";
     flush stdout;
     Pervasives.exit 127
   in
   let password = try
-    trim (Xml.get_cdata config ~path:["jabber"; "password"])
+    trim (get_cdata config ~path:["jabber"; "password"])
   with Not_found ->
     Printf.eprintf "Cannot find password in config file";
     flush stdout;
     Pervasives.exit 127
   in
   let resource = try
-    trim (Xml.get_cdata config ~path:["jabber"; "resource"])
+    trim (get_cdata config ~path:["jabber"; "resource"])
   with Not_found ->
     Printf.eprintf "Cannot find resource name in config file";
     flush stdout;
@@ -71,12 +72,12 @@ let _ =
   in
     
   let reconnect_interval = 
-    try int_of_string (trim (Xml.get_attr_s Config.config
+    try int_of_string (trim (get_attr_s Config.config
                                ~path:["reconnect"] "interval"))
     with Not_found -> 0
   in
   let count =
-    try int_of_string (trim (Xml.get_attr_s Config.config
+    try int_of_string (trim (get_attr_s Config.config
                                ~path:["reconnect"] "count"))
     with Not_found -> 0
   in

@@ -5,7 +5,7 @@
 open Nethtml
 open Netconversion
 open Pcre
-open Xml
+open Light_xml
 open Types
 open Common
 open Hooks
@@ -157,7 +157,7 @@ let translate_text sl tl text xml env out =
   in
   let url = "http://translate.google.com/translate_t" in
   let data = Printf.sprintf "langpair=%s|%s&ie=UTF8&oe=UTF8&text=%s"
-    sl tl (Netencoding.Url.encode (Xml.decode text))
+    sl tl (Netencoding.Url.encode (decode text))
   in
     Http_suck.http_post url [] data callback
       

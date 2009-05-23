@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Light_xml
 open Xmpp
 open Types
 open Hooks
@@ -24,7 +24,7 @@ open Http_suck
 *)
 
 let google_key = 
-  try trim (Xml.get_cdata Config.config 
+  try trim (get_cdata Config.config 
               ~path:["plugins"; "google"; "key"]) with Not_found ->
     Printf.eprintf "Cannot find an google key in config file\n";
     Pervasives.exit 127
@@ -146,9 +146,9 @@ let gspell text from xml env out =
       let resp = match data with
         | OK (_media, _charset, content) -> (
             try
-              let parsed = Xmlstring.parse_string content in
+              let parsed = parse_document content in
               let response = 
-                Xml.get_cdata parsed 
+                get_cdata parsed 
                   ~path:["SOAP-ENV:Body"; 
                          "ns1:doSpellingSuggestionResponse";
                          "return"] in
@@ -183,9 +183,9 @@ let google ?(start="0") ?(items="1") text from xml env out =
         match data with
           | OK (_media, _charset, content) -> (
               try
-                let parsed = Xmlstring.parse_string content in
+                let parsed = parse_document content in
                 let result =
-                  Xml.get_tag parsed ["SOAP-ENV:Body"; 
+                  get_tag parsed ["SOAP-ENV:Body"; 
                                       "ns1:doGoogleSearchResponse";
                                       "return";
                                       "resultElements"] in

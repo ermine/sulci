@@ -3,6 +3,7 @@
 *)
 
 open Pcre
+open Light_xml
 open Types
 open Config
 open Common
@@ -11,12 +12,12 @@ open Hooks
 exception DictError of string
 
 let dictd_server = 
-  try trim (Xml.get_cdata Config.config ~path:["plugins"; "dict"; "server"])
+  try trim (get_cdata Config.config ~path:["plugins"; "dict"; "server"])
   with _ -> "localhost"
 
 let dictd_port = 
   try int_of_string 
-    (trim (Xml.get_attr_s Config.config ~path:["plugins"; "dict"; "server"] 
+    (trim (get_attr_s Config.config ~path:["plugins"; "dict"; "server"] 
              "port"))
   with _ -> 2628
     
@@ -155,7 +156,7 @@ let dict text from xml env out =
           process_cmd_dict text
         with DictError error -> error
         in 
-          make_msg out xml (Xml.encode response)
+          make_msg out xml (encode response)
       in
         ignore (Thread.create proc ())
     else 
@@ -168,7 +169,7 @@ let dict text from xml env out =
             process_dict db word env
           with (DictError error) -> error
           in
-            make_msg out xml (Xml.encode response)
+            make_msg out xml (encode response)
         in
           ignore (Thread.create proc ())
       with Not_found ->
@@ -180,7 +181,7 @@ let dict text from xml env out =
               process_dict "*" word env
             with (DictError error) -> error
             in
-              make_msg out xml (Xml.encode response)
+              make_msg out xml (encode response)
           in
             ignore (Thread.create proc ())
         with Not_found ->

@@ -8,7 +8,7 @@
 *)
 
 open Pcre
-open Xml
+open Light_xml
 open Types
 open Common
 open Hooks
@@ -50,7 +50,7 @@ let do_list =
 let url lang text =
   Printf.sprintf
     "http://m.translate.ru/translator/result/?dirCode=%s&text=%s"
-    lang (Netencoding.Url.encode (Xml.decode text))
+    lang (Netencoding.Url.encode (decode text))
     
 (* command: tr er text *)
 let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8] "^([a-zA-Z]{2,2})\\s+(.+)"
@@ -79,9 +79,10 @@ let do_request language text xml env out =
     let resp = match data with
       | OK (_media, _charset, content) -> (
           try
-            let wml = Xmlstring.parse_string content in
+            let wml = parse_document content in
               match process_doc (get_subels wml) with
-                | None -> Lang.get_msg env.env_lang "plugin_translate_not_parsed" []
+                | None -> Lang.get_msg env.env_lang
+                    "plugin_translate_not_parsed" []
                 | Some r -> r
           with exc ->
             Lang.get_msg env.env_lang "plugin_translate_not_parsed" []

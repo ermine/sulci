@@ -3,6 +3,7 @@
  *)
 
 open Unix
+open Light_xml
 open Types
 open Common
 open Hooks
@@ -46,7 +47,7 @@ let hostip text from xml env out =
                         else
                           content
                       in
-                        "\n" ^ Xml.encode resp
+                        "\n" ^ encode resp
                     with exn ->
                       Lang.get_msg env.env_lang "conversation_trouble" []
                   )
