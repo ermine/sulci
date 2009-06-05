@@ -119,7 +119,7 @@ let process_result doc =
                   | None -> aux_find xs
                   | Some v -> Some v
               )
-          | _ ->
+          | Data _ ->
               aux_find xs
   in
     aux_find doc
@@ -127,7 +127,7 @@ let process_result doc =
 let translate_text sl tl text xml env out =
   let callback data =
     let resp = match data with
-      | OK (media, charset, content) -> (
+      | OK (_media, charset, content) -> (
           try
             let enc = 
               match charset with
@@ -147,10 +147,10 @@ let translate_text sl tl text xml env out =
               match process_result doc with
                 | None -> ""
                 | Some v -> v
-          with exn ->
+          with _exn ->
             Lang.get_msg env.env_lang "plugin_google_translate_not_parsed" []
         )
-      | Exception exn ->
+      | Exception _exn ->
           Lang.get_msg env.env_lang "plugin_google_translate_server_error" []
     in
       make_msg out xml resp
@@ -167,11 +167,11 @@ let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8]
   
 let rm_newlines = Pcre.regexp "[\n\r]"
   
-let translate text from xml env out =
+let translate text _from xml env out =
   match trim(text) with
     | "list" ->
         make_msg out xml list_languages
-    | other ->
+    | _ ->
         try
           let res = exec ~rex:cmd text in
           let lg1 = get_substring res 1 in

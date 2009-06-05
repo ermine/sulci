@@ -43,11 +43,16 @@ let http_thread() =
              | Unixqueue.Extra (HTTP_Job (call, f_done)) ->
                  (try
                     pipeline # add_with_callback call f_done
-                  with exn ->
+                  with _exn ->
                     f_done call
                  )
-             | _ ->
-                 raise Equeue.Reject  (* The event is not for us *)
+             | Unixqueue.Extra _
+             | Unixqueue.Timeout _
+             | Unixqueue.Out_of_band _
+             |Unixqueue.Output_readiness _
+             | Unixqueue.Input_arrived _
+             | Unixqueue.Signal ->
+                raise Equeue.Reject  (* The event is not for us *)
         );
       Unixqueue.run esys
 

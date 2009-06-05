@@ -113,9 +113,9 @@ let process_dict db word env =
           (Printf.sprintf "DEFINE %s %s\r\n" db word);
         flush out_dict;
         (match get_status in_dict with
-           | "550", err -> 
+           | "550", _err -> 
                Lang.get_msg env.env_lang "plugin_dict_db_not_found" []
-           | "552", err -> 
+           | "552", _err -> 
                Lang.get_msg env.env_lang "plugin_dict_word_not_found" []
            | "150", rsp -> 
                let rec cycle acc =
@@ -146,7 +146,7 @@ let process_dict db word env =
 let rex1 = Pcre.regexp ~iflags:(cflags [`UTF8]) "([^\\s]+)[\\s]*$"
 let rex2 = Pcre.regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
   
-let dict text from xml env out =
+let dict text _from xml env out =
   if text = "" then
     make_msg out xml (Lang.get_msg env.env_lang "plugin_dict_invalid_syntax" [])
   else
@@ -156,7 +156,7 @@ let dict text from xml env out =
           process_cmd_dict text
         with DictError error -> error
         in 
-          make_msg out xml (encode response)
+          make_msg out xml response
       in
         ignore (Thread.create proc ())
     else 
@@ -169,7 +169,7 @@ let dict text from xml env out =
             process_dict db word env
           with (DictError error) -> error
           in
-            make_msg out xml (encode response)
+            make_msg out xml response
         in
           ignore (Thread.create proc ())
       with Not_found ->
@@ -181,7 +181,7 @@ let dict text from xml env out =
               process_dict "*" word env
             with (DictError error) -> error
             in
-              make_msg out xml (encode response)
+              make_msg out xml response
           in
             ignore (Thread.create proc ())
         with Not_found ->

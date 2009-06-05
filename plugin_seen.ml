@@ -78,7 +78,7 @@ let add_greet text from xml env out =
   )
   else ()
     
-let catch_seen event from xml env out =
+let catch_seen event from _xml _env out =
   match event with
     | MUC_join item -> (
         let room_s = string_of_jid (bare_jid from) in
@@ -135,7 +135,13 @@ let catch_seen event from xml env out =
             last (escape action) (escape reason) in
           ignore (insert_or_update file db sql1 sql2 sql3)
       )
-    | _ -> ()
+    | MUC_topic _
+    | MUC_message _
+    | MUC_history
+    | MUC_presence _
+    | MUC_change_nick _
+    | MUC_other ->
+        ()
         
 let find_nick (jid:string) nicks =
   let result = ref [] in
@@ -148,7 +154,7 @@ let find_nick (jid:string) nicks =
                ) nicks;
     if !result = [] then raise Not_found else !result
       
-let verify_nick nick jid nicks xml env =
+let verify_nick nick jid nicks _xml env =
   try
     let item = Nicks.find nick nicks in
       match item.jid with
@@ -195,7 +201,7 @@ let seen text from xml env out =
                 with Not_found ->
                   let stamp = Int64.to_float (int64_of_data r.(1)) in
                   let diff = 
-                    Lang.expand_time env.env_lang "seen"
+                    Lang.expand_time ~lang:env.env_lang "seen"
                       (int_of_float 
                          (Unix.gettimeofday () -. stamp)) in
                     if string_of_data r.(3) = "" then

@@ -23,13 +23,13 @@ let curr = ref []
 let list_curr = ref ""
 
 let parse_content content =
-  let parsed = Xmlstring_netstring.parse_string content in
+  let parsed = Conv_xml.parse_document content in
     if match_xml parsed "ValCurs" [] then
       let date = get_attr_s parsed "Date" in
       let vals = get_subels parsed in
       let  z = List.find_all (function 
                                 | Xmlelement _ -> true
-                                | _ -> false
+                                | Xmlcdata _ -> false
                              ) vals in
       let r = 
         List.map (function v ->
@@ -73,7 +73,7 @@ let load_curr () =
             log#error "Plugin_currency: Unable to parse data: %s"
               (Printexc.to_string exn)
         )
-      | Exception exn ->
+      | Exception _exn ->
           ()
   in
     Http_suck.http_get url callback
@@ -97,7 +97,7 @@ let _ =
 let rex = Pcre.regexp 
   "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
   
-let currency text from xml env out =
+let currency text _from xml env out =
   if text = "list" then 
     make_msg out xml !list_curr
   else if text = "refresh" then (

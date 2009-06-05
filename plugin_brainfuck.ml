@@ -16,7 +16,7 @@ let encode str =
                 ) str;
     Buffer.contents buf
   
-let bf text from xml env out =
+let bf text _from xml _env out =
   if text = "" then
     make_msg out xml "brain fuck!"
   else

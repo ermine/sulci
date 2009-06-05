@@ -157,9 +157,10 @@ let make_msg out xml ?response_tail response =
           let msgs = split_long_message !max_message_length response tail in
             List.iter (fun m ->
                          out (make_element "message"
-                                (match other with
-                                   | "" -> ["to", from.string]
-                                   | o -> ["to", from.string; "type", other])
+                                (if other = "" then
+                                   ["to", from.string]
+                                 else
+                                   ["to", from.string; "type", other])
                                 [make_simple_cdata "body" m])) msgs
 
 (* temp code *)

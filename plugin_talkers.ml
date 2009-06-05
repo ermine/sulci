@@ -37,7 +37,7 @@ CREATE INDEX words_idx ON %s (words)"
          table table table);
     db
       
-let talkers event from xml env out =
+let talkers event from _xml _env _out =
   match event with
     | MUC_message (msg_type, nick, text) ->
         if msg_type = `Groupchat then
@@ -78,7 +78,13 @@ let talkers event from xml env out =
                       room_s words me 1
                   in
                     ignore (insert_or_update file db sql1 sql2 sql3)
-    | _ ->
+    | MUC_presence _
+    | MUC_topic _
+    | MUC_history
+    | MUC_join _
+    | MUC_change_nick _
+    | MUC_leave _
+    | MUC_other ->
         ()
           
 let cmd_talkers text from xml env out =
@@ -92,19 +98,17 @@ let cmd_talkers text from xml env out =
       (if text = "" then " LIMIT 10" else "")
   in
   let rec aux_step acc stmt =
-    match step stmt with
-      | Rc.ROW ->
+    match get_row stmt with
+      | Some row ->
           aux_step 
-            ((Data.to_string (column stmt 0),
-              Data.to_string (column stmt 1),
-              Data.to_string (column stmt 2),
-              Data.to_string (column stmt 3)) :: acc) stmt
-      | Rc.DONE ->
+            ((Data.to_string row.(0),
+              Data.to_string row.(1),
+              Data.to_string row.(2),
+              Data.to_string row.(3)) :: acc) stmt
+      | None ->
           if finalize stmt <> Rc.OK then
             exit_with_rc file db sql;
           List.rev acc
-      | rc ->
-          exit_with_rc file db sql
   in
   let data =
     try

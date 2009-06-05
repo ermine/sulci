@@ -105,7 +105,7 @@ let message items =
               (get_cdata item ~path:["URL"])
               (let t = text item "cachedSize" in 
                  if t = "" then "" else " - " ^ t)
-        | _ -> ""
+        | Xmlcdata _ -> ""
       in
         cycle (List.tl lst) (acc ^ chunked)
   in
@@ -122,7 +122,7 @@ let one_message item =
     
 let xmldecl = "<?xml version='1.0' encoding='UTF-8' ?>\r\n"
   
-let gspell text from xml env out =
+let gspell text _from xml env out =
   if text = "" then
     make_msg out xml (Lang.get_msg env.env_lang
                         "plugin_google_invalid_syntax" [])
@@ -173,7 +173,7 @@ let gspell text from xml env out =
         ["Content-Type", "text/xml; charset=utf-8"] 
         (xmldecl ^ query) callback
         
-let google ?(start="0") ?(items="1") text from xml env out =
+let google ?(start="0") ?(items="1") text _from xml env out =
   if text = "" then
     make_msg out xml (Lang.get_msg env.env_lang
                         "plugin_google_invalid_syntax" [])

@@ -93,7 +93,7 @@ let _ =
         in
           cycle 0
       in
-        fun text from xml lang out ->
+        fun text _from xml _env out ->
           if text = "" then
             make_msg out xml "гы! Что бум переводить?"
           else

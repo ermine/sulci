@@ -15,10 +15,10 @@ open Iq
 let idle =
   let print_idle env xml =
     let seconds = get_attr_s xml ~path:["query"] "seconds" in
-      Lang.expand_time env.env_lang "idle"  (int_of_string seconds)
+      Lang.expand_time ~lang:env.env_lang "idle"  (int_of_string seconds)
   in
   let me =
-    fun text from xml env out ->
+    fun _text _from xml env out ->
       make_msg out xml (Lang.get_msg env.env_lang "plugin_userinfo_idle_me" [])
   in
   let success text entity env xml =
@@ -31,15 +31,16 @@ let idle =
       | EntityUser ->
           Lang.get_msg env.env_lang "plugin_userinfo_idle_somebody" 
             [text; print_idle env xml]
-      | _ ->
+      | EntityHost ->
           raise BadEntity
   in
     simple_query_entity ~me success "jabber:iq:last"
       
 let uptime =
-  let success text entity env xml =
+  let success text _entity env xml =
     let seconds = get_attr_s xml ~path:["query"] "seconds" in
-    let last = Lang.expand_time env.env_lang "uptime" (int_of_string seconds) in
+    let last = Lang.expand_time ~lang:env.env_lang
+      "uptime" (int_of_string seconds) in
       Lang.get_msg env.env_lang "plugin_userinfo_uptime" [text; last]
   in
     simple_query_entity success "jabber:iq:last"
@@ -56,7 +57,7 @@ let version =
       Lang.get_msg env.env_lang msgid (arg @ [client; version; os])
   in
   let me =
-    fun text from xml env out ->
+    fun _text _from xml _env out ->
       make_msg out xml 
         (Printf.sprintf "%s %s - %s" Version.name Version.version Jeps.os)
   in
@@ -99,7 +100,7 @@ let time =
       Lang.get_msg env.env_lang msgid (arg @ [resp])
   in
   let me =
-    fun text from xml env out ->
+    fun _text _from xml env out ->
       make_msg out xml 
         (Lang.get_msg env.env_lang "plugin_userinfo_time_me"
            [Strftime.strftime ~tm:(localtime (gettimeofday ())) 
@@ -122,7 +123,7 @@ let time =
     simple_query_entity ~me success "jabber:iq:time"
       
 let stats =
-  let success text entity env xml =
+  let success text _entity _env xml =
     let stats_data = get_subels xml ~path:["query"] ~tag:"stat" in
     let data = List.map (fun z -> get_attr_s z "name",     
                            try 

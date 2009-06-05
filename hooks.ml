@@ -121,8 +121,8 @@ let process_message from xml env out =
     else
       ()
 
-let process_presence from xml env out =
-    ()
+let process_presence _from _xml _env _out =
+  ()
         
 let default_check_access (jid:jid) classname =
   List.exists (fun (jid', name) ->

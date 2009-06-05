@@ -31,7 +31,7 @@ let roulette text from xml env out =
               let id = new_id () in
               let reason = 
                 Lang.get_msg env.env_lang "plugin_roulette_kick_reason" [] in
-              let proc t f x o = 
+              let proc t _f x o = 
                 match t with
                   | `Result ->
                       if safe_get_attr_s xml "type" = "groupchat" then

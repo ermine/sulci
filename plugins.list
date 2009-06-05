@@ -1,7 +1,7 @@
 plugin_admin
 plugin_calc
 plugin_cerberus
-#plugin_currency
+plugin_currency
 plugin_dict
 plugin_globalstats
 plugin_google
@@ -20,5 +20,5 @@ plugin_userinfo
 plugin_vcard
 plugin_vocabulary
 plugin_weather
-#plugin_yandex
+plugin_yandex
 plugin_brainfuck

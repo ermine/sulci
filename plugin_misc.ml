@@ -7,7 +7,7 @@ open Types
 open Common
 open Hooks
 
-let dns text from xml env out =
+let dns text _from xml env out =
   if text = "" then
     make_msg out xml
       (Lang.get_msg env.env_lang "plugin_misc_dns_invalid_syntax" [])

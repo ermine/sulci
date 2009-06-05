@@ -1,17 +1,16 @@
 <*.ml>: rectypes, use_pcre
-#<config.ml>: use_getopt
-<sulci.ml>: use_plugins, use_lang
+<sulci.ml>: use_lang, use_plugins
 <sulci.{byte,native}>: thread, use_unix, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm
 
-<find_url.ml>: camlp4o, use_ulex.syntax, use_ulex
+<find_url.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
 <http_suck.ml>: thread, use_equeue, use_netclient, use_netstring
 <sqlite_util.ml>: use_sqlite3
 
-<*_ulex.ml>: camlp4o, use_ulex.syntax, use_ulex
+<*_ulex.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
 <muc.ml>: use_sqlite3
 <plugin_brainfuck.ml>: thread
 <plugin_calc.ml>: use_ulex
-<plugin_cerberus.ml>: camlp4o, use_ulex.syntax, use_ulex
+<plugin_cerberus.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
 <plugin_dict.ml>: thread
 <plugin_google.ml>: use_dehtml
 <plugin_google_translate.ml>: use_netstring

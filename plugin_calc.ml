@@ -7,7 +7,7 @@ open Hooks
 open Common
 open Math
 
-let pcalc text from xml env out =
+let pcalc text _from xml env out =
   if text <> "" then
     let reply = 
       try
@@ -27,7 +27,7 @@ let pcalc text from xml env out =
   else
     make_msg out xml (Lang.get_msg env.env_lang "plugin_calc_empty_command" [])
       
-let icalc text from xml env out =
+let icalc text _from xml env out =
   if text <> "" then
     let reply = 
       try
@@ -45,9 +45,9 @@ let icalc text from xml env out =
             Lang.get_msg env.env_lang "plugin_calc_cannot_float_fact" []
         | MathNegNumber ->
             Lang.get_msg env.env_lang "plugin_calc_negative_number" []
-        | Failure err ->
+        | Failure _err ->
             Lang.get_msg env.env_lang "plugin_calc_divide_by_zero" []
-        | exn ->
+        | _exn ->
             Lang.get_msg env.env_lang "plugin_calc_not_parsed" []
     in
       make_msg out xml reply

@@ -26,7 +26,7 @@ let msg ?(is_groupchat=(fun _ -> false))  text from xml env out =
   else
     make_msg out xml ":-P"
       
-let quit text from xml env out =
+let quit _text from xml env out =
   if env.env_check_access from "admin" then (
     make_msg out xml (Lang.get_msg env.env_lang "plugin_admin_quit_bye" []);
     Hooks.quit out

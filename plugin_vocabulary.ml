@@ -110,7 +110,7 @@ let dfn ?(get_real_jid=get_real_jid) text from xml env out =
                   (Lang.get_msg env.env_lang
                      "plugin_vocabulary_nothing_to_remove" [])
 
-let wtf text from xml env out =
+let wtf text _from xml env out =
   if text = "" then
     make_msg out xml 
       (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
@@ -134,19 +134,18 @@ let wtf text from xml env out =
               
 let output_records sql xml env out =
   let rec aux_acc i acc stmt =
-    match step stmt with
-      | Rc.ROW ->
+    match get_row stmt with
+      | Some row ->
           let str = Printf.sprintf "%d) %s"
             i
             (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
-               [Data.to_string (column stmt 0);
-                Data.to_string (column stmt 1);
-                Data.to_string (column stmt 2)])
+               [Data.to_string row.(0);
+                Data.to_string row.(1);
+                Data.to_string row.(2)])
           in
             aux_acc (i+1) (str :: acc) stmt
-      | Rc.DONE -> 
+      | None ->
           if acc = [] then "" else String.concat "\n" (List.rev acc)
-      | _ -> exit_with_rc file db sql
   in
     try
       let stmt = prepare db sql in
@@ -159,7 +158,7 @@ let output_records sql xml env out =
     with Sqlite3.Error _ ->
       exit_with_rc file db sql
 
-let wtfall text from xml env out =
+let wtfall text _from xml env out =
   if text = "" then
     make_msg out xml 
       (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
@@ -176,7 +175,7 @@ let wtfall text from xml env out =
     in
       output_records sql xml env out
       
-let wtfrand text from xml env out =
+let wtfrand text _from xml env out =
   let key = trim(text) in
     if key = "" then
       let rand = string_of_int (Random.int (!total)) in
@@ -216,7 +215,7 @@ let wtfrand text from xml env out =
               make_msg out xml 
                 (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
                 
-let wtfcount text from xml env out =
+let wtfcount text _from xml env out =
   let key = trim(text) in
   let sql =
     if key = "" then
@@ -238,7 +237,7 @@ let wtfcount text from xml env out =
       make_msg out xml (Lang.get_msg env.env_lang
                           "plugin_vocabulary_db_is_empty" [])
         
-let wtffind text from xml env out =
+let wtffind text _from xml env out =
   if text = "" then
     make_msg out xml 
       (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])

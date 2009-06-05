@@ -63,7 +63,13 @@ let get_one_row file db sql =
         exit_with_rc file db sql;
       res
   with Sqlite3.Error _ -> exit_with_rc file db sql
-    
+
+let get_row stmt =
+  match step stmt with
+    | Rc.ROW -> Some (row_data stmt)
+    | Rc.DONE -> None
+    | _ -> raise (Sqlite3.Error "")
+
 let insert_or_update file db sql1 sql2 sql3 =
   let found =
     match get_one_row file db sql1 with
@@ -87,13 +93,24 @@ open Sqlite3.Data
       
 let int64_of_data = function
   | INT i -> i
-  | _ -> raise (Invalid_argument "int64_of_data")
+  | NULL
+  | NONE
+  | FLOAT _
+  | TEXT _
+  | BLOB _ -> raise (Invalid_argument "int64_of_data")
 
 let float_of_data = function
   | FLOAT f -> f
-  | _ -> raise (Invalid_argument "float_of_data")
+  | NULL
+  | NONE
+  | INT _
+  | TEXT _
+  | BLOB _ -> raise (Invalid_argument "float_of_data")
 
 let string_of_data = function
   | TEXT t -> t
   | BLOB t -> t
-  | _ -> raise (Invalid_argument "string_of_data")
+  | NULL
+  | NONE
+  | FLOAT _
+  | INT _ -> raise (Invalid_argument "string_of_data")

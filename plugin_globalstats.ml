@@ -16,7 +16,7 @@ let stats_sum serverlist result out =
   let servers = ref 0 in
   let sin = open_in serverlist in
   let rec each_server server =
-    let proc t f x o =
+    let proc t _f x _o =
       (match t with
          | `Result ->
              let stats = get_subels ~path:["query"] ~tag:"stat" x in

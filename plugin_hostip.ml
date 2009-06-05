@@ -12,7 +12,7 @@ open Netconversion
 
 let rex = Pcre.regexp "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
 
-let hostip text from xml env out =
+let hostip text _from xml env out =
   let ip =
     try
       let h = gethostbyname text in
@@ -47,11 +47,11 @@ let hostip text from xml env out =
                         else
                           content
                       in
-                        "\n" ^ encode resp
-                    with exn ->
+                        "\n" ^ resp
+                    with _exn ->
                       Lang.get_msg env.env_lang "conversation_trouble" []
                   )
-                | _ ->
+                | Exception _ ->
                     Lang.get_msg env.env_lang "plugin_hostip_failed" []
             in
               make_msg out xml response

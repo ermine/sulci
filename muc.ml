@@ -55,7 +55,7 @@ let is_echo from =
   let room_env = get_room_env from in
     room_env.mynick = from.lresource
 
-let process_presence (from:jid) xml out =
+let process_presence (from:jid) xml _out =
   let lnode = from.lresource in
   let room = from.lnode, from.ldomain in
   let room_env = get_room_env from in
@@ -220,7 +220,7 @@ let split_nick_body room_env body =
   in
     cycle room_env.nicks
       
-let process_message (from:jid) xml out = 
+let process_message (from:jid) xml _out = 
   if (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) then
     MUC_history
   else
@@ -263,7 +263,13 @@ let process_plugins event from xml env out =
             () (* callback? *)
         else
           () (* echo *)
-    | _ ->
+    | MUC_presence _
+    | MUC_topic _
+    | MUC_history
+    | MUC_other
+    | MUC_join _
+    | MUC_change_nick _
+    | MUC_leave _ ->
         do_catcher event from xml env out
 
 let process_event event from xml env out =
@@ -419,24 +425,24 @@ let load_rooms out =
   let sql = Printf.sprintf "SELECT room, nick, lang, chatlog, filter FROM %s"
     table in
   let rec iter_room stmt =
-    match step stmt with
-      | Rc.ROW ->
-          let room = Jid.jid_of_string (Data.to_string (column stmt 0)) in
-          let mynick = Data.to_string (column stmt 1) in
-          let lang = Data.to_string (column stmt 2) in
+    match get_row stmt with
+      | Some row ->
+          let room = Jid.jid_of_string (Data.to_string row.(0)) in
+          let mynick = Data.to_string row.(1) in
+          let lang = Data.to_string row.(2) in
           let chatlog =
-            match Data.to_string (column stmt 3) with
+            match Data.to_string row.(3) with
               | "T" -> true
               | _ -> false
           in
-          let filter = Data.to_string (column stmt 4) in
+          let filter = Data.to_string row.(4) in
             if chatlog then
               Muc_log.add_chatlog room;
             register_room ~lang ~filter mynick room;
             out (join_room mynick (room.lnode, room.ldomain)); 
             iter_room stmt
-      | Rc.DONE -> ()
-      | _ -> exit_with_rc file db sql
+      | None ->
+          ()
   in
     try
       let stmt = prepare db sql in

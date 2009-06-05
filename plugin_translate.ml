@@ -69,7 +69,7 @@ let process_doc wml =
                   | None -> aux_find xs
                   | Some r -> Some r
               )
-          | _ ->
+          | Xmlcdata _ ->
               aux_find xs
   in
     aux_find wml
@@ -84,21 +84,21 @@ let do_request language text xml env out =
                 | None -> Lang.get_msg env.env_lang
                     "plugin_translate_not_parsed" []
                 | Some r -> r
-          with exc ->
+          with _exc ->
             Lang.get_msg env.env_lang "plugin_translate_not_parsed" []
         )
-      | Exception exn ->
+      | Exception _exn ->
           Lang.get_msg env.env_lang "plugin_translate_server_error" []
     in
       make_msg out xml resp
   in
     Http_suck.http_get (url language text) callback
       
-let translate text from xml env out =
+let translate text _from xml env out =
   match trim(text) with
     | "list" ->
         do_list xml out
-    | other ->
+    | _ ->
         try
           let res = exec ~rex:cmd ~pos:0 text in
           let language = String.lowercase (get_substring res 1)

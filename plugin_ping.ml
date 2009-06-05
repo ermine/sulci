@@ -11,7 +11,7 @@ open Hooks
 open Iq
 
 let ping text from xml env out =
-  let success starttime text entity env xml =
+  let success starttime text entity env _xml =
     let diff = Lang.float_seconds env.env_lang "ping" 
       (Unix.gettimeofday () -. starttime) in
       match entity with
@@ -19,7 +19,8 @@ let ping text from xml env out =
             Lang.get_msg env.env_lang "plugin_ping_pong_from_me" [diff]
         | EntityYou ->
             Lang.get_msg env.env_lang "plugin_ping_pong_from_you" [diff]
-        | _ ->
+        | EntityHost
+        | EntityUser ->
             Lang.get_msg env.env_lang "plugin_ping_pong_from_somebody"
               [text; diff]
   in

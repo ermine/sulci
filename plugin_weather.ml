@@ -85,7 +85,7 @@ let parse_weather content =
       
 let r = Pcre.regexp "[a-zA-Z]{4}"
   
-let weather text from xml env out =
+let weather text _from xml env out =
   if pmatch ~rex:r text then
     let callback data =
       let resp = match data with

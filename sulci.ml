@@ -49,17 +49,17 @@ let _ =
     with Not_found -> None
   in
   let run () =
-    let jid, out, next_xml = 
+    let _jid, out, next_xml = 
       Xmpp.client ~username ~password ~resource ~server ~port 
         ?rawxml_log () in
       
       log#info "Connected to %s!" server;
       
       Sys.set_signal Sys.sigint
-        (Sys.Signal_handle (function x -> Hooks.quit out));
+        (Sys.Signal_handle (function _x -> Hooks.quit out));
       
       Sys.set_signal Sys.sigterm
-        (Sys.Signal_handle (function x -> Hooks.quit out));
+        (Sys.Signal_handle (function _x -> Hooks.quit out));
       
       (* workaround for wildfire *)
       out (make_presence ());

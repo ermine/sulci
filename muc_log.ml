@@ -132,6 +132,7 @@ let process_log event (from:jid) xml env =
     if LogMap.mem room !logmap then
       match event with
         | MUC_history -> ()
+
         | MUC_topic subject ->
             if from.resource <> "" then
               write room 
@@ -140,23 +141,29 @@ let process_log event (from:jid) xml env =
             else
               write room 
                 (Lang.get_msg env.env_lang "muc_log_subject" [html_url subject])
-        | MUC_message (msg_type, _, _) when msg_type = `Groupchat  ->
-            let body = get_cdata xml ~path:["body"] in
-              if body <> "" then
-                write room (
-                  if String.length body = 3 && body = "/me" then
-                    Printf.sprintf "* %s" from.resource
-                  else if String.length body > 3 && 
-                    String.sub body 0 4 = "/me " then
-                      Printf.sprintf "* %s %s" from.resource
-                        (html_url (string_after body 4))
-                  else
-                    make_message from.resource body)
-        | MUC_join item ->
+
+        | MUC_message (msg_type, _, _) ->
+            if msg_type = `Groupchat  then
+              let body = get_cdata xml ~path:["body"] in
+                if body <> "" then
+                  write room (
+                    if String.length body = 3 && body = "/me" then
+                      Printf.sprintf "* %s" from.resource
+                    else if String.length body > 3 && 
+                      String.sub body 0 4 = "/me " then
+                        Printf.sprintf "* %s %s" from.resource
+                          (html_url (string_after body 4))
+                    else
+                      make_message from.resource body)
+                else
+                  ()
+
+        | MUC_join _item ->
             write room
               ("-- " ^ Lang.get_msg env.env_lang "muc_log_join" 
                  [from.resource])
-        | MUC_leave (me, t, reason, item) ->
+
+        | MUC_leave (me, t, reason, _item) ->
             write room
               ("-- " ^
                  (if reason = "" then
@@ -182,18 +189,21 @@ let process_log event (from:jid) xml env =
                 close_out lf;
                 logmap := LogMap.remove room !logmap
                   
-        | MUC_change_nick (newnick, item) ->
+        | MUC_change_nick (newnick, _item) ->
             write room
               ("-- " ^
                  (Lang.get_msg env.env_lang 
                     "muc_log_change_nick" [from.resource; newnick]))
+
+        | MUC_presence _item ->
+            ()
               (*
-                | MUC_presence (room, user, item) ->
               (* Lang.get_msg env.env_lang "muc_log_presence" 
                 [user; item.show; item.status] *)
                 write room
               (Printf.sprintf "-- %s [%s] %s" user item.show 
                 html_url item.status)
               *)
-        | _ -> ()
-            
+
+        | MUC_other ->
+            ()

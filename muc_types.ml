@@ -30,7 +30,7 @@ struct
     let rec aux_add tail acc =
       match tail with
         | [] -> List.rev ((nick, item) :: acc)
-        | (nick1, item1) as x :: xs ->
+        | (nick1, _item1) as x :: xs ->
             if String.length nick1 > String.length nick then
               aux_add xs (x :: acc)
             else if compare nick nick1 = 0 then

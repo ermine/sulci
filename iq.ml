@@ -20,7 +20,9 @@ let process_error xml env entity from text =
              | EntityHost ->
                  Lang.get_msg env.env_lang
                    "error_server_feature_not_implemented" [text]
-             | _ ->
+             | EntityMe
+             | EntityYou
+             | EntityUser ->
                  Lang.get_msg env.env_lang
                    "error_client_feature_not_implemented" [text])
       | `ERR_REMOTE_SERVER_TIMEOUT ->
@@ -35,7 +37,8 @@ let process_error xml env entity from text =
                    [text]
              | EntityYou ->
                  Lang.get_msg env.env_lang"error_your_service_unavailable" []
-             | _ ->
+             | EntityMe
+             | EntityUser ->
                  Lang.get_msg env.env_lang "error_client_service_unavailable" 
                    [text]
           )
@@ -73,7 +76,10 @@ let simple_query_entity ?me ?(error_exceptions=[]) success
       match entity, me with
         | EntityMe, Some f ->
             f text from xml env out
-        | _, _ ->
+        | EntityMe, _
+        | EntityYou, _
+        | EntityUser, _
+        | EntityHost, _ ->
             let proc t f x o =
               match t with
                 | `Result ->
@@ -110,15 +116,16 @@ let simple_query_entity ?me ?(error_exceptions=[]) success
 let _ =
   Hooks.register_handle 
     (Xmlns ("jabber:iq:version", 
-            (fun event from xml out -> 
+            (fun event _from xml out -> 
                match event with
-                 | Iq (id, type_, xmlns) ->
+                 | Iq (_id, type_, xmlns) ->
                      if type_ = `Get && xmlns = "jabber:iq:version" then
                        out (iq_version_reply 
                               Version.name Version.version xml)
                      else
                        ()
-                 | _ -> ())))
+                 | Message
+                 | Presence -> ())))
     (* "jabber:iq:last", Iq.iq_last_reply *)
     
     

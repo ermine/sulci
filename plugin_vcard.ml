@@ -26,7 +26,7 @@ let result_vcard alist =
       r4
         
 let vsearch = 
-  let success text entity lang xml =
+  let success _text _entity _lang xml =
     let rec aux_scan tail acc =
       match tail with
         | [] -> acc
@@ -40,7 +40,7 @@ let vsearch =
                         ((name, value)::acc)
                     else
                       aux_scan t acc
-              | _ -> aux_scan t acc
+              | Xmlcdata _ -> aux_scan t acc
     in
     let res = aux_scan (try get_subels xml ~path:["vCard"] 
                         with Not_found -> []) [] in

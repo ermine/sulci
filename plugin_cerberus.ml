@@ -294,7 +294,7 @@ let kill (from:jid) xml env out =
             make_msg out xml (Lang.get_msg env.env_lang
                                 "plugin_cerberus_cannot_kick_admin" [])
           else
-            let proc t f x o = () in
+            let proc _t _f _x _o = () in
             let id = new_id () in
             let reason = Lang.get_msg env.env_lang
               "plugin_markov_kick_reason" [] in
@@ -321,7 +321,6 @@ let cerberus event from xml env out =
             log#error "cerberus: Lexing error at offset %i"
               (Ulexing.lexeme_end lexbuf)
   in
-  let room = from.lnode, from.ldomain in
     match event with
       | MUC_join item ->
           if from.lresource <> (get_room_env from).mynick then (
@@ -332,7 +331,7 @@ let cerberus event from xml env out =
                 | Some j ->
                     check j.lresource "jid";
             )
-      | MUC_change_nick (nick, item) ->
+      | MUC_change_nick (nick, _item) ->
           if nick <> (get_room_env from).mynick then
             check nick "nick"
       | MUC_presence item ->
@@ -350,7 +349,7 @@ let cerberus event from xml env out =
                 out (Muc.set_topic from saved_topic);
                 raise Filtered
           )
-      | MUC_message (msg_type, nick, body) ->
+      | MUC_message (msg_type, _nick, body) ->
           if msg_type <> `Error then
             if body <> "" && from.lresource <> (get_room_env from).mynick then
               check body (match msg_type with
@@ -366,15 +365,16 @@ let cerberus event from xml env out =
                 try match analyze lexbuf with
                   | Good ->
                       Hashtbl.replace topics (from.lnode, from.ldomain) subject
-                  | Bad word -> ()
+                  | Bad _word -> ()
                 with
                   | Ulexing.Error ->
                       log#error "cerberus: Lexing error at offset %i" 
                         (Ulexing.lexeme_end lexbuf);
-            with exn ->
+            with _exn ->
               (* log#error "cerberus" exn *) ()
           )
-      | _ -> ()
+      | MUC_leave _
+      | MUC_other -> ()
           
 let _ = 
   Muc.register_filter "cerberus" cerberus

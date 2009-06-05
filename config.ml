@@ -46,7 +46,7 @@ let logger_options =
   try 
     let el = get_tag config ["log"] in
       List.map (fun el -> get_tagname el, get_cdata el)
-        (List.find_all (function | Xmlelement _ -> true | _ -> false)
+        (List.find_all (function | Xmlelement _ -> true | Xmlcdata _ -> false)
            (get_subels el))
   with Not_found -> []
 

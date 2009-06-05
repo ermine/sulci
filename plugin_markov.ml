@@ -19,8 +19,8 @@ let table = "words"
 type mevent = 
   | MMessage of muc_event * jid * element * local_env * (element -> unit) 
   | MStop 
-  | MCount of jid * element * local_env * (element -> unit)
-  | MTop of jid * element * local_env * (element -> unit)
+  | MCount of element * (element -> unit)
+  | MTop of element * (element -> unit)
 
 type t = {
   queue: mevent Queue.t;
@@ -123,17 +123,16 @@ let seek file db (w1:string) =
         "SELECT word1, word2, counter FROM %s WHERE word1=%s"
         table (escape w1) in
       let rec aux_seek lsum stmt =
-        match step stmt with
-          | Rc.ROW ->
-              let i = int_of_string (Data.to_string (column stmt 2)) in
+        match get_row stmt with
+          | Some row ->
+              let i = int_of_string (Data.to_string row.(2)) in
                 if lsum - i <= 0 then
-                  (Data.to_string (column stmt 0),
-                   Data.to_string (column stmt 1))
+                  (Data.to_string row.(0),
+                   Data.to_string row.(1))
                 else
                   aux_seek (lsum - i) stmt
-          | Rc.DONE ->
+          | None ->
               w1, ""
-          | _ -> exit_with_rc file db sql
       in        
         try
           let stmt = prepare db sql in
@@ -155,7 +154,7 @@ let generate file db word =
       let p = String.concat " " (List.rev acc) in
         p
     else
-      let w1, w2 = seek file db w in
+      let _w1, w2 = seek file db w in
         if w2 = "" then String.concat " " (List.rev acc)
         else cycle3 w2 (i+1) (w2::acc)
   in
@@ -168,7 +167,7 @@ let generate file db word =
 let split_words body =
   Pcre.split ~pat:"[ \t\n]+" body
     
-let process_markov file db event from xml env out =
+let process_markov file db event from xml _env out =
   match event with
     | MUC_message (msg_type, nick, body) ->
         let room_env = get_room_env from in
@@ -189,13 +188,19 @@ let process_markov file db event from xml env out =
               )
           else
             ()
-    | _ -> ()
+    | MUC_presence _
+    | MUC_join _
+    | MUC_leave _
+    | MUC_topic _
+    | MUC_change_nick _
+    | MUC_other
+    | MUC_history -> ()
           
 let rec markov_thread (file, db, m) =
   (match take_queue m with
      | MMessage (event, from, xml, env, out) ->
          process_markov file db event from xml env out
-     | MCount (from, xml, env, out) ->
+     | MCount (xml, out) ->
          let sql = Printf.sprintf "SELECT COUNT(*) FROM %s" table in
          let result =
            match get_one_row file db sql with
@@ -203,21 +208,20 @@ let rec markov_thread (file, db, m) =
              | Some r -> Int64.to_int (int64_of_data r.(0))
          in
            make_msg out xml (string_of_int result)
-     | MTop (from, xml, env, out) -> (
+     | MTop (xml, out) -> (
          let sql = Printf.sprintf
            "SELECT word1, word2, counter FROM %s WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10" table in
          let rec aux_top acc stmt =
-           match step stmt with
-             | Rc.ROW ->
+           match get_row stmt with
+             | Some row ->
                  let r =
                    Printf.sprintf "\n%s | %s | %s"
-                     (Data.to_string (column stmt 0))
-                     (Data.to_string (column stmt 1))
-                     (Data.to_string (column stmt 2)) in
+                     (Data.to_string row.(0))
+                     (Data.to_string row.(1))
+                     (Data.to_string row.(2)) in
                    aux_top (r::acc) stmt
-             | Rc.DONE ->
+             | None ->
                  List.rev acc
-             | _ -> exit_with_rc file db sql
          in
            try
              let stmt = prepare db sql in
@@ -230,7 +234,7 @@ let rec markov_thread (file, db, m) =
                  log#error "Plugin_markov: !!!top: %s" (Printexc.to_string exn)
        )
      | MStop -> 
-         db_close db;
+         ignore (db_close db);
          Thread.exit ()
   );
   markov_thread (file, db, m)
@@ -253,29 +257,38 @@ let markov_chain event from xml env out =
            let m = get_markov_queue (from.lnode, from.ldomain) in
              add_queue m (MMessage (event, from, xml, env, out))
          with _ -> ())
-    | MUC_leave (true, _, _, _) ->
-        (try
-           let m = get_markov_queue (from.lnode, from.ldomain) in
-             add_queue m MStop;
-             markovrooms := MarkovMap.remove (from.lnode, from.ldomain) 
-               !markovrooms;
-         with _ -> ())
-    | _ -> ()
+    | MUC_leave (me, _, _, _) ->
+        if me then
+          (try
+             let m = get_markov_queue (from.lnode, from.ldomain) in
+               add_queue m MStop;
+               markovrooms := MarkovMap.remove (from.lnode, from.ldomain) 
+                 !markovrooms;
+           with _ -> ())
+        else
+          ()
+    | MUC_history
+    | MUC_presence _
+    | MUC_join _
+    | MUC_change_nick _
+    | MUC_topic _
+    | MUC_other ->
+        ()
         
-let markov_count text from xml env out =
+let markov_count _text from xml _env out =
   (try
      let m = get_markov_queue (from.lnode, from.ldomain) in
-       add_queue m (MCount (from, xml, env, out))
+       add_queue m (MCount (xml, out))
    with _ -> ())
         
-let markov_top text from xml env out =
+let markov_top _text from xml _env out =
   (try
      let m = get_markov_queue (from.lnode, from.ldomain) in
-       add_queue m (MTop (from, xml, env, out))
+       add_queue m (MTop (xml, out))
    with _ -> ())
         
 let _ =
   register_catcher markov_chain;
-  register_command "!!!count", markov_count;
-  register_command "!!!top", markov_top
+  register_command "!!!count" markov_count;
+  register_command "!!!top" markov_top
     
