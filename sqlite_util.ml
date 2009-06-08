@@ -8,14 +8,14 @@ let string_after s n =
   String.sub s n (String.length s - n)
 
 let escape str =
-  let rec aux i acc =
+  let rec aux_escape i acc =
     try
       let q = String.index_from str i '\'' in
-        aux (q+1)  (((String.sub str i q) ^ "''") :: acc)
+        aux_escape (q+1) ("''" :: (String.sub str i (q-i)) :: acc)
     with Not_found ->
       string_after str i :: acc
   in
-    "'" ^ (String.concat "" (List.rev (aux 0 []))) ^ "'"
+    "'" ^ (String.concat "" (List.rev (aux_escape 0 []))) ^ "'"
 
 let exit_with_rc file db sql =
   (match errcode db with
