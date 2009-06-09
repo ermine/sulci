@@ -22,5 +22,6 @@
 <plugin_translate.ml>: use_netstring
 <plugin_userinfo.ml>: use_netstring
 <plugin_vocabulary.ml>: use_sqlite3
+<plugin_weather.ml>: camlp4o
 <plugin_yandex.ml>: use_netstring
 

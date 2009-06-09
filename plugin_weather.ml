@@ -2,7 +2,6 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Pcre
 open Light_xml
 open Types
 open Common
@@ -11,82 +10,138 @@ open Http_suck
 
 (* http://weather.noaa.gov/pub/data/observations/metar/decoded/ULLI.TXT *)
 
-let split_lines lines =
-  let map =
-    List.find_all 
-      (function line ->
-         if Pcre.pmatch ~pat: ".+: .+" line then
-           true else false)
-      lines
+let split_lines contents =
+  let rec aux_split q acc =
+    let l =
+      try Some (String.index_from contents q '\n')
+      with Not_found -> None
+    in
+      match l with
+        | Some v ->
+            aux_split (v+1) (String.sub contents q (v-q) :: acc)
+        | None ->
+            List.rev (String.sub contents q (String.length contents - q) :: acc)
   in
-    List.map (function m ->
-                let c = String.index m ':' in
-                  String.sub m 0 c, string_after m (c+2)
-             ) map
-      
-let place_r = regexp "(.+) \\(....\\).+"
-let time_r = regexp ".+/ (.+)$"
-let temp_r = regexp "(.+) F \\((.+) C\\)"
-let wind_r = regexp "(.+):0"
-let vis_r = regexp "(.+):0"
+    aux_split 0 []
+  
+let get_fields lines =
+  List.fold_left (fun acc x ->
+                    let v =
+                      try
+                        let q = String.index x ':' in
+                        let field = String.sub x 0 q in
+                        let value = String.sub x (q+2) (String.length x -q-2) in
+                        let fname =
+                          match field with
+                            | "Wind" -> "wind"
+                            | "Visibility" -> "visibility"
+                            | "Sky conditions" -> "sky"
+                            | "Weather" -> "weather"
+                            | "Temperature" -> "temperature"
+                            | "Dew Point" -> "dewpoint"
+                            | "Relative Humidity" -> "humidity"
+                            | "Pressure (altimeter)" -> "pressure"
+                            | "ob" -> "ob"
+                            | _ ->
+                                raise Not_found
+                        in
+                          Some (fname, value)
+                      with Not_found ->
+                        None
+                    in
+                      match v with
+                        | Some f ->
+                            f :: acc
+                        | None ->
+                            acc
+                 ) [] lines
+
+let remove_zero str =
+  let i = String.length str in
+    if i > 2 && str.[i-1] = '0' && str.[i-2] = ':' then
+      String.sub str 0 (i-2)
+    else
+      str
+
+let parse_temperature str =
+  let rec temper = parser
+    | [< f = get_digits 0; '' '; ''F'; '' '; ''('; c = get_digits 0; '' ';
+         ''C'; >] ->
+        Some (f, c)
+    | [< rest >] ->
+        None
+  and get_digits acc = parser
+    | [< ' ('0'..'9') as c; rest >] ->
+        let i = int_of_char c - 48 in
+          get_digits (acc * 10 + i) rest
+    | [< >] ->
+        acc
+  in
+    temper (Stream.of_string str)
   
 let parse_weather content =
-  let lines = Pcre.split ~pat:"\n" content in
-  let line1 = List.hd lines in
-  let place = 
-    try
-      let r = exec ~rex:place_r line1 in
-        get_substring r 1
-    with Not_found -> line1 in
-  let line2 = List.nth lines 1 in
-  let time = 
-    try
-      let r = exec ~rex:time_r line2 in
-        get_substring r 1
-    with Not_found -> line2 in
-  let map = split_lines lines in
-  let weather = 
-    try List.assoc "Weather" map with _ ->
-      try List.assoc "Sky conditions" map with _ -> ""
-  in
-  let f, c = 
-    try 
-      let z = List.assoc "Temperature" map in
-        try
-          let r = exec ~rex:temp_r z in
-            get_substring r 1, get_substring r 2
-        with Not_found -> "", ""
-    with Not_found -> "", ""
-  in
-  let hum = try List.assoc "Relative Humidity" map with Not_found -> "n/a" in
-    (* *)
-  let wind = 
-    try
-      let w = List.assoc "Wind" map in
-        try
-          let r = exec ~rex:wind_r w in
-            get_substring r 1
-        with Not_found  -> w
-    with _ -> "n/a"
-  in
-  let vis =
-    try
-      let v = List.assoc "Visibility" map in
-        try
-          let r = exec ~rex:vis_r v in
-            get_substring r 1
-        with Not_found -> v
-    with _ -> "n/a"
-  in
-    Printf.sprintf 
-      "%s - %s / %s%sC/%sF, humidity %s, wind: %s, visibility: %s"
-      place time (if weather <> "" then weather ^ ", " else "")
-      c f hum wind vis
-      
-let r = Pcre.regexp "[a-zA-Z]{4}"
+  match split_lines content with
+    | line1 :: line2 :: rest ->
+        let map = get_fields rest in
+        let place = 
+          try
+            let q = String.index line1 '(' in
+              String.sub line1 0 (q-1) 
+          with Not_found -> line1 in
+        let time = 
+          try
+            let q = String.index line2 '/' in
+              String.sub line2 (q+2) (String.length line2 - q - 2)
+          with Not_found -> line2 in
+        let weather = 
+          try List.assoc "weather" map with _ ->
+            try List.assoc "sky" map with _ -> ""
+        in
+        let temperature = 
+          try 
+            let z = List.assoc "temperature" map in
+            let data = parse_temperature z in
+              data
+          with Not_found -> None
+        in
+        let humidity = try List.assoc "humidity" map with Not_found -> "n/a" in
+        let pressure = try List.assoc "pressure" map with Not_found -> "n/a" in
+        let wind = 
+          try let w = List.assoc "wind" map in remove_zero w
+          with _ -> "n/a"
+        in
+        let visibility =
+          try let v = List.assoc "visibility" map in remove_zero v
+          with _ -> "n/a"
+        in
+          Printf.sprintf
+            "%s - %s / %s%s%shumidity: %s, pressure: %s, wind: %s, visibility: %s"
+            place time weather (if weather <> "" then ", " else "")
+            (match temperature with
+               | Some (f, c) -> Printf.sprintf "%d°C / %d°F, " c f
+               | None -> "")
+            humidity pressure wind visibility
+    | _ ->
+        "n/a"
+          
+let is_noaa_code str =
+  if String.length str = 4 then
+    let rec aux_check i =
+      if i < 4 then
+        match str.[i] with
+          | 'a'..'z'
+          | 'A'..'Z' ->
+              aux_check (succ i)
+          | _ -> false
+      else
+        true
+    in
+      aux_check 0
+  else
+    false
   
 let weather text _from xml env out =
-  if pmatch ~rex:r text then
+  if is_noaa_code text then
     let callback data =
       let resp = match data with
         | OK (_media, _charset, body) -> (
