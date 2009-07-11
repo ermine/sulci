@@ -3,7 +3,8 @@
  *)
 
 open Light_xml
-open Xmpp
+open XMPP
+open XMPP.Network
 open Jid
 open Types
 open Config
@@ -11,8 +12,8 @@ open Common
 
 module IqCallback = Map.Make(Id)
 let iqcallbacks = ref (IqCallback.empty:
-                         (Xmpp.iq_type -> Jid.jid -> element ->
-                            (element -> unit) -> unit) IqCallback.t)
+                         (iq_type -> Jid.jid -> element ->
+                            out-> unit) IqCallback.t)
 
 
 module XmlnsMap = Map.Make(Id)
@@ -20,20 +21,17 @@ let xmlnsmap = ref XmlnsMap.empty
 
 let presencemap = ref []
 
-let on_connect = ref ([]:((element -> unit) -> unit) list)
+let on_connect = ref ([]:(out -> unit) list)
 let on_disconnect = ref ([]:(unit -> unit) list)
-let on_quit = ref ([]:((element -> unit) -> unit) list)
+let on_quit = ref ([]:(out -> unit) list)
 
 let commands:
-    (string, (string -> Jid.jid -> element -> local_env ->
-                (element -> unit) -> unit)) Hashtbl.t
-    = Hashtbl.create 10
+    (string, (string -> Jid.jid -> element -> local_env -> out -> unit))
+    Hashtbl.t = Hashtbl.create 10
 
-let catchset = ref ([]:(Jid.jid -> element -> local_env ->
-                          (element -> unit) -> unit) list)
-let filters:
-    (string, (Jid.jid -> element -> local_env ->
-                 (element -> unit) -> unit)) Hashtbl.t
+let catchset = ref ([]:(Jid.jid -> element -> local_env -> out -> unit) list)
+
+let filters: (string, (Jid.jid -> element -> local_env -> out -> unit)) Hashtbl.t
     = Hashtbl.create 5
   
 let dispatch_xml = ref (fun _from _xml _out -> ())
@@ -62,8 +60,8 @@ let register_filter name proc =
 let register_dispatch_xml proc = dispatch_xml := proc
 
 type reg_handle =
-  | Xmlns of string * (xmpp_event -> jid -> element -> (element -> unit) -> unit)
-  | PresenceHandle of (jid -> element -> (element -> unit) -> unit)
+  | Xmlns of string * (xmpp_event -> jid -> element -> out -> unit)
+  | PresenceHandle of (jid -> element -> out -> unit)
         
 let register_handle (handler:reg_handle) =
   match handler with
@@ -77,25 +75,24 @@ let process_iq from xml out =
     match type_ with
       | `Result
       | `Error ->
-          if id <> "" then
-            (try
-               let f = IqCallback.find id !iqcallbacks in
-                 (try f type_ from xml out with exn -> 
-                    log#error "[executing iq callback] %s: %s"
-                      (Printexc.to_string exn) (element_to_string xml));
-                 iqcallbacks := IqCallback.remove id !iqcallbacks
-             with Not_found -> 
-               ())
+          if id <> "" then (
+            try
+              let f = IqCallback.find id !iqcallbacks in
+                try f type_ from xml out with exn ->
+                  log#error "[executing iq callback] %s: %s"
+                    (Printexc.to_string exn) (element_to_string xml);
+                  iqcallbacks := IqCallback.remove id !iqcallbacks;
+            with Not_found -> ()
+          )
       | `Get
       | `Set ->
-          (try      
-             let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-               (try f (Iq (id, type_, xmlns)) from xml out with exn -> 
-                  log#error "[executing xmlns callback] %s: %s"
-                    (Printexc.to_string exn) (element_to_string xml));
-           with Not_found ->
-             out (Error.make_error_reply xml `ERR_FEATURE_NOT_IMPLEMENTED)
-          )
+          try
+            let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
+              try f (Iq (id, type_, xmlns)) from xml out with exn ->
+                log#error "[executing xmlns callback] %s: %s"
+                  (Printexc.to_string exn) (element_to_string xml);
+          with Not_found ->
+            out (Error.make_error_reply xml `ERR_FEATURE_NOT_IMPLEMENTED)
         
 let do_command text from xml env out =
   let word = 
@@ -111,18 +108,14 @@ let process_message from xml env out =
     if msg_type <> "error" then
       let text = 
         try get_cdata xml ~path:["body"] with Not_found -> "" in
-        (try do_command text from xml env out with Not_found ->
-           List.iter  (fun f -> 
-                         try f from xml env out with exn ->
-                           log#error "[executing catch callback] %s: %s"
-                             (Printexc.to_string exn)
-                             (element_to_string xml)
-                      ) !catchset)
-    else
-      ()
-
-let process_presence _from _xml _env _out =
-  ()
+        try do_command text from xml env out with Not_found ->
+          List.iter (fun f ->
+                       try f from xml env out with exn ->
+                         log#error "[executing catch callback] %s: %s"
+                           (Printexc.to_string exn) (element_to_string xml)
+                    ) !catchset
+            
+let process_presence _from _xml _env _out = ()
         
 let default_check_access (jid:jid) classname =
   List.exists (fun (jid', name) ->
@@ -167,22 +160,30 @@ let default_dispatch_xml from xml out =
       | _ ->
           ()
 
-let rec process_xml next_xml out =
-  let xml = next_xml () in
-  let from = jid_of_string (get_attr_s xml "from") in
-    !dispatch_xml from xml out;
-    process_xml next_xml out
+let rec process_xml myjid p inch ouch =
+  next_xml inch p () >>=
+    (fun (p, tag) ->
+       match tag with
+         | Xmlstream.Stanza el ->
+             let from = jid_of_string (get_attr_s el "from") in
+               !dispatch_xml from el
+                 (fun xml -> ignore (send_xml (send ouch) xml));
+               process_xml myjid p inch ouch
+         | _ ->
+             fail (Error "unknown stanza")
+    )
             
 let _ =
   register_dispatch_xml default_dispatch_xml;
   register_on_disconnect (fun () ->
                             iqcallbacks := IqCallback.empty;
                             xmlnsmap := XmlnsMap.empty;
-                            presencemap := [];
+                            presencemap := []
                          )
 
 let quit out =
-  List.iter (fun proc -> try proc out with exn -> 
-               log#error "[quit] %s" (Printexc.to_string exn)
+  List.iter (fun proc ->
+               try proc out with exn ->
+                 log#error "[quit] %s" (Printexc.to_string exn)
             ) !on_quit;
   Pervasives.exit 0

@@ -3,7 +3,7 @@
  *)
 
 open Light_xml
-open Xmpp
+open XMPP
 open Jid
 open Types
 open Config
@@ -17,8 +17,7 @@ open Sqlite_util
 let catchers = ref []
 let filters:
     (string, (Muc_types.muc_event -> Jid.jid ->
-                element -> Types.local_env ->
-                  (element -> unit) -> unit)) Hashtbl.t
+                element -> Types.local_env -> out -> unit)) Hashtbl.t
     = Hashtbl.create 5
 
 let register_catcher proc =
@@ -44,12 +43,11 @@ let get_lang from xml =
     Lang.get_lang xml
 
 let do_catcher event from xml env out =
-  List.iter  (fun f -> 
-                try f event from xml env out with exn ->
-                  log#error "[executing catch callback] %s: %s"
-                    (Printexc.to_string exn)
-                    (element_to_string xml)
-             ) !catchers 
+  List.iter (fun f -> try f event from xml env out with exn ->
+               log#error "[executing catch callback] %s: %s"
+                 (Printexc.to_string exn)
+                 (element_to_string xml)
+            ) !catchers
 
 let is_echo from =
   let room_env = get_room_env from in
@@ -246,7 +244,6 @@ let process_message (from:jid) xml _out =
                 MUC_message (msg_type, "", body)
       with Not_found ->
         MUC_other
-            
 
 let process_plugins event from xml env out =
   match event with

@@ -2,7 +2,6 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xmpp
 open Jid
 
 let timerQ = Scheduler.create ()
@@ -39,7 +38,9 @@ end
 
 type xmpp_event =
   | Message
-  | Iq of string * iq_type * string
+  | Iq of string * XMPP.iq_type * string
   | Presence
 
 exception Filtered
+
+type out = Light_xml.element -> unit

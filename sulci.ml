@@ -3,7 +3,8 @@
  *)
 
 open Light_xml
-open Xmpp
+open XMPP
+open XMPP.Network
 open Error
 open Types
 open Config
@@ -16,7 +17,7 @@ let _ =
     trim (get_cdata config ~path:["jabber"; "server"]) 
   with Not_found ->
     Printf.eprintf "Cannot find servername in config file";
-    flush stdout;
+    Pervasives.flush stdout;
     Pervasives.exit 127
   in
   let port = try 
@@ -27,48 +28,48 @@ let _ =
     trim (get_cdata config ~path:["jabber"; "user"]) 
   with Not_found ->
     Printf.eprintf "Cannot find username in config file";
-    flush stdout;
+    Pervasives.flush stdout;
     Pervasives.exit 127
   in
   let password = try
     trim (get_cdata config ~path:["jabber"; "password"])
   with Not_found ->
     Printf.eprintf "Cannot find password in config file";
-    flush stdout;
+    Pervasives.flush stdout;
     Pervasives.exit 127
   in
   let resource = try
     trim (get_cdata config ~path:["jabber"; "resource"])
   with Not_found ->
     Printf.eprintf "Cannot find resource name in config file";
-    flush stdout;
+    Pervasives.flush stdout;
     Pervasives.exit 127
   in
+    (*
   let rawxml_log =
     try Some (List.assoc "rawxml" Config.logger_options)
     with Not_found -> None
   in
+    *)
   let run () =
-    let _jid, out, next_xml = 
-      Xmpp.client ~username ~password ~resource ~server ~port 
-        ?rawxml_log () in
+    open_stream_client server port username password resource >>=
+      (fun (myjid, p, inch, ouch) ->
+         log#info "Connected to %s!" server;
+         let out xml = ignore (send_xml (send ouch) xml) in
+         let () =
+           Sys.set_signal Sys.sigint
+             (Sys.Signal_handle (function _x -> Hooks.quit out));
       
-      log#info "Connected to %s!" server;
-      
-      Sys.set_signal Sys.sigint
-        (Sys.Signal_handle (function _x -> Hooks.quit out));
-      
-      Sys.set_signal Sys.sigterm
-        (Sys.Signal_handle (function _x -> Hooks.quit out));
-      
-      (* workaround for wildfire *)
-      out (make_presence ());
-      
-      List.iter (fun proc -> 
-                   try proc out with exn ->
-                     log#error "sulci.ml: %s" (Printexc.to_string exn))
-        !on_connect;
-      process_xml next_xml out
+           Sys.set_signal Sys.sigterm
+             (Sys.Signal_handle (function _x -> Hooks.quit out));
+         in
+           (* workaround for wildfire *)
+           out (make_presence ());
+           List.iter (fun proc -> try proc out with exn ->
+                        log#error "sulci.ml: %s" (Printexc.to_string exn)
+                     ) !on_connect;
+           process_xml myjid p inch ouch
+      )
   in
     
   let reconnect_interval = 
@@ -86,8 +87,8 @@ let _ =
       if times >= 0 then
         run ()
       else
-        ()
-    with
+        return ()
+    with 
       | Unix.Unix_error (code, "connect", _) ->
           log#info "Unable to connect to %s:%d: %s"
             server port (Unix.error_message code);
@@ -100,17 +101,19 @@ let _ =
           log#info "Auth.Failure: %s" cond;
           (match cond with
              | "non-authorized" ->
-                 print_endline "will register"
-             | _ -> ()
+                 print_endline "will register";
+                 return ()
+             | _ ->
+                 return ()
           )
       | Sasl.AuthError reason ->
           log#crit "Authorization failed: %s" reason;
           Pervasives.exit 127
-      | Xmpp.XMPPStreamEnd ->
+      | End_of_file ->
           log#info"The connection to the server is lost";
           List.iter (fun proc -> proc ()) !on_disconnect;
           reconnect count
-      | Xmpp.XMPPStreamError els ->
+      | StreamError els ->
           let cond, text, _ = parse_stream_error els in
             (match cond with
                | `ERR_CONFLICT ->
@@ -121,6 +124,8 @@ let _ =
             Pervasives.exit 127
       | exn ->
           log#error "sulci.ml: %s" (Printexc.to_string exn);
-          log#error "Probably it is a bug, please send me a bugreport"
+          log#error "Probably it is a bug, please send me a bugreport";
+          Pervasives.exit 127
   in
     reconnect count
+          

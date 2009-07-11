@@ -3,7 +3,7 @@
  *)
 
 open Light_xml
-open Xmpp
+open XMPP
 open Jid
 open Jeps
 open Types
@@ -15,16 +15,16 @@ exception NoError
 let process_error xml env entity from text =
   let cond,_,_,_ = Error.parse_error xml in
     match cond with
-      | `ERR_FEATURE_NOT_IMPLEMENTED ->
-          (match entity with
-             | EntityHost ->
-                 Lang.get_msg env.env_lang
-                   "error_server_feature_not_implemented" [text]
-             | EntityMe
-             | EntityYou
-             | EntityUser ->
-                 Lang.get_msg env.env_lang
-                   "error_client_feature_not_implemented" [text])
+      | `ERR_FEATURE_NOT_IMPLEMENTED -> (
+          match entity with
+            | EntityHost ->
+                Lang.get_msg env.env_lang
+                  "error_server_feature_not_implemented" [text]
+            | EntityMe
+            | EntityYou
+            | EntityUser ->
+                Lang.get_msg env.env_lang
+                  "error_client_feature_not_implemented" [text])
       | `ERR_REMOTE_SERVER_TIMEOUT ->
           Lang.get_msg env.env_lang "error_remote_server_timeout" [from.ldomain]
       | `ERR_REMOTE_SERVER_NOT_FOUND ->
@@ -69,8 +69,7 @@ let process_error xml env entity from text =
             Lang.get_msg env.env_lang "error_any_error" [text]
               
 let simple_query_entity ?me ?(error_exceptions=[]) success
-    ?query_subels ?query_tag xmlns
-    text from xml env out =
+    ?query_subels ?query_tag xmlns text from xml env out =
   try
     let entity, entity_jid = env.env_get_entity text from in
       match entity, me with
@@ -122,10 +121,9 @@ let _ =
                      if type_ = `Get && xmlns = "jabber:iq:version" then
                        out (iq_version_reply 
                               Version.name Version.version xml)
-                     else
-                       ()
                  | Message
                  | Presence -> ())))
     (* "jabber:iq:last", Iq.iq_last_reply *)
+    
     
     

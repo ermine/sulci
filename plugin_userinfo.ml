@@ -4,7 +4,7 @@
 
 open Unix
 open Light_xml
-open Xmpp
+open XMPP
 open Jid
 open Error
 open Types

@@ -3,7 +3,7 @@
  *)
 
 open Light_xml
-open Xmpp
+open XMPP
 open Jid
 open Types
 open Config
@@ -283,7 +283,8 @@ Nick: %s (%s)
               ) notify_jids
       
 let kill (from:jid) xml env out =
-  if from.resource = "" then ()
+  if from.resource = "" then
+    ()
   else
     let room = from.lnode, from.ldomain in
     let room_env = get_room_env from in
@@ -309,13 +310,14 @@ let topics = Hashtbl.create 5
 let cerberus event from xml env out =
   let check text msg_type =
     let lexbuf = Ulexing.from_utf8_string text in
-      try match analyze lexbuf with
-        | Good -> ()
-        | Bad word ->
-            report word from text msg_type out;
-            if do_kick then
-              kill from xml env out;
-            raise Filtered
+      try
+        match analyze lexbuf with
+          | Good -> ()
+          | Bad word ->
+              report word from text msg_type out;
+              if do_kick then
+                kill from xml env out;
+              raise Filtered
       with
         | Ulexing.Error ->
             log#error "cerberus: Lexing error at offset %i"
@@ -324,13 +326,13 @@ let cerberus event from xml env out =
     match event with
       | MUC_join item ->
           if from.lresource <> (get_room_env from).mynick then (
-              check from.resource "resource";
-              check item.status "status";
-              match item.jid with
-                | None -> ()
-                | Some j ->
-                    check j.lresource "jid";
-            )
+            check from.resource "resource";
+            check item.status "status";
+            match item.jid with
+              | None -> ()
+              | Some j ->
+                  check j.lresource "jid";
+          )
       | MUC_change_nick (nick, _item) ->
           if nick <> (get_room_env from).mynick then
             check nick "nick"
@@ -341,17 +343,17 @@ let cerberus event from xml env out =
           if from.lresource <> (get_room_env from).mynick then (
             try
               check subject "topic";
-              Hashtbl.replace topics (from.lnode, from.ldomain) subject;
+              Hashtbl.replace topics (from.lnode, from.ldomain) subject
             with Filtered ->
               let saved_topic =
-                try Hashtbl.find topics (from.lnode, from.ldomain) with
-                    Not_found -> " " in
+                try Hashtbl.find topics (from.lnode, from.ldomain)
+                with Not_found -> " " in
                 out (Muc.set_topic from saved_topic);
                 raise Filtered
           )
       | MUC_message (msg_type, _nick, body) ->
-          if msg_type <> `Error then
-            if body <> "" && from.lresource <> (get_room_env from).mynick then
+          if msg_type <> `Error &&
+            body <> "" && from.lresource <> (get_room_env from).mynick then
               check body (match msg_type with
                             | `Groupchat -> 
                                 "groupchat public"
@@ -359,22 +361,26 @@ let cerberus event from xml env out =
                                 "groupchat private")
       | MUC_history ->
           if get_tagname xml = "message" then (
-            try
-              let subject = get_cdata xml ~path:["subject"] in
-              let lexbuf = Ulexing.from_utf8_string subject in
-                try match analyze lexbuf with
-                  | Good ->
-                      Hashtbl.replace topics (from.lnode, from.ldomain) subject
-                  | Bad _word -> ()
-                with
-                  | Ulexing.Error ->
-                      log#error "cerberus: Lexing error at offset %i" 
-                        (Ulexing.lexeme_end lexbuf);
-            with _exn ->
-              (* log#error "cerberus" exn *) ()
+            (try 
+               let subject = get_cdata xml ~path:["subject"] in
+               let lexbuf = Ulexing.from_utf8_string subject in
+                 try
+                   match analyze lexbuf with
+                     | Good ->
+                         Hashtbl.replace topics
+                           (from.lnode, from.ldomain) subject;
+                     | Bad _word ->
+                         ()
+                 with Ulexing.Error ->
+                   log#error "cerberus: Lexing error at offset %i" 
+                     (Ulexing.lexeme_end lexbuf)
+             with exn ->
+               (* log#error "cerberus" exn *)
+               ())
           )
       | MUC_leave _
-      | MUC_other -> ()
+      | MUC_other ->
+          ()
           
 let _ = 
   Muc.register_filter "cerberus" cerberus

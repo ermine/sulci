@@ -3,7 +3,7 @@
  *)
 
 open Light_xml
-open Xmpp
+open XMPP
 open Jid
 open Types
 open Common
@@ -58,8 +58,6 @@ let roulette text from xml env out =
         else
           make_msg out xml
             (Lang.get_msg env.env_lang "plugin_roulette_not_allowed" [])
-    else
-      ()
           
 let _ =
   register_command "tryme" roulette

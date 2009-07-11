@@ -3,6 +3,7 @@
  *)
 
 open Light_xml
+open XMPP
 open Types
 open Common
 open Hooks

@@ -3,7 +3,7 @@
  *)
 
 open Light_xml
-open Xmpp
+open XMPP
 
 open Light_xml
 open Types

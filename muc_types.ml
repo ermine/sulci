@@ -2,8 +2,8 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xmpp
 open Jid
+open XMPP
 open Types
   
 (* groupchat *)
@@ -78,7 +78,7 @@ type groupchat_t = {
   lang: string;
   nicks: Nicks.t;
   filter: (muc_event -> Jid.jid -> Light_xml.element -> Types.local_env ->
-             (Light_xml.element -> unit) -> unit) option
+             out -> unit) option
 }
 
 module GroupchatMap = Map.Make(GID)

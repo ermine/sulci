@@ -1,4 +1,5 @@
 plugin_admin
+plugin_brainfuck
 plugin_calc
 plugin_cerberus
 plugin_currency
@@ -21,4 +22,4 @@ plugin_vcard
 plugin_vocabulary
 plugin_weather
 plugin_yandex
-plugin_brainfuck
+

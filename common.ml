@@ -4,6 +4,7 @@
 
 open Light_xml
 open Jid
+open XMPP.Network
 
 let string_after s n =
   String.sub s n (String.length s - n)
@@ -148,12 +149,13 @@ let make_msg out xml ?response_tail response =
                          else (nick ^ ": " ^ respo)
                       )]);
             if cutted then
-              let msgs = split_long_message !max_message_length response tail in
+              let msgs =
+                split_long_message !max_message_length response tail in
                 List.iter (fun m ->
                              out (make_element "message"
                                     ["to", from.string; "type", "chat"]
                                     [make_simple_cdata "body" m])) msgs
-       | other ->
+      | other ->
           let msgs = split_long_message !max_message_length response tail in
             List.iter (fun m ->
                          out (make_element "message"
@@ -162,7 +164,7 @@ let make_msg out xml ?response_tail response =
                                  else
                                    ["to", from.string; "type", other])
                                 [make_simple_cdata "body" m])) msgs
-
+        
 (* temp code *)
 exception DNSPrepError
   
