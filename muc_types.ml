@@ -5,6 +5,7 @@
 open Jid
 open XMPP
 open Types
+open Config
   
 (* groupchat *)
 module Nicks =
@@ -77,7 +78,7 @@ type groupchat_t = {
   mynick: string;
   lang: string;
   nicks: Nicks.t;
-  filter: (muc_event -> Jid.jid -> Light_xml.element -> Types.local_env ->
+  filter: (muc_event -> Jid.jid -> Xml.element -> Types.local_env ->
              out -> unit) option
 }
 

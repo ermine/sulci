@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open Types
 open Common
 open Hooks

@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 open Jid
 open Types
@@ -13,6 +13,10 @@ open Muc_types
 open Nicks
 open Sqlite3
 open Sqlite_util
+
+let ns_muc = Some "http://jabber.org/protocol/muc"
+let ns_muc_admin = Some "http://jabber.org/protocol/muc#admin"
+let ns_muc_user = Some  "http://jabber.org/protocol/muc#user"
 
 let catchers = ref []
 let filters:
@@ -34,7 +38,7 @@ let get_room_env jid =
 
 let get_lang from xml =
   if is_groupchat from then
-    match safe_get_attr_s xml "type" with
+    match safe_get_attr_value "type" (get_attrs xml) with
       | "groupchat" ->
           (GroupchatMap.find (from.lnode, from.ldomain) !groupchats).lang
       | _ ->
@@ -44,9 +48,9 @@ let get_lang from xml =
 
 let do_catcher event from xml env out =
   List.iter (fun f -> try f event from xml env out with exn ->
-               log#error "[executing catch callback] %s: %s"
-                 (Printexc.to_string exn)
-                 (element_to_string xml)
+               log#error "[executing catch callback] %s"
+                 (Printexc.to_string exn);
+               log#debug "%s" (Printexc.get_backtrace ())
             ) !catchers
 
 let is_echo from =
@@ -57,80 +61,90 @@ let process_presence (from:jid) xml _out =
   let lnode = from.lresource in
   let room = from.lnode, from.ldomain in
   let room_env = get_room_env from in
-  let x = get_by_xmlns xml ~tag:"x" "http://jabber.org/protocol/muc#user" in
-  let type_, status = presence_info xml in
+  let x = get_subelement (ns_muc_user, "x") xml in
+  let item_el =
+    try Some (get_subelement (ns_muc_user, "item") x) with Not_found -> None in
+  let type_ = get_presence_type xml in
+  let status = get_presence_status ~ns:ns_client xml in
     match type_ with
-      | `Available show -> (
-          try
-            let item = Nicks.find lnode room_env.nicks in
-            let newitem = 
-              {item with 
-                 status = status; 
-                 show = show;
-                 role =
-                  (try match get_attr_s x ~path:["item"] "role" with
-                     | "moderator" -> `Moderator 
-                     | "participant" -> `Participant 
-                     | "visitor" -> `Visitor 
-                     | _ -> `None
-                   with Not_found -> item.role);
-                 affiliation =
-                  (try match 
-                     get_attr_s x ~path:["item"] "affiliation" with
-                       | "owner" -> `Owner 
-                       | "admin" -> `Admin 
-                       | "member" -> `Member 
-                       | "outcast" -> `Outcast 
-                       | _ -> `None
-                   with Not_found -> item.affiliation)
-              } in
-              groupchats := GroupchatMap.add room 
-                {room_env with 
-                   nicks = Nicks.add lnode newitem room_env.nicks} !groupchats;
-              MUC_presence newitem
-          with Not_found -> 
-            let item = { 
-              jid = (try Some (jid_of_string 
-                                 (get_attr_s x ~path:["item"] "jid"))
-                     with _ -> None);
-              role = (
-                let v = (try get_attr_s x ~path:["item"] "role" 
-                         with _ -> "") in
-                  match v with
-                    | "moderator" -> `Moderator 
-                    | "participant" -> `Participant 
-                    | "visitor" -> `Visitor 
-                    | _ -> `None
-              );
-              affiliation = (
-                let v = (try get_attr_s x 
-                           ~path:["item"] "affiliation"
-                         with _ -> "") in
-                  match v with
+      | `Available -> (
+          let show = get_presence_show ~ns:ns_client xml in
+            try
+              let item = Nicks.find lnode room_env.nicks in
+              let newitem = 
+                {item with 
+                   status = status; 
+                   show = show;
+                   role = (
+                    match item_el with
+                      | None -> item.role
+                      | Some el ->
+                          match safe_get_attr_value "role" (get_attrs el) with
+                            | "moderator" -> `Moderator 
+                            | "participant" -> `Participant 
+                            | "visitor" -> `Visitor 
+                            | _ -> item.role);
+                   affiliation =
+                    match item_el with
+                      | None -> item.affiliation
+                      | Some el ->
+                          match safe_get_attr_value "affiliation" (get_attrs el)
+                          with
+                            | "owner" -> `Owner 
+                            | "admin" -> `Admin 
+                            | "member" -> `Member 
+                            | "outcast" -> `Outcast
+                            | _ -> item.affiliation
+                } in
+                groupchats := GroupchatMap.add room 
+                  {room_env with 
+                     nicks = Nicks.add lnode newitem room_env.nicks} !groupchats;
+                MUC_presence newitem
+            with Not_found ->
+              let item_el = get_subelement (ns_muc_user, "item") x in
+              let item = { 
+                jid = (try Some (jid_of_string
+                                   (get_attr_value "jid" (get_attrs item_el)))
+                       with _ -> None);
+                role = (
+                  match try get_attr_value "role" (get_attrs item_el)
+                           with _ -> "" with
+                             | "moderator" -> `Moderator 
+                             | "participant" -> `Participant 
+                             | "visitor" -> `Visitor 
+                             | _ -> `None
+                );
+                affiliation = (
+                  match try get_attr_value "affiliation" (get_attrs item_el)
+                  with _ -> "" with
                     | "owner" -> `Owner 
                     | "admin" -> `Admin 
                     | "member" -> `Member 
                     | "outcast" -> `Outcast 
                     | _ -> `None
-              );
-              status = status;
-              show = show;
-              orig_nick = lnode
-            } in
-              groupchats := GroupchatMap.add room 
-                {room_env with nicks = Nicks.add lnode item
-                    room_env.nicks} !groupchats;
-              MUC_join item
+                );
+                status = status;
+                show = show;
+                orig_nick = lnode
+              } in
+                groupchats := GroupchatMap.add room 
+                  {room_env with nicks = Nicks.add lnode item
+                      room_env.nicks} !groupchats;
+                MUC_join item
         )
       | `Unavailable ->
           let item = Nicks.find lnode room_env.nicks in
-          let reason = 
-            try get_cdata ~path:["item";"reason"] x with _ -> "" in
-            (match safe_get_attr_s x ~path:["status"] "code" with
+          let item_el = get_subelement (ns_muc_user, "item") x in
+          let reason =
+            try get_cdata (get_subelement (ns_muc_user, "reason") item_el)
+            with Not_found -> "" in
+            (match try get_attr_value "code"
+               (get_attrs (get_subelement (ns_muc_user, "status") x))
+             with Not_found -> "" with
                | "303" -> (* /nick *)
                    let newnick = 
                      Stringprep.resourceprep 
-                       (get_attr_s xml ~path:["x"; "item"] "nick") in
+                       (get_attr_value "nick" (get_attrs item_el)) in
                    let new_items = Nicks.add newnick item 
                      (Nicks.remove lnode room_env.nicks) in
                    let new_room_env =
@@ -187,7 +201,8 @@ let process_presence (from:jid) xml _out =
                      MUC_leave (false, `Normal, status, item)
                    )
             )
-      | _ -> MUC_other
+      | _ ->
+          MUC_other
           
 let split_nick_body room_env body =
   let rec cycle nicks =
@@ -219,17 +234,17 @@ let split_nick_body room_env body =
     cycle room_env.nicks
       
 let process_message (from:jid) xml _out = 
-  if (mem_xml xml ["message"] "x" ["xmlns", "jabber:x:delay"]) then
+  if mem_qname (Some "jabber:x:delay", "x") (get_children xml) then
     MUC_history
   else
     try
-      let subject = get_cdata xml ~path:["subject"] in
+      let subject = get_cdata (get_subelement (ns_client, "subject")  xml) in
         MUC_topic subject
     with Not_found ->
       try 
-        let body = get_cdata xml ~path:["body"] in
+        let body = get_cdata (get_subelement (ns_client, "body") xml) in
         let msg_type = 
-          try match get_attr_s xml "type" with
+          try match get_type xml with
             | "groupchat" -> `Groupchat
             | "chat" -> `Chat
             | "error" -> `Error
@@ -324,7 +339,7 @@ let dispatch_xml from xml out =
              env_lang = get_lang from xml;
              env_check_access = muc_check_access;
              env_get_entity = muc_get_entity } in
-  let tag = get_tagname xml in
+  let tag = get_name (get_qname xml) in
     if groupchat then
       match tag with
         | "message" ->
@@ -335,50 +350,60 @@ let dispatch_xml from xml out =
             let event = process_presence from xml out in
               process_event event from xml env out
         | "iq" ->
-            Hooks.process_iq from xml out
+            Hooks.process_iq from xml env out
         | _ ->
             () (* todo: log *)
     else
       Hooks.default_dispatch_xml from xml out
 
 let invite ?reason (lnode, ldomain) who =
-  make_message ~to_: (lnode ^ "@" ^ ldomain) 
-    ~subels:[make_element "x"
-               ["xmlns", "http://jabber.org/protocol/muc#user"]
-               [make_element "invite" ["to", who]
+  make_message ~ns:ns_client ~jid_to: (lnode ^ "@" ^ ldomain) 
+    ~subels:[make_element (ns_muc_user, "x") []
+               [make_element (ns_muc_user, "invite")
+                  [make_attr "to" who]
                   (match reason with
                      | None -> []
-                     | Some r -> [make_simple_cdata "reason" r])]] ()
+                     | Some r ->
+                         [make_simple_cdata (ns_muc_user, "reason") r])]] ()
     
 let join_room nick (lnode, ldomain) =
-  make_presence ~to_:(lnode ^ "@" ^ ldomain ^ "/" ^ nick)
-    ~subels:[make_element "x" ["xmlns", "http://jabber.org/protocol/muc"] []] ()
+  make_presence ~ns:ns_client ~jid_to:(lnode ^ "@" ^ ldomain ^ "/" ^ nick)
+    ~subels:[make_element (ns_muc, "x") [] []] ()
     
 let leave_room ?reason (lnode, ldomain) =
   let mynick = (GroupchatMap.find (lnode, ldomain) !groupchats).mynick in
-    make_presence ~to_:(lnode ^ "@" ^ ldomain ^ "/" ^ mynick) 
+    make_presence ~ns:ns_client ~jid_to:(lnode ^ "@" ^ ldomain ^ "/" ^ mynick) 
       ~type_:`Unavailable ?status:reason ()
       
 let kick ?reason id (lnode, ldomain) nick =
-  make_iq ~id ~to_:(lnode ^ "@" ^ ldomain) ~type_:`Set
-    ~xmlns:"http://jabber.org/protocol/muc#admin"
-    ~subels:[make_element "item" ["nick", nick; "role", "none"]
-               (match reason with
-                  | None -> []
-                  | Some r -> [make_simple_cdata "reason" r])] ()
+  make_iq ~ns:ns_client ~id ~jid_to:(lnode ^ "@" ^ ldomain) ~type_:`Set
+    ~payload:[make_element (ns_muc_admin, "query") []
+                [make_element (ns_muc_admin, "item")
+                   [make_attr "nick" nick;
+                    make_attr "role" "none"]
+                   (match reason with
+                      | None -> []
+                      | Some r ->
+                          [make_simple_cdata (ns_muc_admin, "reason")
+                             r])]] ()
     
 let ban id ?reason (lnode,ldomain) (jid:string) =
-  make_iq ~id ~to_:(lnode ^ "@" ^ ldomain)
-    ~xmlns:"http://jabber.org/protocol/muc#admin" ~type_:`Set
-    ~subels:[make_element "item" ["affiliation", "outcast"; "jid", jid]
-               (match reason with
-                  | None -> []
-                  | Some r -> [make_simple_cdata "reason" r])] ()
+  make_iq ~ns:ns_client ~id ~jid_to:(lnode ^ "@" ^ ldomain) ~type_:`Set
+    ~payload:[make_element (ns_muc_admin, "query") []
+                [make_element (ns_muc_admin, "item")
+                   [make_attr "affiliation" "outcast";
+                    make_attr "jid" jid]
+                   (match reason with
+                      | None -> []
+                      | Some r ->
+                          [make_simple_cdata (ns_muc_admin, "reason")
+                             r])]] ()
     
 let set_topic from subject =
-  make_element "message" ["to", string_of_jid (bare_jid from);
-                          "type", "groupchat"]
-    [make_simple_cdata "subject" subject]
+  make_element (ns_client, "message")
+    [make_attr "to" (string_of_jid (bare_jid from));
+     make_attr "type" "groupchat"]
+    [make_simple_cdata (ns_client, "subject") subject]
     
 let register_room ?lang ?filter nick jid  =
   groupchats := GroupchatMap.add (jid.lnode, jid.ldomain)
@@ -395,7 +420,7 @@ let register_room ?lang ?filter nick jid  =
     } !groupchats
     
 let file =
-  try trim (get_cdata Config.config ~path:["muc"; "db"])
+  try trim (Light_xml.get_cdata Config.config ~path:["muc"; "db"])
   with Not_found -> "sulci_muc.db"
 
 let table = "muc"

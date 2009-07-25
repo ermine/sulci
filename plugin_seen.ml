@@ -3,7 +3,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 open Jid
 open Types
@@ -19,7 +19,7 @@ open Sqlite_util
 exception Break
 
 let file = 
-  try trim (get_attr_s Config.config 
+  try trim (Light_xml.get_attr_s Config.config 
               ~path:["plugins"; "seen"] "db")
   with Not_found -> "sulci_users.db"
 
@@ -92,8 +92,10 @@ let catch_seen event from _xml _env out =
           match get_one_row file db sql with
             | None -> ()
             | Some r ->
-                out (make_element "message" ["to", room_s; "type", "groupchat"]
-                       [make_simple_cdata "body"
+                out (make_element (ns_client, "message")
+                       [make_attr "to" room_s;
+                        make_attr "type" "groupchat"]
+                       [make_simple_cdata (ns_client, "body")
                           (Printf.sprintf "[%s] %s"
                              from.resource (string_of_data r.(0)))]
                     )

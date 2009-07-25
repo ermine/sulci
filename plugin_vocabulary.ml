@@ -2,7 +2,7 @@
  * (c) 2004-2009  Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
-open Light_xml
+open Xml
 open XMPP
 open Jid
 open Types
@@ -14,7 +14,7 @@ open Sqlite_util
 let total = ref 0
 
 let file =
-  try trim (get_attr_s Config.config 
+  try trim (Light_xml.get_attr_s Config.config 
               ~path:["plugins"; "vocabulary"] "db")
   with Not_found -> "wtf.db"
 

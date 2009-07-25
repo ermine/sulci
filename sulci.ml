@@ -3,9 +3,9 @@
  *)
 
 open Light_xml
+open StreamError
 open XMPP
 open XMPP.Network
-open Error
 open Types
 open Config
 open Common
@@ -55,7 +55,7 @@ let _ =
     open_stream_client server port username password resource >>=
       (fun (myjid, p, inch, ouch) ->
          log#info "Connected to %s!" server;
-         let out xml = ignore (send_xml (send ouch) xml) in
+         let out xml = ignore (send ouch (Xmlstream.stanza_serialize p xml)) in
          let () =
            Sys.set_signal Sys.sigint
              (Sys.Signal_handle (function _x -> Hooks.quit out));
@@ -64,9 +64,10 @@ let _ =
              (Sys.Signal_handle (function _x -> Hooks.quit out));
          in
            (* workaround for wildfire *)
-           out (make_presence ());
+           out (make_presence ~ns:ns_client ());
            List.iter (fun proc -> try proc out with exn ->
-                        log#error "sulci.ml: %s" (Printexc.to_string exn)
+                        log#error "sulci.ml: %s" (Printexc.to_string exn);
+                        log#debug "%s" (Printexc.get_backtrace ())
                      ) !on_connect;
            process_xml myjid p inch ouch
       )
@@ -113,18 +114,19 @@ let _ =
           log#info"The connection to the server is lost";
           List.iter (fun proc -> proc ()) !on_disconnect;
           reconnect count
-      | StreamError els ->
-          let cond, text, _ = parse_stream_error els in
-            (match cond with
-               | `ERR_CONFLICT ->
-                   log#info "Connection to the server closed: %s" text
-               | _ ->
-                   log#info "The server reject us: %s" text
+      | StreamError err -> (
+          match err.err_condition with
+            | ERR_CONFLICT ->
+                log#info "Connection to the server closed: %s" err.err_text
+            | _ ->
+                log#info "The server reject us: %s: %s"
+                  (string_of_condition err.err_condition) err.err_text
             );
             Pervasives.exit 127
       | exn ->
           log#error "sulci.ml: %s" (Printexc.to_string exn);
           log#error "Probably it is a bug, please send me a bugreport";
+          log#debug "%s" (Printexc.get_backtrace ());
           Pervasives.exit 127
   in
     reconnect count

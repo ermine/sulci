@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 open Jid
 open Types
@@ -250,14 +250,17 @@ and skip = lexer
     analyze lexbuf
       
 let notify_jids =
-  let jids = try 
-    get_subels ~path:["plugins"; "cerberus"] ~tag:"notify" Config.config 
-  with _ -> [] in
-    List.map (fun j -> get_attr_s j "jid") jids
+  let jids =
+    try Light_xml.get_subels ~path:["plugins";
+                                    "cerberus"] ~tag:"notify" Config.config 
+    with _ -> []
+  in
+    List.map (fun j -> Light_xml.get_attr_s j "jid") jids
       
 let do_kick =
-  try if get_attr_s Config.config ~path:["plugins"; "cerberus"] "kick" =
-    "true" then true else false
+  try if Light_xml.get_attr_s Config.config
+    ~path:["plugins"; "cerberus"] "kick" = "true"
+  then true else false
   with _ -> true
     
 let report word from phrase msg_type out =
@@ -270,7 +273,7 @@ let report word from phrase msg_type out =
     with Not_found -> "unknown jid"
   in
     List.iter (fun jid ->
-                 out (make_message ~to_:jid ~type_:`Chat
+                 out (make_message ~ns:ns_client ~jid_to:jid ~type_:`Chat
                         ~body:(Printf.sprintf 
                                  "Censor: %s
 Room: %s@%s
@@ -360,9 +363,10 @@ let cerberus event from xml env out =
                             | _ ->
                                 "groupchat private")
       | MUC_history ->
-          if get_tagname xml = "message" then (
+          if get_name (get_qname xml) = "message" then (
             (try 
-               let subject = get_cdata xml ~path:["subject"] in
+               let subject = get_cdata (get_subelement (ns_client, "subject")
+                                          xml) in
                let lexbuf = Ulexing.from_utf8_string subject in
                  try
                    match analyze lexbuf with

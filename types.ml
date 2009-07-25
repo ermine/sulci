@@ -27,7 +27,7 @@ type local_env = {
   env_groupchat: bool;
   env_lang: string;
   env_check_access: Jid.jid -> string -> bool;
-  env_get_entity: string -> Jid.jid -> (entity * Jid.jid)
+  env_get_entity: string -> Jid.jid -> (entity * Jid.jid);
 }
 
 module Id =
@@ -43,4 +43,4 @@ type xmpp_event =
 
 exception Filtered
 
-type out = Light_xml.element -> unit
+type out = Xml.element -> unit

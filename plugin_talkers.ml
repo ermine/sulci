@@ -2,7 +2,6 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
 open XMPP
 open Jid
 open Types
@@ -20,7 +19,8 @@ let split_words text =
   Pcre.split ~pat:"[ \t\n]+" text
 
 let file =
-  try trim (get_attr_s Config.config  ~path:["plugins"; "talkers"] "db")
+  try trim (Light_xml.get_attr_s Config.config
+              ~path:["plugins"; "talkers"] "db")
   with Not_found -> "talkers.db"
 
 let table = "talkers"
@@ -38,54 +38,57 @@ CREATE INDEX words_idx ON %s (words)"
     db
       
 let talkers event from _xml _env _out =
-  match event with
-    | MUC_message (msg_type, nick, text) ->
-        if msg_type = `Groupchat then
-          let room_s = escape (string_of_jid (bare_jid from)) in
-            if text <> "" then
-              let room_env = get_room_env from in
-                if from.lresource <> room_env.mynick then
-                  let words = List.length (split_words text) in
-                  let me = 
-                    if nick = "" && 
-                      ((length text = 3 && text = "/me") ||
-                         (length text > 3 && 
-                            String.sub text 0 4 = "/me ")) 
-                    then
-                      1 else 0 in
-                  let jid = (Nicks.find from.lresource 
-                               room_env.nicks).jid in
-                  let cond =
-                    match jid with
-                      | None -> "nick=" ^ escape from.lresource
-                      | Some j ->
-                          "jid=" ^ escape (string_of_jid (bare_jid j))
-                  in
-                  let sql1 = Printf.sprintf
-                    "SELECT 1 FROM %s WHERE %s AND room=%s"
-                    table cond room_s in
-                  let sql2 =
-                    Printf.sprintf
-                      "UPDATE %s SET words=words+%d, sentences=sentences+%d, me=me+%d WHERE %s AND room=%s" table words  1 me cond room_s in
-                  let sql3 =
-                    Printf.sprintf
-                      "INSERT INTO %s (jid, nick, room, words, me, sentences) VALUES(%s, %s, %s, %d, %d, %d)"
-                      table
-                      (escape (match jid with
-                                 | None -> ""
-                                 | Some j -> string_of_jid (bare_jid j)))
-                      (escape from.resource)
-                      room_s words me 1
-                  in
-                    ignore (insert_or_update file db sql1 sql2 sql3)
-    | MUC_presence _
-    | MUC_topic _
-    | MUC_history
-    | MUC_join _
-    | MUC_change_nick _
-    | MUC_leave _
-    | MUC_other ->
-        ()
+  if from.lresource <> "" then
+    match event with
+      | MUC_message (msg_type, nick, text) ->
+          if msg_type = `Groupchat then
+            let room_s = escape (string_of_jid (bare_jid from)) in
+              if text <> "" then
+                let room_env = get_room_env from in
+                  if from.lresource <> room_env.mynick then
+                    let words = List.length (split_words text) in
+                    let me = 
+                      if nick = "" && 
+                        ((length text = 3 && text = "/me") ||
+                           (length text > 3 && 
+                              String.sub text 0 4 = "/me ")) 
+                      then
+                        1 else 0 in
+                    let jid = (Nicks.find from.lresource 
+                                 room_env.nicks).jid in
+                    let cond =
+                      match jid with
+                        | None -> "nick=" ^ escape from.lresource
+                        | Some j ->
+                            "jid=" ^ escape (string_of_jid (bare_jid j))
+                    in
+                    let sql1 = Printf.sprintf
+                      "SELECT 1 FROM %s WHERE %s AND room=%s"
+                      table cond room_s in
+                    let sql2 =
+                      Printf.sprintf
+                        "UPDATE %s SET words=words+%d, sentences=sentences+%d, me=me+%d WHERE %s AND room=%s" table words  1 me cond room_s in
+                    let sql3 =
+                      Printf.sprintf
+                        "INSERT INTO %s (jid, nick, room, words, me, sentences) VALUES(%s, %s, %s, %d, %d, %d)"
+                        table
+                        (escape (match jid with
+                                   | None -> ""
+                                   | Some j -> string_of_jid (bare_jid j)))
+                        (escape from.resource)
+                        room_s words me 1
+                    in
+                      ignore (insert_or_update file db sql1 sql2 sql3)
+      | MUC_presence _
+      | MUC_topic _
+      | MUC_history
+      | MUC_join _
+      | MUC_change_nick _
+      | MUC_leave _
+      | MUC_other ->
+          ()
+  else
+    ()
           
 let cmd_talkers text from xml env out =
   let room_s = escape (string_of_jid (bare_jid from)) in

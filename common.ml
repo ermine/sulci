@@ -2,7 +2,8 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
+open XMPP
 open Jid
 open XMPP.Network
 
@@ -37,12 +38,13 @@ let trim str =
     rskip_ws r1
       
 let msg_limit = ref 
-  (try int_of_string (get_attr_s Config.config ~path:["muc"] "msg_limit")
+  (try int_of_string (Light_xml.get_attr_s
+                        Config.config ~path:["muc"] "msg_limit")
    with Not_found -> 450)
 
 let max_message_length = ref
   (try int_of_string
-     (get_attr_s Config.config ~path:["max_message_length"] "value")
+     (Light_xml.get_attr_s Config.config ~path:["max_message_length"] "value")
    with Not_found -> 10000)
   
 exception InvalidUTF8
@@ -120,14 +122,14 @@ let split_long_message limit msg tail =
     aux_split [] msg
       
 let make_msg out xml ?response_tail response =
-  let from = jid_of_string (get_attr_s xml "from") in
+  let from = jid_of_string (get_from xml) in
   let nick = from.resource in
   let tail =
     match response_tail with
       | None -> ""
       | Some t -> "\n" ^ t
   in
-    match safe_get_attr_s xml "type" with
+    match safe_get_attr_value "type" (get_attrs xml) with
       | "groupchat" ->
           let limit = 
             let l = !msg_limit - String.length tail in
@@ -139,31 +141,23 @@ let make_msg out xml ?response_tail response =
             else 
               false, resp ^ tail
           in
-            out (make_element "message" ["to", string_of_jid (bare_jid from);
-                                         "type", "groupchat"]
-                   [make_simple_cdata "body" 
-                      (if Pcre.pmatch ~pat:"/me" response then
-                         respo
-                       else
-                         if nick = "" then respo
-                         else (nick ^ ": " ^ respo)
-                      )]);
+            out (make_message ~ns:ns_client ~type_:`Groupchat
+                   ~jid_to:(string_of_jid (bare_jid from))
+                   ~body: (if Pcre.pmatch ~pat:"/me" response then respo
+                           else if nick = "" then respo
+                           else (nick ^ ": " ^ respo)
+                          ) () );
             if cutted then
               let msgs =
                 split_long_message !max_message_length response tail in
                 List.iter (fun m ->
-                             out (make_element "message"
-                                    ["to", from.string; "type", "chat"]
-                                    [make_simple_cdata "body" m])) msgs
+                             out (make_message ~ns:ns_client ~type_:`Chat
+                                    ~jid_to: from.string ~body:m ())) msgs
       | other ->
           let msgs = split_long_message !max_message_length response tail in
             List.iter (fun m ->
-                         out (make_element "message"
-                                (if other = "" then
-                                   ["to", from.string]
-                                 else
-                                   ["to", from.string; "type", other])
-                                [make_simple_cdata "body" m])) msgs
+                         out (make_message ~ns:ns_client ~type_:`Chat
+                                ~jid_to:from.string ~body:m ())) msgs
         
 (* temp code *)
 exception DNSPrepError

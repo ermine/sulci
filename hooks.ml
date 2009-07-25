@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 open XMPP.Network
 open Jid
@@ -10,13 +10,22 @@ open Types
 open Config
 open Common
 
+let _ =
+  Printexc.record_backtrace true
+
 module IqCallback = Map.Make(Id)
 let iqcallbacks = ref (IqCallback.empty:
-                         (iq_type -> Jid.jid -> element ->
+                         (iq_info -> Jid.jid -> element ->
                             out-> unit) IqCallback.t)
 
 
-module XmlnsMap = Map.Make(Id)
+module Ns =
+struct
+  type t = Xml.namespace
+  let compare = compare
+end
+  
+module XmlnsMap = Map.Make(Ns)
 let xmlnsmap = ref XmlnsMap.empty
 
 let presencemap = ref []
@@ -60,7 +69,7 @@ let register_filter name proc =
 let register_dispatch_xml proc = dispatch_xml := proc
 
 type reg_handle =
-  | Xmlns of string * (xmpp_event -> jid -> element -> out -> unit)
+  | Xmlns of Xml.namespace * (iq_info -> jid -> element -> out -> unit)
   | PresenceHandle of (jid -> element -> out -> unit)
         
 let register_handle (handler:reg_handle) =
@@ -70,49 +79,68 @@ let register_handle (handler:reg_handle) =
     | PresenceHandle proc ->
         presencemap := proc :: !presencemap
 
-let process_iq from xml out =
-  let id, type_, xmlns = iq_info xml in
-    match type_ with
-      | `Result
-      | `Error ->
+let process_iq from xml env out =
+  let id = safe_get_attr_value "id" (get_attrs xml) in
+    match iq_info xml with
+      | IqGet el
+      | IqSet el as iq -> (
+          try
+            let xmlns = get_namespace (get_qname el) in
+            let f = XmlnsMap.find xmlns !xmlnsmap in
+              try f iq from xml out with exn ->
+                log#error "[executing xmlns callback] %s"
+                  (Printexc.to_string exn);
+                log#debug "%s" (Printexc.get_backtrace ())
+          with Not_found ->
+            out (make_error_reply StanzaError.ERR_FEATURE_NOT_IMPLEMENTED xml)
+        )        
+      | IqResult el as iq ->
           if id <> "" then (
             try
               let f = IqCallback.find id !iqcallbacks in
-                try f type_ from xml out with exn ->
-                  log#error "[executing iq callback] %s: %s"
-                    (Printexc.to_string exn) (element_to_string xml);
+                try f iq from xml out with exn ->
+                  log#error "[executing iq callback] %s"
+                    (Printexc.to_string exn);
+                  log#debug "%s" (Printexc.get_backtrace ());
                   iqcallbacks := IqCallback.remove id !iqcallbacks;
             with Not_found -> ()
           )
-      | `Get
-      | `Set ->
-          try
-            let f = XmlnsMap.find (get_xmlns xml) !xmlnsmap in
-              try f (Iq (id, type_, xmlns)) from xml out with exn ->
-                log#error "[executing xmlns callback] %s: %s"
-                  (Printexc.to_string exn) (element_to_string xml);
-          with Not_found ->
-            out (Error.make_error_reply xml `ERR_FEATURE_NOT_IMPLEMENTED)
-        
+      | IqError err as iq ->
+          if id <> "" then (
+            try
+              let f = IqCallback.find id !iqcallbacks in
+                try f iq from xml out with exn ->
+                  log#error "[executing iq callback] %s"
+                    (Printexc.to_string exn);
+                  log#debug "%s" (Printexc.get_backtrace ());                  
+                  iqcallbacks := IqCallback.remove id !iqcallbacks;
+            with Not_found -> ()
+          )
+
 let do_command text from xml env out =
   let word = 
     try String.sub text 0 (String.index text ' ') with Not_found -> text in
   let f = Hashtbl.find commands word in
   let params = try string_after text (String.index text ' ') with _ -> "" in
     try f (trim params) from xml env out with exn -> 
-      log#error "[executing command callback] %s: %s"
-        (Printexc.to_string exn) (element_to_string xml)
+      log#error "[executing command callback] %s" (Printexc.to_string exn);
+      log#debug "%s" (Printexc.get_backtrace ())
         
 let process_message from xml env out =
-  let msg_type = safe_get_attr_s xml "type" in
+  let msg_type = safe_get_attr_value "type" (get_attrs xml) in
     if msg_type <> "error" then
       let text = 
-        try get_cdata xml ~path:["body"] with Not_found -> "" in
-        try do_command text from xml env out with Not_found ->
+        try get_cdata (get_subelement (ns_client, "body") xml)
+        with Not_found -> ""
+      in
+        try do_command text from xml env out
+        with Not_found ->
           List.iter (fun f ->
-                       try f from xml env out with exn ->
-                         log#error "[executing catch callback] %s: %s"
-                           (Printexc.to_string exn) (element_to_string xml)
+                       try f from xml env out
+                       with exn ->
+                         log#error "[executing catch callback] %s"
+                           (Printexc.to_string exn);
+                         log#debug "%s" (Printexc.get_backtrace ())
                     ) !catchset
             
 let process_presence _from _xml _env _out = ()
@@ -145,9 +173,9 @@ let default_get_entity text from =
       raise BadEntity
     
 let default_dispatch_xml from xml out =
-  let tag = get_tagname xml in
+  let tag = get_name (get_qname xml) in
   let env = { env_groupchat = false;
-              env_lang = safe_get_attr_s xml "xml:lang";
+              env_lang = safe_get_attr_value ~ns:ns_xml "lang" (get_attrs xml);
               env_check_access = default_check_access;
               env_get_entity = default_get_entity } in
     match tag with
@@ -156,21 +184,21 @@ let default_dispatch_xml from xml out =
       | "presence" ->
           process_presence from xml env out
       | "iq" ->
-          process_iq from xml out
+          process_iq from xml env out
       | _ ->
           ()
 
 let rec process_xml myjid p inch ouch =
   next_xml inch p () >>=
-    (fun (p, tag) ->
-       match tag with
-         | Xmlstream.Stanza el ->
-             let from = jid_of_string (get_attr_s el "from") in
-               !dispatch_xml from el
-                 (fun xml -> ignore (send_xml (send ouch) xml));
-               process_xml myjid p inch ouch
-         | _ ->
-             fail (Error "unknown stanza")
+    (function
+       | Xmlstream.Stanza el ->
+           let from = jid_of_string (get_from el) in
+             !dispatch_xml from el
+               (fun xml ->
+                  ignore (send ouch (Xmlstream.stanza_serialize p xml)));
+             process_xml myjid p inch ouch
+       | _ ->
+           fail (Error "unknown stanza")
     )
             
 let _ =
@@ -184,6 +212,7 @@ let _ =
 let quit out =
   List.iter (fun proc ->
                try proc out with exn ->
-                 log#error "[quit] %s" (Printexc.to_string exn)
+                 log#error "[quit] %s" (Printexc.to_string exn);
+                 log#debug "%s" (Printexc.get_backtrace ())
             ) !on_quit;
   Pervasives.exit 0

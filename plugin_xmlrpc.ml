@@ -3,7 +3,7 @@
 *)
 
 open Unix
-open Light_xml
+open Xml
 
 let proc ev event from (xml:element) (out:element -> unit) =
   Event.sync (Event.send ev xml)

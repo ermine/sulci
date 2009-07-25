@@ -2,12 +2,14 @@
  * (c) 2005-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 open Jid
 open Types
 open Common
 open Hooks
+
+let ns_vcard = Some "vcard-temp"
 
 let result_vcard alist =
   if alist = [] then
@@ -26,28 +28,27 @@ let result_vcard alist =
       r4
         
 let vsearch = 
-  let success _text _entity _lang xml =
-    let rec aux_scan tail acc =
-      match tail with
-        | [] -> acc
-        | h :: t ->
-            match h with
-              | Xmlelement _ ->
-                  let name = get_tagname h in
-                  let value = get_cdata h in
-                    if trim(value) <> "" then
-                      aux_scan t 
-                        ((name, value)::acc)
-                    else
-                      aux_scan t acc
-              | Xmlcdata _ -> aux_scan t acc
+  let success _text _entity _lang vcard =
+    let res =
+      List.fold_left
+        (fun acc -> function
+           | Xmlelement (qname, _, _) as el ->
+               let name = get_name qname in
+               let value = get_cdata el in
+                 if trim(value) <> "" then
+                   (name, value) :: acc
+                 else
+                   acc
+           | Xmlcdata _ ->
+               acc
+        ) []
+        (match vcard with | None -> [] | Some el -> get_children el)
     in
-    let res = aux_scan (try get_subels xml ~path:["vCard"] 
-                        with Not_found -> []) [] in
       result_vcard res
   in
-    Iq.simple_query_entity success ~query_tag:"vCard" "vcard-temp"
-      
+    Iq.simple_query_entity success
+      ~payload:(make_element (ns_vcard, "vCard") [] []) 
+     
 let _ =
   register_command "vcard" vsearch
     

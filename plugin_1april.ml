@@ -2,10 +2,9 @@
  * (c) 2008 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 
-open Light_xml
 open Types
 open Hooks
 open Common

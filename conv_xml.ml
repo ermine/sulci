@@ -2,6 +2,8 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
+open Conversion
+
 let unknown_encoding_handler encoding =
   let decoder = Conversion.make_decoder encoding in
     fun str i ->

@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 open Jid
 open Types
@@ -50,7 +50,7 @@ let take_queue (m:t) =
       
 let open_markovdb (lnode, ldomain) =
   let path = 
-    try trim (get_attr_s Config.config 
+    try trim (Light_xml.get_attr_s Config.config 
                 ~path:["plugins"; "markov"] "dir")
     with Not_found -> "./markov_db"
   in
@@ -144,7 +144,8 @@ let seek file db (w1:string) =
           exit_with_rc file db sql
             
 let chain_limit = ref
-  (try int_of_string (get_attr_s Config.config ~path:["plugin"; "markov"]
+  (try int_of_string (Light_xml.get_attr_s Config.config
+                        ~path:["plugin"; "markov"]
                         "msg_limit")
    with Not_found -> 20)
   

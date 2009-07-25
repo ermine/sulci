@@ -2,10 +2,9 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
 open XMPP
 open Jid
-open Error
 open Types
 open Common
 open Hooks
@@ -16,10 +15,9 @@ let msg ?(is_groupchat=(fun _ -> false))  text from xml env out =
       let s = String.index text ' ' in
       let to_ = jid_of_string (String.sub text 0 s) in
       let msg_body = string_after text (s+1) in
-        out (make_element "message"
-               ["to", to_.string; 
-                "type", if is_groupchat to_ then "groupchat" else "chat"]
-               [make_simple_cdata "body" msg_body]);
+        out (make_message ~ns:ns_client ~jid_to: to_.string
+               ~type_: (if is_groupchat to_ then `Groupchat else `Chat)
+               ~body:msg_body ());
         make_msg out xml "done"
     with _ ->
       make_msg out xml "?"

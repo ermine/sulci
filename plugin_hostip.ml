@@ -3,7 +3,7 @@
  *)
 
 open Unix
-open Light_xml
+open Xml
 open Types
 open Common
 open Hooks

@@ -2,7 +2,8 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
+open Xml
+open StanzaError
 open XMPP
 open Jid
 open Types
@@ -33,19 +34,16 @@ let roulette text from xml env out =
                 Lang.get_msg env.env_lang "plugin_roulette_kick_reason" [] in
               let proc t _f x o = 
                 match t with
-                  | `Result ->
-                      if safe_get_attr_s xml "type" = "groupchat" then
-                        make_msg o xml
-                          (Lang.get_msg env.env_lang "plugin_roulette_bye" [])
-                  | `Error ->
-                      let err_text =  
-                        try 
-                          get_cdata ~path:["error"; "text"] x 
-                        with _ -> 
-                          Lang.get_msg env.env_lang
-                            "plugin_roulette_kick_failed" []
-                      in
-                        make_msg out xml err_text
+                  | IqResult _el ->
+                      if safe_get_attr_value "type" (get_attrs xml) =
+                        "groupchat" then
+                          make_msg o xml
+                            (Lang.get_msg env.env_lang "plugin_roulette_bye" [])
+                  | IqError err ->
+                      make_msg out xml (if err.err_text = "" then
+                                          Lang.get_msg env.env_lang
+                                            "plugin_roulette_kick_failed" []
+                                        else err.err_text)
                   | _ ->
                       ()
               in
