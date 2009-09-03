@@ -128,38 +128,40 @@ let write (room:string * string) text =
            curtime text);
       flush out_log
         
-let process_log event (from:jid) xml env =
-  let room = from.lnode, from.ldomain in
+let message_log id jid_from jid_to type_ body subject thread x () =
+  let room = jid_from.lnode, jid_from.ldomain in
     if LogMap.mem room !logmap then
-      match event with
-        | MUC_history -> ()
-
-        | MUC_topic subject ->
-            if from.resource <> "" then
-              write room 
-                (Lang.get_msg env.env_lang "muc_log_set_subject" 
-                   [from.resource;  html_url subject])
-            else
-              write room 
-                (Lang.get_msg env.env_lang "muc_log_subject" [html_url subject])
-
-        | MUC_message (msg_type, _, _) ->
-            if msg_type = `Groupchat  then
-              let body =
-                try get_cdata (get_subelement (ns_client, "body") xml)
-                with Not_found -> "" in
-                if body <> "" then
-                  write room (
-                    if String.length body = 3 && body = "/me" then
-                      Printf.sprintf "* %s" from.resource
-                    else if String.length body > 3 && 
-                      String.sub body 0 4 = "/me " then
-                        Printf.sprintf "* %s %s" from.resource
-                          (html_url (string_after body 4))
+      if mem_qname (ns_x_delay, "x") x then
+        ()
+      else
+        match subject with
+          | Some sibj ->
+              if jid_from.resource <> "" then
+                write room 
+                  (Lang.get_msg env.env_lang "muc_log_set_subject" 
+                     [from.resource;  html_url sibj])
+              else
+                write room 
+                  (Lang.get_msg env.env_lang "muc_log_subject" [html_url subj])
+          | None ->
+              match body with
+                | Some body ->
+                    if body <> "" then
+                      write room (
+                        if String.length body = 3 && body = "/me" then
+                          Printf.sprintf "* %s" from.resource
+                        else if String.length body > 3 && 
+                          String.sub body 0 4 = "/me " then
+                            Printf.sprintf "* %s %s" from.resource
+                              (html_url (string_after body 4))
+                        else
+                          make_message from.resource body)
                     else
-                      make_message from.resource body)
-                else
-                  ()
+                      ()
+                | None ->
+                    ()
+
+let presence_log id jid_from jid_to type_ lang show status priority x () =
 
         | MUC_join _item ->
             write room
@@ -208,5 +210,3 @@ let process_log event (from:jid) xml env =
                 html_url item.status)
               *)
 
-        | MUC_other ->
-            ()

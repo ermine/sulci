@@ -4,36 +4,38 @@
 
 open Xml
 open XMPP
-open Types
+open Xep_stats
 open Config
 open Common
+open Hooks
 
-let ns_stats = Some "http://jabber.org/protocol/stats"
-
-let stats_sum serverlist result out =
+let find name alist =
+  try
+    let t = List.find (fun t -> t.name = name) alist in
+      int_of_string t.value
+  with _ -> 0
+    
+let stats_sum serverlist result xmpp =
   log#info "Globalstats: Start polling";
   let totals = ref 0 in
   let onlines = ref 0 in
   let servers = ref 0 in
   let sin = open_in serverlist in
   let rec each_server server =
-    let proc t _f x _o =
-      (match t with
-         | IqResult el ->
+    let proc ev jid_from jid_to lang () =
+      (match ev with
+         | IQResult el -> (
              match el with
                | None -> ()
                | Some el ->
-                   let stats = get_subelements (ns_stats, "stat") el in
-                   let data = List.map (fun z ->
-                                          get_attr_value "name" (get_attrs z),
-                                          try int_of_string 
-                                            (get_attr_value "value"
-                                               (get_attrs z))
-                                          with Not_found -> 0 ) stats in
-               totals := !totals + List.assoc "users/total" data;
-               onlines := !onlines + List.assoc "users/online" data;
-               servers := !servers + 1
-         | _ -> ());
+                   let stats = decode el in
+                   let total = find "users/total" stats in
+                   let online = find "users/online" stats in
+                     totals := !totals + total;
+                     onlines := !onlines + online;
+                     servers := !servers + 1
+           )
+         | IQError _err -> ());
       try
         let server = input_line sin in
           each_server server
@@ -47,14 +49,8 @@ let stats_sum serverlist result out =
           close_in sin;
           close_out sout
     in
-    let id = new_id () in
-      Hooks.register_iq_query_callback id proc;
-      out (make_iq ~ns:ns_client ~jid_to:server ~type_:`Get ~id
-             ~payload: [make_element (ns_stats, "query") []
-                          [make_element (ns_stats, "stat")
-                             [make_attr "name" "users/online"] [];
-                           make_element (ns_stats, "stat")
-                             [make_attr "name" "users/total"] []]] ())
+      XMPP.make_iq_request xmpp ~jid_to:(Jid.make_jid "" server "")
+        (IQGet (make_iq_get ["users/total"; "users/online"])) proc
   in
   let server = input_line sin in
     each_server server
@@ -71,11 +67,11 @@ let _ =
          ~path:["plugins"; "globalstats"; "store"] "interval") in
       
     let start_stats out =
-      let _ = Scheduler.add_task Types.timerQ
+      let _ = Scheduler.add_task timerQ
         (fun () -> try stats_sum serverlist result out with exn ->
            log#error "Plugin_globalstats: %s" (Printexc.to_string exn))
         (Unix.gettimeofday () +. 10.) (fun () -> interval)
       in ()
     in
-      Hooks.register_on_connect start_stats
+      register_on_connect start_stats
   )

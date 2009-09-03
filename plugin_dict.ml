@@ -4,22 +4,15 @@
 
 open Pcre
 open Light_xml
-open Types
-open Config
 open Common
 open Hooks
+open Plugin_command
 
 exception DictError of string
 
-let dictd_server = 
-  try trim (get_cdata Config.config ~path:["plugins"; "dict"; "server"])
-  with _ -> "localhost"
+let dictd_server = ""
 
-let dictd_port = 
-  try int_of_string 
-    (trim (get_attr_s Config.config ~path:["plugins"; "dict"; "server"] 
-             "port"))
-  with _ -> 2628
+let dictd_port = 1
     
 let connect server port =
   let inet_addr =
@@ -146,9 +139,9 @@ let process_dict db word env =
 let rex1 = Pcre.regexp ~iflags:(cflags [`UTF8]) "([^\\s]+)[\\s]*$"
 let rex2 = Pcre.regexp "(!|\\*|[a-z]+)\\s+([a-z]+)"
   
-let dict text _from xml env out =
+let dict xmpp env kind jid_from text =
   if text = "" then
-    make_msg out xml (Lang.get_msg env.env_lang "plugin_dict_invalid_syntax" [])
+    env.env_message xmpp kind jid_from (Lang.get_msg env.env_lang "plugin_dict_invalid_syntax" [])
   else
     if String.get text 0 = '-' then
       let proc () =
@@ -156,7 +149,7 @@ let dict text _from xml env out =
           process_cmd_dict text
         with DictError error -> error
         in 
-          make_msg out xml response
+          env.env_message xmpp kind jid_from response
       in
         ignore (Thread.create proc ())
     else 
@@ -169,7 +162,7 @@ let dict text _from xml env out =
             process_dict db word env
           with (DictError error) -> error
           in
-            make_msg out xml response
+            env.env_message xmpp kind jid_from response
         in
           ignore (Thread.create proc ())
       with Not_found ->
@@ -181,12 +174,15 @@ let dict text _from xml env out =
               process_dict "*" word env
             with (DictError error) -> error
             in
-              make_msg out xml response
+              env.env_message xmpp kind jid_from response
           in
             ignore (Thread.create proc ())
         with Not_found ->
-          make_msg out xml
+          env.env_message xmpp kind jid_from
             (Lang.get_msg env.env_lang "plugin_dict_invalid_syntax" [])
             
+let plugin opts =
+  add_commands [("dict", dict)] opts
+
 let _ =
-  register_command "dict" dict
+  add_plugin "dict" plugin

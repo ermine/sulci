@@ -9,9 +9,9 @@
 
 open Pcre
 open Light_xml
-open Types
 open Common
 open Hooks
+open Plugin_command
 open Http_suck
 
 let langpairs = [
@@ -41,11 +41,11 @@ let langpairs = [
   "ie", "Italian-Englsish"
 ]
 
-let do_list =
+let do_list xmpp env kind jid_from =
   let list = "\n" ^ String.concat "\n"
     ((List.map (fun (a, l) -> a ^ "\t" ^ l) langpairs))
   in
-    fun xml out -> make_msg out xml list
+    env.env_message xmpp kind jid_from list
       
 let url lang text =
   Printf.sprintf
@@ -74,7 +74,7 @@ let process_doc wml =
   in
     aux_find wml
       
-let do_request language text xml env out =
+let do_request language xmpp env kind jid_from text =
   let callback data =
     let resp = match data with
       | OK (_media, _charset, content) -> (
@@ -90,27 +90,30 @@ let do_request language text xml env out =
       | Exception _exn ->
           Lang.get_msg env.env_lang "plugin_translate_server_error" []
     in
-      make_msg out xml resp
+      env.env_message xmpp kind jid_from resp
   in
     Http_suck.http_get (url language text) callback
       
-let translate text _from xml env out =
+let translate xmpp env kind jid_from text =
   match trim(text) with
     | "list" ->
-        do_list xml out
+        do_list xmpp env kind jid_from
     | _ ->
         try
           let res = exec ~rex:cmd ~pos:0 text in
           let language = String.lowercase (get_substring res 1)
           and str = get_substring res 2 in
             if List.mem_assoc language langpairs then
-              do_request language str xml env out
+              do_request language xmpp env kind jid_from str
             else
-              make_msg out xml 
+              env.env_message xmpp kind jid_from 
                 (Lang.get_msg env.env_lang "plugin_translate_bad_language" [])
         with Not_found ->
-          make_msg out xml 
+          env.env_message xmpp kind jid_from
             (Lang.get_msg env.env_lang "plugin_translate_bad_syntax" [])
             
+let plugin opts =
+  add_commands [("tr", translate)] opts
+
 let _ =
-  register_command "tr" translate
+  add_plugin "translate" plugin

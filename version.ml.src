@@ -3,4 +3,4 @@
  *)
 
 let name = "Sulci"
-let version = "VERSION"
+let version = "2.0-git-VERSION"

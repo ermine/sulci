@@ -3,16 +3,16 @@
  *)
 
 open XMPP
-open Types
 open Common
 open Hooks
+open Plugin_command
 
-let dns text _from xml env out =
+let dns xmpp env kind jid_from text =
   if text = "" then
-    make_msg out xml
+    env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_misc_dns_invalid_syntax" [])
   else
-    make_msg out xml
+    env.env_message xmpp kind jid_from
       (try
          let inet_addr = Unix.inet_addr_of_string text in
          let s = Unix.gethostbyaddr inet_addr in
@@ -31,10 +31,10 @@ let dns text _from xml env out =
          | Not_found ->
              Lang.get_msg env.env_lang "plugin_misc_dns_not_resolved" [])
       
-let shell text from xml env out =
-  if env.env_check_access from "admin" then
+let shell xmpp env kind jid_from text =
+  if env.env_check_access jid_from "admin" then
     if text = "" then
-      make_msg out xml "shell? yeah!"
+      env.env_message xmpp kind jid_from "shell? yeah!"
     else
       let in_ch = Unix.open_process_in text in
       let rec aux_read acc =
@@ -45,10 +45,12 @@ let shell text from xml env out =
       in
       let lines = aux_read [] in
         if lines <> [] then
-          make_msg out xml (String.concat "\n" lines);
+          env.env_message xmpp kind jid_from (String.concat "\n" lines);
   else
-    make_msg out xml "no access"
+    env.env_message xmpp kind jid_from "no access"
+
+let plugin opts =
+  add_commands [("dns", dns); ("sh", shell)] opts
 
 let _ =
-  register_command "dns" dns;
-  register_command "sh" shell
+  add_plugin "misc" plugin

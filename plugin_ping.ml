@@ -2,37 +2,35 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
 open StanzaError
 open XMPP
 open Jid
-open Types
-open Common
+open Xep_version
 open Hooks
-open Iq
+open Plugin_command
 
-let ns_version = Some "jabber:iq:version"
-  
-let ping text from xml env out =
-  let success starttime text entity env _el =
+let ping =
+  let success starttime env text entity _el =
     let diff = Lang.float_seconds env.env_lang "ping" 
       (Unix.gettimeofday () -. starttime) in
       match entity with
-        | EntityMe ->
+        | EntityMe _ ->
             Lang.get_msg env.env_lang "plugin_ping_pong_from_me" [diff]
-        | EntityYou ->
+        | EntityYou _ ->
             Lang.get_msg env.env_lang "plugin_ping_pong_from_you" [diff]
-        | EntityHost
-        | EntityUser ->
+        | EntityHost _
+        | EntityUser _ ->
             Lang.get_msg env.env_lang "plugin_ping_pong_from_somebody"
               [text; diff]
   in
-  let starttime = Unix.gettimeofday () in
-    simple_query_entity ~error_exceptions:[ERR_FEATURE_NOT_IMPLEMENTED]
-      (success starttime)
-      ~payload:(make_element (ns_version, "query") [] [])
-      text from xml env out
+    fun xmpp env kind jid_from text ->
+      Iq.simple_query_entity ~error_exceptions:[ERR_FEATURE_NOT_IMPLEMENTED]
+        (success (Unix.gettimeofday ())) ~payload:(Xep_version.make_iq_get ())
+        xmpp env kind jid_from text
 
-let _ =
-  register_command "ping" ping
     
+let plugin opts =
+  add_commands [("ping", ping)] opts
+    
+let _ =
+  add_plugin "ping" plugin

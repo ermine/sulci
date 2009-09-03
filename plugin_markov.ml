@@ -2,7 +2,6 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
 open XMPP
 open Jid
 open Types

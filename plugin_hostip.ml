@@ -3,16 +3,15 @@
  *)
 
 open Unix
-open Xml
-open Types
+open Netconversion
 open Common
 open Hooks
+open Plugin_command
 open Http_suck
-open Netconversion
 
 let rex = Pcre.regexp "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
 
-let hostip text _from xml env out =
+let hostip xmpp env kind jid_from text =
   let ip =
     try
       let h = gethostbyname text in
@@ -25,7 +24,7 @@ let hostip text _from xml env out =
   in
     match ip with
       | None ->
-          make_msg out xml
+          env.env_message xmpp kind jid_from
             (Lang.get_msg env.env_lang "plugin_hostip_bad_syntax" []);
       | Some ip ->
           let url = Printf.sprintf 
@@ -54,9 +53,12 @@ let hostip text _from xml env out =
                 | Exception _ ->
                     Lang.get_msg env.env_lang "plugin_hostip_failed" []
             in
-              make_msg out xml response
+              env.env_message xmpp kind jid_from response
           in
             Http_suck.http_get url callback
               
+let plugin opts =
+  ()
+    
 let _ =
-  register_command "hostip" hostip
+  add_plugin "hostip" plugin

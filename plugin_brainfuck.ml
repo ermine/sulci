@@ -2,11 +2,8 @@
  * (c) 2009 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
-open Xml
-open XMPP
-open Types
-open Common
 open Hooks
+open Plugin_command
 
 let encode str =
   let buf = Buffer.create (String.length str) in
@@ -17,11 +14,11 @@ let encode str =
                 ) str;
     Buffer.contents buf
   
-let bf text _from xml _env out =
+let bf xmpp env kind jid_from text =
   if text = "" then
-    make_msg out xml "brain fuck!"
+    env.env_message xmpp kind jid_from "brain fuck!"
   else
-    let code = decode text in
+    let code = Xml.decode text in
     let getchar () = int_of_char '.' in
     let buf = Buffer.create 1023 in
     let putchar ch = Buffer.add_char buf (Char.chr (ch land 0xFF)) in
@@ -30,14 +27,17 @@ let bf text _from xml _env out =
         Brainfuck.execute code putchar getchar;
         let result = Buffer.contents buf in
           if result <> "" then
-            make_msg out xml (encode (encode result))
+            env.env_message xmpp kind jid_from (encode (encode result))
       with
         | Brainfuck.Error msg ->
-            make_msg out xml msg
+            env.env_message xmpp kind jid_from msg
         | exn ->
-            make_msg out xml (Printexc.to_string exn)
+            env.env_message xmpp kind jid_from (Printexc.to_string exn)
     in
       ignore (Thread.create f ())
 
+let plugin opts =
+  add_commands [("bf", bf)] opts
+
 let _ =
-  register_command "bf" bf
+  add_plugin "brainfuck" plugin

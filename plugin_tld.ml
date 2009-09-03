@@ -3,30 +3,39 @@
  *)
 
 open Dbm
-open Light_xml
 open Common
 open Hooks
+open Plugin_command
 
-let tlds = 
-  let name = try
-    get_attr_s Config.config ~path:["plugins"; "tld"] "db"
-  with Not_found -> "tlds" in
-    try
-      opendbm name [Dbm_rdonly] 0o666
-    with Dbm_error _ ->
-      Printf.eprintf "Cannot open db file %s for plugin_tlds\n" name;
-      Pervasives.exit 127
-        
-let tld text _from xml _env out =
-  if text = "" then
-    make_msg out xml "какой домен?"
-  else
-    if text = "*" then
-      make_msg out xml "http://www.iana.org/cctld/cctld-whois.htm"
+let tld db xmpp env kind jid_from text =
+  let response =
+    if text = "" then
+      "какой домен?"
     else
-      let tld = if text.[0] = '.' then string_after text 1 else text in
-        make_msg out xml (try Dbm.find tlds tld with Not_found -> 
-                            "неизвестный домен")
-          
-let _ =   
-  register_command "tld" tld
+      if text = "*" then
+        "http://www.iana.org/cctld/cctld-whois.htm"
+      else
+        let tld = if text.[0] = '.' then string_after text 1 else text in
+          (try Dbm.find db tld with Not_found -> "неизвестный домен")
+  in
+    env.env_message xmpp kind jid_from response
+
+
+let plugin opts =
+  let tld_file =
+    try List.assoc "path" (List.assoc "db" opts)
+    with Not_found ->
+      raise
+        (PluginError
+           "Please specify <db path=/path/tlds'/> element in configuration file")
+  in
+  let db =
+    try opendbm tld_file [Dbm_rdonly] 0o666
+    with Dbm_error err ->
+      raise (PluginError
+               (Printf. sprintf "Cannot open db file %s: %s" tld_file err))
+  in        
+    add_commands [("tld", (tld db))] opts
+
+let _ =
+  add_plugin "tld" plugin

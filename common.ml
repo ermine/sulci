@@ -2,25 +2,43 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
-open XMPP
-open Jid
-open XMPP.Network
-
 let string_after s n =
-  String.sub s n (String.length s - n)
+  if n = 0 then
+    s
+  else if String.length s = n then
+    ""
+  else
+    String.sub s n (String.length s - n)
 
-let skip_ws str =
+let is_prefix s1 s2 =
+  let len1 = String.length s1 in
+  let len2 = String.length s2 in
+    if len1 > len2 then
+      false
+    else
+      let rec aux_compare i =
+        if i < len1 then
+          if s1.[i] = s2.[i] then
+            aux_compare (succ i)
+          else
+            false
+        else
+          true
+      in
+        aux_compare 0
+    
+let skip_ws str i =
   if str = "" then str
   else
     let rec cycle i =
-      if i = String.length str then ""
-      else
+      if i < String.length str then
         if List.mem str.[i] [' '; '\n'; '\r'; '\t'] then cycle (succ i)
         else if i > 0 then string_after str i
         else str
+      else
+        ""
     in
-      cycle 0
+      cycle i
         
 let rskip_ws str =
   if str = "" then str
@@ -34,19 +52,9 @@ let rskip_ws str =
       cycle (pred (String.length str))
         
 let trim str =
-  let r1 = skip_ws str in
+  let r1 = skip_ws str 0 in
     rskip_ws r1
       
-let msg_limit = ref 
-  (try int_of_string (Light_xml.get_attr_s
-                        Config.config ~path:["muc"] "msg_limit")
-   with Not_found -> 450)
-
-let max_message_length = ref
-  (try int_of_string
-     (Light_xml.get_attr_s Config.config ~path:["max_message_length"] "value")
-   with Not_found -> 10000)
-  
 exception InvalidUTF8
 
 let sub_utf8_string text count =
@@ -121,44 +129,8 @@ let split_long_message limit msg tail =
   in
     aux_split [] msg
       
-let make_msg out xml ?response_tail response =
-  let from = jid_of_string (get_from xml) in
-  let nick = from.resource in
-  let tail =
-    match response_tail with
-      | None -> ""
-      | Some t -> "\n" ^ t
-  in
-    match safe_get_attr_value "type" (get_attrs xml) with
-      | "groupchat" ->
-          let limit = 
-            let l = !msg_limit - String.length tail in
-              if l < 0 then 0 else l in
-          let resp = sub_utf8_string response limit in
-          let cutted, respo =
-            if String.length resp < String.length response then
-              true, clean_tail resp ^ "[...]" ^ tail
-            else 
-              false, resp ^ tail
-          in
-            out (make_message ~ns:ns_client ~type_:`Groupchat
-                   ~jid_to:(string_of_jid (bare_jid from))
-                   ~body: (if Pcre.pmatch ~pat:"/me" response then respo
-                           else if nick = "" then respo
-                           else (nick ^ ": " ^ respo)
-                          ) () );
-            if cutted then
-              let msgs =
-                split_long_message !max_message_length response tail in
-                List.iter (fun m ->
-                             out (make_message ~ns:ns_client ~type_:`Chat
-                                    ~jid_to: from.string ~body:m ())) msgs
-      | other ->
-          let msgs = split_long_message !max_message_length response tail in
-            List.iter (fun m ->
-                         out (make_message ~ns:ns_client ~type_:`Chat
-                                ~jid_to:from.string ~body:m ())) msgs
-        
+exception Error
+  
 (* temp code *)
 exception DNSPrepError
   

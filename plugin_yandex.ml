@@ -4,14 +4,15 @@
 
 open Light_xml
 open XMPP
-open Types
 open Hooks
 open Common
+open Plugin_command
 open Http_suck
 
-let blogs text _from xml env out =
+let blogs xmpp env kind jid_from text =
   if text = "" then
-    make_msg out xml (Lang.get_msg env.env_lang "plugin_yandex_bad_syntax" [])
+    env.env_message xmpp kind jid_from
+      (Lang.get_msg env.env_lang "plugin_yandex_bad_syntax" [])
   else
     let callback data =
       let response_tail = ref None in
@@ -40,13 +41,16 @@ let blogs text _from xml env out =
               | _ ->
                   Lang.get_msg env.env_lang "plugin_yandex_server_error" []
       in
-        make_msg out xml ?response_tail:!response_tail resp
+        env.env_message xmpp kind jid_from ?response_tail:!response_tail resp
     in
     let url = 
      "http://blogs.yandex.ru/search.rss?how=tm&rd=2&charset=UTF-8&numdoc=1&text="
       ^ Netencoding.Url.encode (decode text) in
       Http_suck.http_get url callback
         
+let plugin opts =
+  add_commands [("blogs", blogs)] opts
+
 let _ =
-  register_command "blogs" blogs
+  add_plugin "yandex" plugin
   

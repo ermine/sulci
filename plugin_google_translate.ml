@@ -5,10 +5,9 @@
 open Nethtml
 open Netconversion
 open Pcre
-open Xml
-open Types
 open Common
 open Hooks
+open Plugin_command
 open Http_suck
 
 let slist = [
@@ -124,7 +123,7 @@ let process_result doc =
   in
     aux_find doc
       
-let translate_text sl tl text xml env out =
+let translate_text sl tl text xmpp env kind jid_from =
   let callback data =
     let resp = match data with
       | OK (_media, charset, content) -> (
@@ -153,11 +152,11 @@ let translate_text sl tl text xml env out =
       | Exception _exn ->
           Lang.get_msg env.env_lang "plugin_google_translate_server_error" []
     in
-      make_msg out xml resp
+      env.env_message xmpp kind jid_from resp
   in
   let url = "http://translate.google.com/translate_t" in
   let data = Printf.sprintf "langpair=%s|%s&ie=UTF8&oe=UTF8&text=%s"
-    sl tl (Netencoding.Url.encode (decode text))
+    sl tl (Netencoding.Url.encode (Xml.decode text))
   in
     Http_suck.http_post url [] data callback
       
@@ -167,10 +166,10 @@ let cmd = Pcre.regexp ~flags:[`DOTALL; `UTF8]
   
 let rm_newlines = Pcre.regexp "[\n\r]"
   
-let translate text _from xml env out =
+let translate xmpp env kind jid_from text =
   match trim(text) with
     | "list" ->
-        make_msg out xml list_languages
+        env.env_message xmpp kind jid_from list_languages
     | _ ->
         try
           let res = exec ~rex:cmd text in
@@ -179,14 +178,17 @@ let translate text _from xml env out =
           let str = get_substring res 3 in
             if List.mem_assoc lg1 slist then
               if List.mem_assoc lg2 tlist then
-                translate_text lg1 lg2 str xml env out
+                translate_text lg1 lg2 str xmpp env kind jid_from
               else
                 raise Not_found
             else
               raise Not_found
         with Not_found ->
-          make_msg out xml 
+          env.env_message xmpp kind jid_from 
             (Lang.get_msg env.env_lang "plugin_google_translate_bad_syntax" [])
             
+let plugin opts =
+  ()
+
 let _ = 
-  register_command "gtr" translate
+  add_plugin "google_translate" plugin

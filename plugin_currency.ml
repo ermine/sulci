@@ -4,10 +4,9 @@
 
 open Unix
 open Light_xml
-open Types
-open Config
 open Common
 open Hooks
+open Plugin_command
 open Http_suck
 
 let url = "http://www.cbr.ru/scripts/XML_daily.asp"
@@ -78,31 +77,26 @@ let load_curr () =
   in
     Http_suck.http_get url callback
       
-let get_next_update () =
+let get_next_update (hour, min) =
   let curr_time = gettimeofday () in
   let curr_tm = localtime curr_time in
   let noun, _ = mktime 
     {curr_tm with 
-       tm_sec = 0; tm_min = 0; tm_hour = 11;
+       tm_sec = 0; tm_min = min; tm_hour = hour;
        tm_mday = (if curr_tm.tm_hour < 11 then 
                     curr_tm.tm_mday else curr_tm.tm_mday + 1)} 
   in
     noun
       
-let _ = 
-  load_curr ();
-  Scheduler.add_task Types.timerQ load_curr (get_next_update ())
-    (fun () -> get_next_update ())
-    
 let rex = Pcre.regexp 
   "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
   
-let currency text _from xml env out =
+let currency xmpp env kind jid_from text =
   if text = "list" then 
-    make_msg out xml !list_curr
+    env.env_message xmpp kind jid_from !list_curr
   else if text = "refresh" then (
     load_curr ();
-    make_msg out xml "sent the request"
+    env.env_message xmpp kind jid_from "sent the request"
   )
   else
     try
@@ -114,7 +108,7 @@ let currency text _from xml env out =
       let val1_x = 
         let x = try List.assoc (String.uppercase val1) !curr
         with Not_found ->
-          make_msg out xml 
+          env.env_message xmpp kind jid_from 
             (Lang.get_msg env.env_lang "plugin_currency_no_currency" [val1]);
           raise Not_found
         in x.value /. float_of_int x.nominal
@@ -122,17 +116,17 @@ let currency text _from xml env out =
       let val2_x = 
         let x = try List.assoc (String.uppercase val2) !curr 
         with Not_found ->
-          make_msg out xml 
+          env.env_message xmpp kind jid_from 
             (Lang.get_msg env.env_lang "plugin_currency_no_currency" [val2]);
           raise Not_found
         in x.value /. float_of_int x.nominal
       in
       let result = amountf *. (val1_x /. val2_x) in
-        make_msg out xml (Printf.sprintf "%s %s = %.4f %s"
+        env.env_message xmpp kind jid_from (Printf.sprintf "%s %s = %.4f %s"
                             amount val1 result val2)
     with
       | Failure "int_of_string" ->
-          make_msg out xml 
+          env.env_message xmpp kind jid_from 
             (Lang.get_msg env.env_lang "plugin_currency_toobig_number" [])
       | Not_found ->
           ()
@@ -140,5 +134,20 @@ let currency text _from xml env out =
           log#error "plugin_currency.ml (:%s) %s"
             text (Printexc.to_string exn)
             
+let plugin opts =
+  add_commands [("currency", currency)] opts;
+  load_curr ();
+  let t =
+    try List.assoc "time" (List.assoc "refresh" opts)
+    with Not_found -> "11:00" in
+  let v =
+    try Scanf.sscanf t "%d:%d" (fun hoir min -> (hoir, min))
+    with Scanf.Scan_failure str ->
+      raise (PluginError (Printf.sprintf "Invalid option refresh: %s" str))
+  in
+  let _ = Scheduler.add_task timerQ load_curr (get_next_update v)
+    (fun () -> get_next_update v) in
+    ()
+        
 let _ =
-  register_command "curr" currency
+  add_plugin "currency" plugin

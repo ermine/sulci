@@ -1,11 +1,11 @@
-(*
+162
+  (*
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
-open Types
 open Common
 open Hooks
+open Plugin_command
 open Http_suck
 
 (* http://weather.noaa.gov/pub/data/observations/metar/decoded/ULLI.TXT *)
@@ -140,7 +140,7 @@ let is_noaa_code str =
   else
     false
   
-let weather text _from xml env out =
+let weather xmpp env kind jid_from text =
   if is_noaa_code text then
     let callback data =
       let resp = match data with
@@ -159,15 +159,19 @@ let weather text _from xml env out =
               | _ ->
                   Lang.get_msg env.env_lang "plugin_weather_server_error" []
       in
-        make_msg out xml resp
+        env.env_message xmpp kind jid_from resp
     in
       Http_suck.http_get
         ("http://weather.noaa.gov/pub/data/observations/metar/decoded/" ^
            String.uppercase  text ^ ".TXT")
         callback
   else
-    make_msg out xml 
+    env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_weather_invalid_syntax" [])
       
+
+let plugin opts =
+  add_commands [("weather", weather)] opts
+
 let _ =
-  register_command "wz" weather
+  add_plugin "weather" plugin

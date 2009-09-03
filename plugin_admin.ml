@@ -2,49 +2,49 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
 open XMPP
 open Jid
-open Types
 open Common
 open Hooks
 
-let msg ?(is_groupchat=(fun _ -> false))  text from xml env out =
-  if env.env_check_access from "admin" then
+let msg ?(is_groupchat=(fun _ -> false))  xmpp env text =
+  if env.env_check_access env.from "admin" then
     try
       let s = String.index text ' ' in
       let to_ = jid_of_string (String.sub text 0 s) in
       let msg_body = string_after text (s+1) in
-        out (make_message ~ns:ns_client ~jid_to: to_.string
-               ~type_: (if is_groupchat to_ then `Groupchat else `Chat)
-               ~body:msg_body ());
-        make_msg out xml "done"
+        XMPP.send_message xmpp ~jid_to:to_
+          ~kind: (if is_groupchat to_ then Groupchat else Chat)
+          ~body:msg_body ();
+        env.env_message xmpp kind jid_from "done"
     with _ ->
-      make_msg out xml "?"
+      env.env_message xmpp kind jid_from "?"
   else
-    make_msg out xml ":-P"
+    env.env_message xmpp kind jid_from ":-P"
       
-let quit _text from xml env out =
-  if env.env_check_access from "admin" then (
-    make_msg out xml (Lang.get_msg env.env_lang "plugin_admin_quit_bye" []);
-    Hooks.quit out
+let quit xmpp env _text =
+  if env.env_check_access env.from "admin" then (
+    env.env_message xmpp kind jid_from
+      (Lang.get_msg env.env_lang "plugin_admin_quit_bye" []);
+    Hooks.quit xmpp
   )
   else
-    make_msg out xml (Lang.get_msg env.env_lang "plugin_admin_quit_no_access" [])
+    env.env_message xmpp kind jid_from
+      (Lang.get_msg env.env_lang "plugin_admin_quit_no_access" [])
       
-let lang_update text from xml env out =
-  if env.env_check_access from "admin" then
+let lang_update xmpp env text =
+  if env.env_check_access env.from "admin" then
     if text = "" then
-      make_msg out xml "What language?"
+      env.env_message xmpp kind jid_from "What language?"
     else
-      make_msg out xml (Lang.update text)
+      env.env_message xmpp kind jid_from (Lang.update text)
         
 let lr = Pcre.regexp "([a-z][a-z])\\s+(\\w+)(\\s+(.+))?"
   
-let lang_admin text from xml env out =
-  if env.env_check_access from "admin" then
+let lang_admin xmpp env text =
+  if env.env_check_access env.from "admin" then
     if text = "" then
-      make_msg out xml "en msgid string"
+      env.env_message xmpp kind jid_from "en msgid string"
     else
       try
         let r = Pcre.exec ~rex:lr text in
@@ -54,23 +54,23 @@ let lang_admin text from xml env out =
         in
           try
             Lang.update_msgid lang msgid str;
-            make_msg out xml "done"
+            env.env_message xmpp kind jid_from "done"
           with _ ->
-            make_msg out xml "problems"
+            env.env_message xmpp kind jid_from "problems"
       with _ ->
-        make_msg out xml "invalid syntax"
+        env.env_message xmpp kind jid_from "invalid syntax"
           
 (* TODO: it is scratch *)
           
 let sulci_set_rex = Pcre.regexp "([a-zA-Z_-]+) *= *(.+)"
   
 let variables = [
-  "max_message_length", (fun i -> Common.max_message_length := i);
-  "msg_limit", (fun i -> Common.msg_limit := i);
+  "max_message_length", (fun i -> Hooks.max_message_length := i);
+  "msg_limit", (fun i -> Hooks.msg_limit := i);
 ]
   
-let sulci_set text from xml env out =
-  if env.env_check_access from "admin" then
+let sulci_set xmpp env text =
+  if env.env_check_access env.from "admin" then
     try
       let r = Pcre.exec ~rex:sulci_set_rex text in
       let var = Pcre.get_substring r 1
@@ -79,14 +79,14 @@ let sulci_set text from xml env out =
           let f = List.assoc var variables in
           let newvalue = int_of_string value in
             f newvalue;
-            make_msg out xml "Done"
+            env.env_message xmpp kind jid_from "Done"
         with
           | Failure "int_of_string" ->
-              make_msg out xml "Bad value: must be integer"
+              env.env_message xmpp kind jid_from "Bad value: must be integer"
           | Not_found ->
-              make_msg out xml "Unknown variable"
+              env.env_message xmpp kind jid_from "Unknown variable"
     with Not_found ->
-      make_msg out xml "Hm?"
+      env.env_message xmpp kind jid_from "Hm?"
         
 let _ =
   register_command "msg" msg;

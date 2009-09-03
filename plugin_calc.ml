@@ -2,12 +2,13 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Types
-open Hooks
 open Common
+open Hooks
+open Plugin_command
 open Math
+open Icalc
 
-let pcalc text _from xml env out =
+let pcalc xmpp env kind jid_from text =
   if text <> "" then
     let reply = 
       try
@@ -23,11 +24,12 @@ let pcalc text _from xml env out =
         | _ ->
             Lang.get_msg env.env_lang "plugin_calc_not_parsed" []
     in
-      make_msg out xml reply
+      env.env_message xmpp kind jid_from reply
   else
-    make_msg out xml (Lang.get_msg env.env_lang "plugin_calc_empty_command" [])
+    env.env_message xmpp kind jid_from
+      (Lang.get_msg env.env_lang "plugin_calc_empty_command" [])
       
-let icalc text _from xml env out =
+let icalc xmpp env kind jid_from text =
   if text <> "" then
     let reply = 
       try
@@ -50,10 +52,13 @@ let icalc text _from xml env out =
         | _exn ->
             Lang.get_msg env.env_lang "plugin_calc_not_parsed" []
     in
-      make_msg out xml reply
+      env.env_message xmpp kind jid_from reply
   else
-    make_msg out xml (Lang.get_msg env.env_lang "plugin_calc_empty_command" [])
+    env.env_message xmpp kind jid_from
+      (Lang.get_msg env.env_lang "plugin_calc_empty_command" [])
       
+let plugin opts =
+  add_commands [("calc", icalc); ("rpn", pcalc)] opts
+
 let _ =
-  register_command "rpn" pcalc;
-  register_command "calc" icalc
+  add_plugin "calc" plugin

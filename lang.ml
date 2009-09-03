@@ -2,17 +2,18 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
-open Xml
-open XMPP
-open Jid
-open Types
-open Config
 open Common
 
 let ext = ".htbl"
-let deflang = try trim (Light_xml.get_attr_s Config.config 
-  ~path:["lang"] "default") with Not_found -> "ru"
+let deflang = ref "ru"
+let dir = ref "./lang"
 
+module Id =
+struct
+  type t = string
+  let compare = compare
+end
+  
 module LangMap = Map.Make(Id)
 let langmsgs =  ref (LangMap.empty:(string, string) Hashtbl.t LangMap.t)
 
@@ -25,27 +26,21 @@ module LangTime = Map.Make(Id)
 let langtime = ref LangTime.empty
 
 let _ =
-  let dir = 
-    try trim (Light_xml.get_attr_s Config.config ~path:["lang"] "dir")
-    with Not_found -> "" in
   let htbl = Marshal.from_channel 
-    (open_in_bin (Filename.concat dir (deflang ^ ext))) in
-    langmsgs := LangMap.add deflang htbl !langmsgs
+    (open_in_bin (Filename.concat !dir (!deflang ^ ext))) in
+    langmsgs := LangMap.add !deflang htbl !langmsgs
       
 let find_htbl lang =
   try
     LangMap.find lang !langmsgs
   with Not_found ->
     try
-      let dir = 
-        try trim (Light_xml.get_attr_s Config.config ~path:["lang"] "dir")
-        with Not_found -> "" in
       let htbl =  Marshal.from_channel 
-        (open_in_bin (Filename.concat dir (lang ^ ext))) in
+        (open_in_bin (Filename.concat !dir (lang ^ ext))) in
         langmsgs := LangMap.add lang htbl !langmsgs;
         htbl
     with _ ->
-      LangMap.find deflang !langmsgs
+      LangMap.find !deflang !langmsgs
         
 let process str args =
   let rec aux_subst acc part = function
@@ -83,28 +78,28 @@ let process str args =
   let res = aux_subst []  str args in
     String.concat "" res
       
-let get_lang xml =
-  try get_lang xml with Not_found -> deflang
+let get_lang = function
+  | None -> !deflang
+  | Some v -> v
       
 let get_msg lang msgid args =
   let htbl = find_htbl lang in
   let str =  try Hashtbl.find htbl msgid with _ ->
     try
-      let hashtbl = LangMap.find deflang !langmsgs in
+      let hashtbl = LangMap.find !deflang !langmsgs in
         Hashtbl.find hashtbl msgid
     with Not_found ->
+      (*
       log#error "lang not found: [%s]\n" msgid;
+      *)
       "[not found in lang pack: " ^ msgid ^ "]"
   in
     process str args
       
 let update lang =
   try
-    let dir = 
-      try trim (Light_xml.get_attr_s Config.config ~path:["lang"] "dir")
-      with Not_found -> "" in
     let htbl = Marshal.from_channel 
-      (open_in_bin (Filename.concat dir (lang ^ ext))) in
+      (open_in_bin (Filename.concat !dir (lang ^ ext))) in
       langmsgs := LangMap.add lang htbl !langmsgs;
       "Updated"
   with exn ->
@@ -116,7 +111,7 @@ let expand_time ~lang cause seconds =
     try
       (LangTime.find lang !langtime).expand_time      
     with Not_found ->
-      (LangTime.find deflang !langtime).expand_time
+      (LangTime.find !deflang !langtime).expand_time
   in
     f cause year month day hour min sec
       
@@ -125,7 +120,7 @@ let float_seconds lang cause seconds =
     try
       (LangTime.find lang !langtime).float_seconds
     with Not_found ->
-      (LangTime.find deflang !langtime).float_seconds
+      (LangTime.find !deflang !langtime).float_seconds
   in
     f cause seconds
       
@@ -139,9 +134,6 @@ let update_msgid (lang:string) (msgid:string) (str:string option) =
            else
              Hashtbl.add htbl msgid data;
     );
-    let dir = 
-      try trim (Light_xml.get_attr_s Config.config ~path:["lang"] "dir")
-      with Not_found -> "" in
-    let mout = open_out_bin (Filename.concat dir (lang ^ ext)) in
+    let mout = open_out_bin (Filename.concat !dir (lang ^ ext)) in
       Marshal.to_channel mout htbl []
        

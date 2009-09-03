@@ -1,68 +1,187 @@
 <sulci>
- <jabber>
-  <server>jabber.ru</server>
-  <port>5222</port>
-  <user>xxxx</user>
+ <account jid='username@server'>
+  <!-- <ip>127.0.0.1</ip> -->
+  <!-- <ip>localhost</ip> -->
+  <!-- <port>5222</port> -->
   <resource>Ocaml</resource>
   <password>secret</password>
- </jabber>
 
- <!-- Reconnect interval in seconds. If count=0 do it infinitely -->
- <!-- If you use NOT OWN jabber server, it is strongly recommended do not
-      do counts more than 3.
- -->
- <reconnect interval='10' count='3' />
+  <!-- Uncomment this to use STARTTLS
+  <starttls/>
+  -->
+
+  <!-- Uncomment this to use COMPRESS
+  <compress/>
+  -->
+
+  <rawxml_log file='log1.log'/>
+
+  <!-- Reconnect interval in seconds. If count=0 do it infinitely -->
+  <!-- If you use NOT OWN jabber server, it is strongly recommended do not
+       do times more than 3.
+  <reconnect interval='10' times='3' />
+  -->
+ </account>
 
  <log>
-  <report>report.log</report>
-  <rawxml>rawxml.log</rawxml>
+  <level value='debug'/>
+  <!--
+  <syslog facility='local0'/>
+  -->
+  <!--
+  <stderr/>
+  -->
+  <!--
+  <piped_log cmd='cmd'/>
+  -->
+  <file path='report.log'/>
  </log>
 
- <lang dir="./lang" default="ru"/>
+ <lang dir='./lang' default='ru'/>
 
- <acl jid='ermine@jabber.ru' class='admin'/>
+ <acl jid='ermine@jabber.ru' class='botmaster'/>
  
- <max_message_length value="4000"/>
-
- <muc msg_limit="400">
-   <db>./sulci_muc.db</db>
-   <chatlogs>./chatlogs</chatlogs>
- </muc>
+ <max_message_length value='4000'/>
 
  <plugins>
 
-  <google>
-   <key>00000000000000000000000000000</key>
-  </google>
+  <plugin name='muc' path='./plugins/muc'>
+   <msg_limit value='400'/>
+   <db path='./sulci_muc.db'/>
+   <acl role='moderator' class='moderator'/>
+   <acl affiliation='owner' class='owner'/>
+  </plugin>
 
-  <vocabulary db="vocabulary.db"/>
+  <plugin name='muc_log' path='./plugins/muc_log'>
+     <dir path='./chatlogs'/>
+  </plugin>
+  
+  <plugin name='commands' path='./plugins/plugin_command'>
+   <prefix value='.'/>
+  </plugin>
 
-  <mueller file="/path/to/Mueller24.koi" hashext=".hash" />
+  <plugin name='admin' path='./plugins/plugin_admin'>
+   <command key='invite' name='invite' access='botmaster'/>
+   <command key='join' name='join' access='botmaster'/>
+   <command key='leave' name='leave' access='botmaster'/>
+  </plugin>
 
-  <markov dir="./markov_db" msg_limit="20" />
+  <plugin name='brainfuck' path='./plugins/plugin_brainfuck'>
+   <command name='bf'/>
+  </plugin>
 
-  <!-- it used on http://ejabberd.jabber.ru/ to display total registered users 
-       and users online using ejabberd -->
+  <plugin name='calc' path='./plugins/plugin_calc'>
+   <command key='calc' name='calc'/>
+   <command key='rpn' name='rpn'/>
+  </plugin>
+
+  <plugin name='cerberus' path='./plugins/plugin_cerberus'>
+   <kick value='true'/>
+   <notify jid='jid@jabber.server'/>
+  </plugin>
+
+  <plugin name='currency' path='./plugins/plugin_currency'>
+   <scheduler time='11:00'/>
+   <command name='curr'/>
+  </plugin>
+
+  <plugin name='dict' path='./plugins/plugin_dict'>
+   <!-- <server port=2628 host='localhost'/> -->
+   <server host='dict.org'/>
+   <command name='dict'/>
+  </plugin>
+
+  <!-- it was used on http://ejabberd.jabber.ru/ to display total 
+       registered users and users online using ejabberd -->
   <!--
-    <globalstats>
-     <store serverlist='servers.list' result='servers.res' interval='3600'/>
-    </globalstats>
+  <plugin name='globalstats' path='./plugins/plugin_globalstats'>
+   <store serverlist='servers.list' result='servers.res' interval='3600'/>
+  </plugin>
   -->
 
-      <dict>
-         <!-- <server port=2628>localhost</server> -->
-         <server>dict.org</server>
-      </dict>
+  <plugin name='google' path='./plugins/plugin_google'>
+   <key value='00000000000000000000000000000'/>
+   <command name='google'/>
+  </plugin>
 
-      <tld db="./tlds/tlds"/>
+  <plugin name='google_translate' path='./plugins/google_translate'>
+   <command name='gtr'/>
+  </plugin>
 
-      <talkers db="talkers.db"/>
+  <plugin name='hostip' path='./plugins/plugin_hostip'>
+   <command name='hostip'/>
+  </plugin>
 
-      <cerberus kick="true">
-         <notify jid="jid@jabber.server"/>
-      </cerberus>
+  <plugin name='markov' path='./plugins/plugin_markov'>
+   <dir path='./markov_db'/>
+   <max_words value='20' />
+   <command name='!!!count'/>
+   <command name='!!!top'/>
+  </plugin>
 
-      <seen db="./sulci_users.db"/>
+  <plugin name='misc' path='./plugins/plugin_misc'>
+   <command key='dns' name='dns'/>
+   <command key='sh' name='sh' access='botmaster'/>
+ </plugin>
 
-   </plugins>
+  <plugin name='mueller' path='./plugins/plugin_mueller'>
+   <db path='/path/to/Mueller24.koi' hashext='.hash'/>
+   <command name='mueller'/>
+  </plugin>
+
+  <plugin name='ping' path='./plugins/plugin_ping'>
+   <command name='ping'/>
+  </plugin>
+
+  <plugin name='roulette' path='./plugins/plugin_roulette'>
+   <command name='tryme'/>
+  </plugin>
+
+  <plugin name='seen' path='./plugins/plugin_seen'>
+   <db path='./sulci_users.db'/>
+   <command name='seen'/>
+  </plugin>
+
+  <plugin name='talkers' path='./plugins/plugin_talkers'>
+   <db path='./talkers.db'/>
+   <command name='talkers'/>
+  </plugin>
+
+  <plugin name='tld' path='./plugins/plugin_tld'>
+   <db path='./tlds/tlds'/>
+   <command name='tld'/>
+  </plugin>
+
+  <plugin name='userinfo' path='./plugins/plugin_userinfo'>
+   <command key='version' name='version'/>
+   <command key='idle' name='idle'/>
+   <command key='uptime' name='uptime'/>
+   <command key='time' name='time'/>
+   <command key='stats' name='stats'/>
+  </plugin>
+
+  <plugin name='translate' path='./plugins/plugin_translate'>
+   <command name='tr'/>
+  </plugin>
+
+  <plugin name='vcard' path='./plugins/plugin_vcard'>
+   <command name='vcard'/>
+  </plugin>
+
+  <plugin name='vocabulary' path='./plugins/plugin_vocabulary'>
+   <db path='./vocabulary.db'/>
+   <command key='wtf' name='wtf'/>
+   <command key='dfn' name='dfn'/>
+   <command key='wtfremove' name='wtfremove' access='moderator'/>
+  </plugin>
+
+  <plugin name='weather' path='./plugins/plugin_weather'>
+   <command name='wz'/>
+  </plugin>
+
+  <plugin name='yandex' path='./plugins/plugin_yandex'>
+   <command name='blogs'/>
+  </plugin>
+
+ </plugins>
 </sulci>

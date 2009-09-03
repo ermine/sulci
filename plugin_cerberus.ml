@@ -263,7 +263,7 @@ let do_kick =
   then true else false
   with _ -> true
     
-let report word from phrase msg_type out =
+let report xmpp from type_ word phrase =
   let jid_from =
     try
       let item = Nicks.find from.lresource (get_room_env from).nicks in
@@ -273,19 +273,17 @@ let report word from phrase msg_type out =
     with Not_found -> "unknown jid"
   in
     List.iter (fun jid ->
-                 out (make_message ~ns:ns_client ~jid_to:jid ~type_:`Chat
-                        ~body:(Printf.sprintf 
-                                 "Censor: %s
+                 send_message xmpp ~jid_to:jid ~type_:MsgChat
+                   ~body:(Printf.sprintf
+                            "Censor: %s
 Room: %s@%s
 Nick: %s (%s)
 [%s] %s"
-                                 word
-                                 from.lnode from.ldomain
-                                 from.resource jid_from
-                                 msg_type phrase) ())
+                            word from.lnode from.ldomain
+                            from.resource jid_from msg_type phrase) ()
               ) notify_jids
       
-let kill (from:jid) xml env out =
+let kill xmpp jid_from type_ env =
   if from.resource = "" then
     ()
   else
@@ -295,96 +293,106 @@ let kill (from:jid) xml env out =
       if myitem.role = `Moderator then
         let item = Nicks.find from.lresource room_env.nicks in
           if item.role = `Moderator then
+            send_message xmpp ~jid_to:jid_from ~type 
             make_msg out xml (Lang.get_msg env.env_lang
                                 "plugin_cerberus_cannot_kick_admin" [])
           else
-            let proc _t _f _x _o = () in
+            let proc _ _ _ _ = () in
             let id = new_id () in
             let reason = Lang.get_msg env.env_lang
               "plugin_markov_kick_reason" [] in
-              register_iq_query_callback id proc;
-              out (Muc.kick ~reason id room from.resource)
+              Muc.kick xmpp ~reason room from.resource proc
       else
-        make_msg out xml (Lang.get_msg env.env_lang
-                            "plugin_cerberus_cannot_kick_admin" [])
+        make_msg xmpp jid_from type_ (Lang.get_msg env.env_lang
+                                        "plugin_cerberus_cannot_kick_admin" [])
 
 let topics = Hashtbl.create 5
   
-let cerberus event from xml env out =
+let message_handler xmpp env jid_from ?type_ ?lang
+    ?body ?subject ?thread x =
   let check text msg_type =
     let lexbuf = Ulexing.from_utf8_string text in
       try
         match analyze lexbuf with
           | Good -> ()
           | Bad word ->
-              report word from text msg_type out;
+              report xmpp jid_from type_ word text;
               if do_kick then
-                kill from xml env out;
+                kill xmpp from type_ env;
               raise Filtered
       with
         | Ulexing.Error ->
             log#error "cerberus: Lexing error at offset %i"
               (Ulexing.lexeme_end lexbuf)
   in
-    match event with
-      | MUC_join item ->
-          if from.lresource <> (get_room_env from).mynick then (
-            check from.resource "resource";
-            check item.status "status";
-            match item.jid with
-              | None -> ()
-              | Some j ->
-                  check j.lresource "jid";
-          )
-      | MUC_change_nick (nick, _item) ->
-          if nick <> (get_room_env from).mynick then
-            check nick "nick"
-      | MUC_presence item ->
-          if from.lresource <> (get_room_env from).mynick then
-            check item.status "presence"
-      | MUC_topic subject ->
-          if from.lresource <> (get_room_env from).mynick then (
-            try
-              check subject "topic";
-              Hashtbl.replace topics (from.lnode, from.ldomain) subject
-            with Filtered ->
-              let saved_topic =
-                try Hashtbl.find topics (from.lnode, from.ldomain)
-                with Not_found -> " " in
-                out (Muc.set_topic from saved_topic);
-                raise Filtered
-          )
-      | MUC_message (msg_type, _nick, body) ->
-          if msg_type <> `Error &&
-            body <> "" && from.lresource <> (get_room_env from).mynick then
-              check body (match msg_type with
-                            | `Groupchat -> 
-                                "groupchat public"
-                            | _ ->
-                                "groupchat private")
-      | MUC_history ->
-          if get_name (get_qname xml) = "message" then (
-            (try 
-               let subject = get_cdata (get_subelement (ns_client, "subject")
+    match type_ with
+      | Some MsgGroupchat ->
+          match subject with
+            | Some subj -> (
+                if from.lresource <> (get_room_env from).mynick then (
+                  try
+                    check subj "topic";
+                    Hashtbl.replace topics (from.lnode, from.ldomain) subject
+                  with Filtered ->
+                    let saved_topic =
+                      try Hashtbl.find topics (from.lnode, from.ldomain)
+                      with Not_found -> " " in
+                      Muc.set_topic xmpp jid_from saved_topic;
+                      raise Filtered
+                )
+              | None ->
+                  match body with
+                    | None -> ()
+                    | Some body ->
+                        if body <> "" &&
+                          from.lresource <> (get_room_env from).mynick then
+                            check body (match type_ with
+                                          | Some MsgGroupchat -> 
+                                              "groupchat public"
+                                          | _ ->
+                                              "groupchat private")
+                    | MUC_history ->
+                        (try 
+                           let subject =
+                             get_cdata (get_subelement (ns_client, "subject")
                                           xml) in
-               let lexbuf = Ulexing.from_utf8_string subject in
-                 try
-                   match analyze lexbuf with
-                     | Good ->
-                         Hashtbl.replace topics
-                           (from.lnode, from.ldomain) subject;
-                     | Bad _word ->
-                         ()
-                 with Ulexing.Error ->
-                   log#error "cerberus: Lexing error at offset %i" 
-                     (Ulexing.lexeme_end lexbuf)
-             with exn ->
-               (* log#error "cerberus" exn *)
-               ())
+                           let lexbuf = Ulexing.from_utf8_string subject in
+                             try
+                               match analyze lexbuf with
+                                 | Good ->
+                                     Hashtbl.replace topics
+                                       (from.lnode, from.ldomain) subject;
+                                 | Bad _word ->
+                                     ()
+                             with Ulexing.Error ->
+                               log#error "cerberus: Lexing error at offset %i" 
+                                 (Ulexing.lexeme_end lexbuf)
+                         with exn ->
+                           (* log#error "cerberus" exn *)
+                           ())
           )
-      | MUC_leave _
-      | MUC_other ->
-          ()
+                
+let presence_handler xmpp env jid_from type_ lang
+    show status priority x () =
+  match type_ with
+    | None ->
+        if from.lresource <> (get_room_env from).mynick then (
+          check from.resource "resource";
+          check item.status "status";
+          match item.jid with
+            | None -> ()
+            | Some j ->
+                check j.lresource "jid";
+        )
+    | MUC_change_nick (nick, _item) ->
+        if nick <> (get_room_env from).mynick then
+          check nick "nick"
+    | MUC_presence item ->
+        if from.lresource <> (get_room_env from).mynick then
+          check item.status "presence"
+    | MUC_leave _
+    | MUC_other ->
+        ()
           
 let _ = 
   Muc.register_filter "cerberus" cerberus

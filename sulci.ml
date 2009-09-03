@@ -3,131 +3,113 @@
  *)
 
 open Light_xml
+open Transport
 open StreamError
 open XMPP
-open XMPP.Network
-open Types
-open Config
-open Common
+open Jid
 open Hooks
-open Lang
+open Config
+  
+let session xmpp =
+  log#info "Connected to %s!" xmpp.myjid.domain;
 
-let _ = 
-  let server = try 
-    trim (get_cdata config ~path:["jabber"; "server"]) 
-  with Not_found ->
-    Printf.eprintf "Cannot find servername in config file";
-    Pervasives.flush stdout;
-    Pervasives.exit 127
-  in
-  let port = try 
-    int_of_string (trim (get_cdata config ~path:["jabber"; "port"]))
-  with Not_found -> 5222 
-  in
-  let username = try
-    trim (get_cdata config ~path:["jabber"; "user"]) 
-  with Not_found ->
-    Printf.eprintf "Cannot find username in config file";
-    Pervasives.flush stdout;
-    Pervasives.exit 127
-  in
-  let password = try
-    trim (get_cdata config ~path:["jabber"; "password"])
-  with Not_found ->
-    Printf.eprintf "Cannot find password in config file";
-    Pervasives.flush stdout;
-    Pervasives.exit 127
-  in
-  let resource = try
-    trim (get_cdata config ~path:["jabber"; "resource"])
-  with Not_found ->
-    Printf.eprintf "Cannot find resource name in config file";
-    Pervasives.flush stdout;
-    Pervasives.exit 127
-  in
-    (*
-  let rawxml_log =
-    try Some (List.assoc "rawxml" Config.logger_options)
-    with Not_found -> None
-  in
-    *)
-  let run () =
-    open_stream_client server port username password resource >>=
-      (fun (myjid, p, inch, ouch) ->
-         log#info "Connected to %s!" server;
-         let out xml = ignore (send ouch (Xmlstream.stanza_serialize p xml)) in
-         let () =
-           Sys.set_signal Sys.sigint
-             (Sys.Signal_handle (function _x -> Hooks.quit out));
-      
-           Sys.set_signal Sys.sigterm
-             (Sys.Signal_handle (function _x -> Hooks.quit out));
-         in
-           (* workaround for wildfire *)
-           out (make_presence ~ns:ns_client ());
-           List.iter (fun proc -> try proc out with exn ->
-                        log#error "sulci.ml: %s" (Printexc.to_string exn);
-                        log#debug "%s" (Printexc.get_backtrace ())
-                     ) !on_connect;
-           process_xml myjid p inch ouch
-      )
-  in
+  XMPP.register_stanza_handler xmpp (ns_client, "message")
+    (XMPP.parse_message ~callback:message_callback
+       ~callback_error:message_error);
+  XMPP.register_stanza_handler xmpp (ns_client, "presence")
+    (XMPP.parse_presence ~callback:presence_callback
+       ~callback_error:presence_error);
+  
+  Iq.features xmpp;
     
-  let reconnect_interval = 
-    try int_of_string (trim (get_attr_s Config.config
-                               ~path:["reconnect"] "interval"))
-    with Not_found -> 0
+  (* workaround for wildfire *)
+  send_presence xmpp ();
+
+  List.iter (fun proc -> try proc xmpp with exn ->
+               log#error "sulci.ml: %s" (Printexc.to_string exn);
+               log#debug "%s" (Printexc.get_backtrace ())
+            ) global.on_connect
+
+let run account =
+  let myjid =
+    if account.resource = "" then
+      account.jid
+    else
+      replace_resource account.jid account.resource
   in
-  let count =
-    try int_of_string (trim (get_attr_s Config.config
-                               ~path:["reconnect"] "count"))
-    with Not_found -> 0
+  let session_key = string_of_int (Random.int 1000) in
+  let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+  let socket = {
+    fd = s;
+    send = send s;
+    read = read s
+  } in
+  let host, port =
+    (if account.ip = "" then account.jid.domain else account.ip),
+    (match account.port with
+       | None -> 5222
+       | Some i -> i
+    )
   in
-  let rec reconnect times =
-    try
-      if times >= 0 then
-        run ()
-      else
-        return ()
-    with 
-      | Unix.Unix_error (code, "connect", _) ->
-          log#info "Unable to connect to %s:%d: %s"
-            server port (Unix.error_message code);
-          if times > 0 then (
-            Unix.sleep reconnect_interval;
-            log#info "Reconnecting. Attempts remains: %d" times;
-          );
-          reconnect (times - 1)
-      | Sasl.Failure cond ->
-          log#info "Auth.Failure: %s" cond;
-          (match cond with
-             | "non-authorized" ->
-                 print_endline "will register";
-                 return ()
-             | _ ->
-                 return ()
-          )
-      | Sasl.AuthError reason ->
-          log#crit "Authorization failed: %s" reason;
-          Pervasives.exit 127
-      | End_of_file ->
-          log#info"The connection to the server is lost";
-          List.iter (fun proc -> proc ()) !on_disconnect;
-          reconnect count
-      | StreamError err -> (
-          match err.err_condition with
-            | ERR_CONFLICT ->
-                log#info "Connection to the server closed: %s" err.err_text
-            | _ ->
-                log#info "The server reject us: %s: %s"
-                  (string_of_condition err.err_condition) err.err_text
-            );
-            Pervasives.exit 127
-      | exn ->
-          log#error "sulci.ml: %s" (Printexc.to_string exn);
-          log#error "Probably it is a bug, please send me a bugreport";
-          log#debug "%s" (Printexc.get_backtrace ());
-          Pervasives.exit 127
-  in
-    reconnect count
+  let xmpp = XMPP.create session_key socket myjid in
+    Transport.connect s host port;
+    XMPP.open_stream xmpp ~use_tls:false account.password session;
+    let rec loop () =
+      XMPP.parse xmpp;
+      loop ()
+    in
+      loop ()
+
+let rec reconnect account times =
+  try
+    if times >= 0 then
+      run account
+  with
+(*      
+    | Unix.Unix_error (code, "connect", _) ->
+        log#info "Unable to connect to %s:%d: %s"
+          host port (Unix.error_message code);
+        if times > 0 then (
+          Unix.sleep reconnect_interval;
+          log#info "Reconnecting. Attempts remains: %d" times;
+        );
+        reconnect (times - 1)
+*)        
+    | Sasl.Failure cond ->
+        log#info "Auth.Failure: %s" cond;
+        (match cond with
+           | "non-authorized" ->
+               print_endline "will register";
+           | _ ->
+               ()
+        )
+    | Sasl.AuthError reason ->
+        log#crit "Authorization failed: %s" reason;
+        Pervasives.exit 127
+    | End_of_file ->
+        log#info"The connection to the server is lost";
+        List.iter (fun proc -> proc ()) global.on_disconnect;
+        reconnect account times
+    | StreamError err -> (
+        match err.err_condition with
+          | ERR_CONFLICT ->
+              log#info "Connection to the server closed: %s" err.err_text
+          | _ ->
+              log#info "The server reject us: %s: %s"
+                (string_of_condition err.err_condition) err.err_text
+      );
+        Pervasives.exit 127
+    | exn ->
+        log#error "sulci.ml: %s" (Printexc.to_string exn);
+        log#error "Probably it is a bug, please send me a bugreport";
+        log#debug "%s" (Printexc.get_backtrace ());
+        Pervasives.exit 127
           
+let _ =
+  let accounts, plugins = Config.get_config () in
+  let () = Plugins.load_plugins plugins in
+    if accounts <> [] then
+      let account = List.hd accounts in
+        reconnect account account.reconnect_times
+    else
+      Printf.eprintf "no accounts"

@@ -3,10 +3,9 @@
  *)
 
 open Light_xml
-open XMPP
-open Types
-open Hooks
 open Common
+open Hooks
+open Plugin_command
 open Http_suck
 
 (* 
@@ -23,11 +22,7 @@ open Http_suck
    "oe"         (output encoding). 
 *)
 
-let google_key = 
-  try trim (get_cdata Config.config 
-              ~path:["plugins"; "google"; "key"]) with Not_found ->
-    Printf.eprintf "Cannot find an google key in config file\n";
-    Pervasives.exit 127
+let google_key = ""
       
 let make_query start maxResults query =
   let filter = "false" in
@@ -122,10 +117,10 @@ let one_message item =
     
 let xmldecl = "<?xml version='1.0' encoding='UTF-8' ?>\r\n"
   
-let gspell text _from xml env out =
+let gspell xmpp env kind jid_from text =
   if text = "" then
-    make_msg out xml (Lang.get_msg env.env_lang
-                        "plugin_google_invalid_syntax" [])
+    env.env_message xmpp kind jid_from
+      (Lang.get_msg env.env_lang "plugin_google_invalid_syntax" [])
   else
     let soap = 
       make_element "SOAP-ENV:Envelope"
@@ -167,15 +162,15 @@ let gspell text _from xml env out =
               | _ ->
                   Lang.get_msg env.env_lang "plugin_google_server_error" []
       in
-        make_msg out xml resp
+        env.env_message xmpp kind jid_from resp
     in
       Http_suck.http_post "http://api.google.com/search/beta2"
         ["Content-Type", "text/xml; charset=utf-8"] 
         (xmldecl ^ query) callback
         
-let google ?(start="0") ?(items="1") text _from xml env out =
+let google ?(start="0") ?(items="1") xmpp env kind jid_from text =
   if text = "" then
-    make_msg out xml (Lang.get_msg env.env_lang
+    env.env_message xmpp kind jid_from (Lang.get_msg env.env_lang
                         "plugin_google_invalid_syntax" [])
   else
     let callback data =
@@ -220,7 +215,7 @@ let google ?(start="0") ?(items="1") text _from xml env out =
                     Lang.get_msg env.env_lang "plugin_google_server_error" [], ""
       in
       let response_tail = if tail = "" then None else Some tail in
-        make_msg out xml ?response_tail resp 
+        env.env_message xmpp kind jid_from ?response_tail resp 
     in
     let soap = make_query start items text in
       Http_suck.http_post "http://api.google.com/search/beta2"
@@ -232,18 +227,26 @@ let google ?(start="0") ?(items="1") text _from xml env out =
         
 let rx = Pcre.regexp "([0-9]+) ([1-9]{1}) (.+)"
   
-let google_adv text from xml env out =
+let google_adv xmpp env kind jid_from text =
   try
     let r = Pcre.exec ~rex:rx text in
     let start = Pcre.get_substring r 1 in
     let items = Pcre.get_substring r 2 in
     let request = Pcre.get_substring r 3 in
-      google ~start ~items request from xml env out
+      google ~start ~items xmpp env kind jid_from request
   with Not_found ->
-    make_msg out xml (Lang.get_msg env.env_lang
+    env.env_message xmpp kind jid_from (Lang.get_msg env.env_lang
                         "plugin_google_adv_invalid_syntax" [])
       
+(*
 let _ =
   register_command "google" google;
   register_command "google_adv" google_adv;
   register_command "gspell" gspell
+*)
+
+let plugin opts =
+  ()
+
+let _ =
+  add_plugin "google" plugin
