@@ -45,7 +45,7 @@ let parse_command_params params =
                             else
                               (key, name, v)
                         | other ->
-                            log#notice "Unknown command parameter: %s" other;
+                            log#notice "Unknown command parameter: %S" other;
                             (key, name, access)
                    ) ("", "", "") params in
     (key, name, access)
@@ -61,7 +61,9 @@ let add_commands cmds opts =
     if List.length cmds = 1 then
       let key, proc = List.hd cmds in
       let (_, name, access) =
-        List.find (fun (key', _, _) -> key' = key) cmd_opts in
+        try List.find (fun (key', _, _) -> key' = key) cmd_opts
+        with Not_found -> key, key, ""
+      in
         add_command name proc access
     else
       List.iter (fun (key, proc) ->

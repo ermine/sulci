@@ -14,17 +14,23 @@ let _ =
 let sulci_plugins () =
   let plugins ext =
     let res =
-      List.fold_left (fun acc a ->
-                        if a.[0] = '#' then acc
-                        else (P(a -.- ext)) :: acc
+      List.fold_left (fun acc line ->
+                        if line.[0] <> '#' then
+                          line -.- ext :: acc
+                        else
+                          acc
                      ) [] (string_list_of_file "plugins.list") in
       List.rev res
   in
+  let plugins_byte = plugins "cmo"
+  and plugins_native = plugins "cmx" in
     flag_and_dep ["ocaml"; "compile"; "native"; "use_plugins"] &
-      S(plugins "cmx");
+      S(List.map (fun f -> P f) plugins_native);
+    dep ["ocaml"; "program"; "native"; "use_plugins"] plugins_native;
         
     flag_and_dep ["ocaml"; "compile"; "byte"; "use_plugins"] &
-      S(plugins "cmo")
+      S(List.map (fun f -> P f) plugins_byte);
+    dep ["ocaml"; "program"; "byte"; "use_plugins"] plugins_byte
 
 let lang_msg_list =
   let srcdir = "lang" in

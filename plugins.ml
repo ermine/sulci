@@ -7,7 +7,7 @@ open Hooks
 let loadfile name path opts =
   let loaded =
     if List.mem_assoc name global.plugins then (
-      log#info "Plugin %s is already loaded, skipping" name;
+      log#info "Plugin %s is already loaded" name;
       true
     )
     else

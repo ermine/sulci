@@ -3,6 +3,7 @@
  *)
 
 open Conversion
+open Hooks
 
 let unknown_encoding_handler encoding =
   let decoder = Conversion.make_decoder encoding in
@@ -15,3 +16,11 @@ let unknown_encoding_handler encoding =
 
 let parse_document  content =
   Light_xml.parse_document ~unknown_encoding_handler content
+
+let plugin opts =
+  let decoder_dir = List.assoc "path" (List.assoc "decoder_dir" opts) in
+  let encoder_dir = List.assoc "path" (List.assoc "encoder_dir" opts) in
+    Conversion.init ~decoder_dir ~encoder_dir ()
+
+let _ =
+  add_plugin "conversion" plugin

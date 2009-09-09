@@ -2,7 +2,7 @@
 <*.ml>: use_xml, use_xMPP, use_logger, use_pcre
 <lang.ml>: use_strftime
 <hooks.ml>: use_scheduler
-<sulci.ml>: use_lang, use_plugins
+<sulci.{ml,byte,native}>: use_lang, use_plugins
 <sulci.{byte,native}>: thread, use_unix, use_dynlink, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm, use_mltls, use_xml, use_treap, use_xMPP, use_strftime, use_logger, use_scheduler, use_ini_config, use_conversion, use_brainfuck, use_dehtml
 
 <find_url.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
@@ -11,11 +11,12 @@
 
 <*_ulex.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
 "conv_xml.ml": use_conversion
-<muc.ml>: use_sqlite3
-<plugin_brainfuck.ml>: thread, use_brainfuck
-<plugin_calc.ml>: use_ulex
-<plugin_cerberus.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
-"plugin_currency.ml": use_conversion, use_scheduler
+"plugin_scheduler.ml": use_scheduler
+"muc.ml": use_sqlite3
+"plugin_brainfuck.ml": thread, use_brainfuck
+"plugin_calc.ml": use_ulex
+"plugin_cerberus.ml": camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
+"plugin_currency.ml": use_scheduler
 <plugin_dict.ml>: thread
 "plugin_google.ml": use_dehtml
 <plugin_google_translate.ml>: use_netstring

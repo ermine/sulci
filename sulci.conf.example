@@ -55,12 +55,19 @@
    <acl affiliation='owner' class='owner'/>
   </plugin>
 
+  <plugin name='scheduler' path='./plugins/plugin_scheduler'/>
+
   <plugin name='muc_log' path='./plugins/muc_log'>
      <dir path='./chatlogs'/>
   </plugin>
   
   <plugin name='commands' path='./plugins/plugin_command'>
    <prefix value='.'/>
+  </plugin>
+
+  <plugin name='conversion' path='./plugins/conv_xml'>
+   <decoder_dir path='./conversion/decoders'/>
+   <encoder_dir path='./conversion/encoders'/>
   </plugin>
 
   <plugin name='admin' path='./plugins/plugin_admin'>

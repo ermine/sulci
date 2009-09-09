@@ -128,7 +128,7 @@ let get_plugins els =
                         let opts =
                           List.fold_left (fun acc -> function
                                             | Xmlelement (name, args, _) ->
-                                                (name, attrs) :: acc
+                                                (name, args) :: acc
                                             | Xmlcdata _ -> acc
                                          ) [] els in
                           (name, path, opts) :: acc

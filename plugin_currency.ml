@@ -8,6 +8,7 @@ open Common
 open Hooks
 open Plugin_command
 open Http_suck
+open Plugin_scheduler
 
 let url = "http://www.cbr.ru/scripts/XML_daily.asp"
 
