@@ -78,7 +78,7 @@ let setup_logger els =
   let level, dst =
     List.fold_left
       (fun (level, dst) -> function
-         | Xmlelement (name, attrs, els) as el -> (
+         | Xmlelement (name, attrs, els) -> (
              match name with
                | "level" ->
                    let value = catch (List.assoc "value") attrs
@@ -140,9 +140,9 @@ let get_plugins els =
       
 let read_config = function
   | Xmlelement ("sulci", _, els) ->
-      let accounts, plugins =
+      let accounts, daemon, plugins =
         List.fold_left
-          (fun (accounts, plugins) -> function
+          (fun (accounts, daemon, plugins) -> function
              | Xmlelement (name, attrs, els) -> (
                  match name with
                    | "account" ->
@@ -151,37 +151,43 @@ let read_config = function
                        let jid = catch jid_of_string value
                          "account/jid MUST be user@server value" in
                        let account = parse_account jid els in
-                         (account :: accounts, plugins)
+                         (account :: accounts, daemon, plugins)
+                   | "daemon" ->
+                       let value = List.assoc "value" attrs in
+                         if value = "true" then
+                           (accounts, true, plugins)
+                         else
+                           (accounts, false, plugins)
                    | "log" ->
                        setup_logger els;
-                       (accounts, plugins)
+                       (accounts, daemon, plugins)
                    | "lang" ->
                        Lang.dir := catch (List.assoc "dir") attrs
                          "lang/dir MUST be defined";
                        Lang.deflang :=
                          (try List.assoc "default" attrs
                           with Not_found -> "ru");
-                       (accounts, plugins)
+                       (accounts, daemon, plugins)
                    | "acl" ->
                        fill_acl attrs;
-                       (accounts, plugins)
+                       (accounts, daemon, plugins)
                    | "max_message_length" ->
                        let value = catch (List.assoc "value") attrs
                          "max_message_lehgth MUST have value attribute" in
                        let i = catch int_of_string value
                          "max_message_length/value MUST be integer" in
                          global.max_message_length <- i;
-                         (accounts, plugins)
+                         (accounts, daemon, plugins)
                    | "plugins" ->
                        let plugins = get_plugins els in
-                         (accounts, plugins)
+                         (accounts, daemon, plugins)
                    | other ->
                        unknown other
                )
              | Xmlcdata _ ->
-                 (accounts, plugins)
-          ) ([], []) els in
-        List.rev accounts, List.rev plugins
+                 (accounts, daemon, plugins)
+          ) ([], false, []) els in
+        List.rev accounts, daemon, List.rev plugins
   | Xmlelement _
   | Xmlcdata _ ->
       unknown "Bad configuration file"

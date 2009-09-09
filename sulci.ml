@@ -105,11 +105,26 @@ let rec reconnect account times =
         log#debug "%s" (Printexc.get_backtrace ());
         Pervasives.exit 127
           
+let rec launch r =
+  let pid = Unix.fork () in
+    if pid = 0 then
+      r ()
+    else
+      Printf.printf "Process %d detached" pid
+
 let _ =
-  let accounts, plugins = Config.get_config () in
+  let accounts, daemon, plugins = Config.get_config () in
   let () = Plugins.load_plugins plugins in
     if accounts <> [] then
-      let account = List.hd accounts in
-        reconnect account account.reconnect_times
+      if daemon then (
+        ignore (Unix.setsid ());
+        launch (fun () ->
+                  let account = List.hd accounts in
+                    reconnect account account.reconnect_times
+               )
+      )
+      else
+        let account = List.hd accounts in
+          reconnect account account.reconnect_times
     else
-      Printf.eprintf "no accounts"
+      Printf.eprintf "no account available"

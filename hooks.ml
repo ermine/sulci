@@ -9,9 +9,6 @@ open Lang
   
 let _ = Printexc.record_backtrace true
 
-let timerQ = Scheduler.create ()
-let _ = Scheduler.run timerQ
-
 exception PluginError of string
 exception Filtered
 exception BadEntity

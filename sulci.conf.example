@@ -23,6 +23,9 @@
   -->
  </account>
 
+ <!-- Detach from the terminal -->
+ <daemon value='true'/>
+
  <log>
   <level value='debug'/>
   <!--
