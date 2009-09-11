@@ -24,7 +24,6 @@ type entity =
 type env = {
   env_groupchat: bool;
   env_lang: string;
-  env_check_access: Jid.jid -> string -> bool;
   env_get_entity: string -> Jid.jid -> entity;
   env_message :
     xmpp -> message_type option -> jid -> ?response_tail:string ->
@@ -126,7 +125,6 @@ let message_error xmpp ?id ?jid_from ?jid_to ?lang error =
 let message_callback xmpp stanza =
   let env = { env_groupchat = false;
               env_lang = Lang.get_lang stanza.lang;
-              env_check_access = check_access;
               env_get_entity = get_entity;
               env_message = make_msg;
             } in
@@ -138,7 +136,6 @@ let presence_error xmpp ?id ?jid_from ?jid_to ?lang error =
 let presence_callback xmpp stanza =
   let env = { env_groupchat = false;
               env_lang = Lang.get_lang stanza.lang;
-              env_check_access = check_access;
               env_get_entity = get_entity;
               env_message = make_msg;
             } in

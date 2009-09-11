@@ -73,6 +73,7 @@ sulci>
    <command id='invite' name='invite' access='botmaster'/>
    <command id='join' name='join' access='botmaster'/>
    <command id='leave' name='leave' access='botmaster'/>
+   <command id='sh' name='sh' access='botmaster'/>
   </plugin>
 
   <plugin name='brainfuck' path='./plugins/plugin_brainfuck'>
@@ -130,7 +131,6 @@ sulci>
 
   <plugin name='misc' path='./plugins/plugin_misc'>
    <command id='dns' name='dns'/>
-   <command id='sh' name='sh' access='botmaster'/>
  </plugin>
 
   <plugin name='mueller' path='./plugins/plugin_mueller'>

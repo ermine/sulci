@@ -413,7 +413,6 @@ let process_presence xmpp env stanza hooks =
           | Some room_env ->
               let env = {env_groupchat = true;
                          env_lang = room_env.lang;
-                         env_check_access = check_access;
                          env_get_entity = get_entity;
                          env_message = make_msg;
                         }

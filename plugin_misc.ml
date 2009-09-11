@@ -31,26 +31,8 @@ let dns xmpp env kind jid_from text =
          | Not_found ->
              Lang.get_msg env.env_lang "plugin_misc_dns_not_resolved" [])
       
-let shell xmpp env kind jid_from text =
-  if env.env_check_access jid_from "admin" then
-    if text = "" then
-      env.env_message xmpp kind jid_from "shell? yeah!"
-    else
-      let in_ch = Unix.open_process_in text in
-      let rec aux_read acc =
-        let line = try Some (input_line in_ch) with End_of_file -> None in
-          match line with
-            | Some v -> aux_read (v :: acc)
-            | None -> close_in in_ch; List.rev acc
-      in
-      let lines = aux_read [] in
-        if lines <> [] then
-          env.env_message xmpp kind jid_from (String.concat "\n" lines);
-  else
-    env.env_message xmpp kind jid_from "no access"
-
 let plugin opts =
-  add_commands [("dns", dns); ("sh", shell)] opts
+  add_commands [("dns", dns)] opts
 
 let _ =
   add_plugin "misc" plugin

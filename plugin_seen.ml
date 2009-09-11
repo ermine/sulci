@@ -50,33 +50,32 @@ let cmd_greet =
   Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^\\s]+)\\s+([^\\s]+)\\s+(.+)"
     
 let add_greet text from xml env out =
-  if env.env_check_access from "admin" then (
-    if text <> "" then
-      try
-        let res = Pcre.exec ~rex:cmd_greet ~pos:0 text in
-        let jid = jid_of_string (Pcre.get_substring res 1) in
-        let jid_s = escape (string_of_jid (bare_jid jid)) in
-        let room = jid_of_string (Pcre.get_substring res 2) in
-        let room_s = escape (string_of_jid (bare_jid room)) in
-        let greet = escape (Pcre.get_substring res 3) in
-        let sql1 = Printf.sprintf "SELECT 1 FROM %s WHERE jid=%s AND room=%s"
-          table_greeting jid_s  room_s in
-        let sql2 =
-          Printf.sprintf "UPDATE %s SET msg=%s WHERE jid=%s AND room=%s"
-            table_greeting greet jid_s room_s in
-        let sql3 =
-          Printf.sprintf
-            "INSERT INTO %s (jid, room, msg) VALUES (%s, %s, %s)"
-            table_greeting jid_s room_s greet in
-          if (insert_or_update file db sql1 sql2 sql3) then
-            make_msg out xml
-              (Lang.get_msg env.env_lang "plugin_seen_greet_updated" [])
-          else
-            make_msg out xml (Lang.get_msg env.env_lang "plugin_seen_greet_added" [])
-      with Not_found ->
-        make_msg out xml (Lang.get_msg env.env_lang "plugin_seen_greet_bad_syntax" [])
-  )
-  else ()
+  if text <> "" then
+    try
+      let res = Pcre.exec ~rex:cmd_greet ~pos:0 text in
+      let jid = jid_of_string (Pcre.get_substring res 1) in
+      let jid_s = escape (string_of_jid (bare_jid jid)) in
+      let room = jid_of_string (Pcre.get_substring res 2) in
+      let room_s = escape (string_of_jid (bare_jid room)) in
+      let greet = escape (Pcre.get_substring res 3) in
+      let sql1 = Printf.sprintf "SELECT 1 FROM %s WHERE jid=%s AND room=%s"
+        table_greeting jid_s  room_s in
+      let sql2 =
+        Printf.sprintf "UPDATE %s SET msg=%s WHERE jid=%s AND room=%s"
+          table_greeting greet jid_s room_s in
+      let sql3 =
+        Printf.sprintf
+          "INSERT INTO %s (jid, room, msg) VALUES (%s, %s, %s)"
+          table_greeting jid_s room_s greet in
+        if (insert_or_update file db sql1 sql2 sql3) then
+          make_msg out xml
+            (Lang.get_msg env.env_lang "plugin_seen_greet_updated" [])
+        else
+          make_msg out xml
+            (Lang.get_msg env.env_lang "plugin_seen_greet_added" [])
+    with Not_found ->
+      make_msg out xml
+        (Lang.get_msg env.env_lang "plugin_seen_greet_bad_syntax" [])
     
 let catch_seen event from _xml _env out =
   match event with

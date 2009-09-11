@@ -90,7 +90,7 @@ let do_command xmpp env kind jid_from text =
       match proc with
         | None -> ()
         | Some c ->
-            if env.env_check_access jid_from c.access then
+            if check_access jid_from c.access then
               let params = try
                 string_after text (String.index text ' ') with _ -> "" in
                 try c.callback xmpp env kind jid_from (trim params) with exn -> 
