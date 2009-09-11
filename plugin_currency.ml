@@ -136,7 +136,7 @@ let currency xmpp env kind jid_from text =
             text (Printexc.to_string exn)
             
 let plugin opts =
-  add_commands [("currency", currency)] opts;
+  add_commands [("curr", currency)] opts;
   load_curr ();
   let t =
     try List.assoc "time" (List.assoc "refresh" opts)

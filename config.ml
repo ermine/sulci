@@ -140,9 +140,9 @@ let get_plugins els =
       
 let read_config = function
   | Xmlelement ("sulci", _, els) ->
-      let accounts, daemon, plugins =
+      let accounts, plugins =
         List.fold_left
-          (fun (accounts, daemon, plugins) -> function
+          (fun (accounts, plugins) -> function
              | Xmlelement (name, attrs, els) -> (
                  match name with
                    | "account" ->
@@ -151,43 +151,37 @@ let read_config = function
                        let jid = catch jid_of_string value
                          "account/jid MUST be user@server value" in
                        let account = parse_account jid els in
-                         (account :: accounts, daemon, plugins)
-                   | "daemon" ->
-                       let value = List.assoc "value" attrs in
-                         if value = "true" then
-                           (accounts, true, plugins)
-                         else
-                           (accounts, false, plugins)
+                         (account :: accounts, plugins)
                    | "log" ->
                        setup_logger els;
-                       (accounts, daemon, plugins)
+                       (accounts, plugins)
                    | "lang" ->
                        Lang.dir := catch (List.assoc "dir") attrs
                          "lang/dir MUST be defined";
                        Lang.deflang :=
                          (try List.assoc "default" attrs
                           with Not_found -> "ru");
-                       (accounts, daemon, plugins)
+                       (accounts, plugins)
                    | "acl" ->
                        fill_acl attrs;
-                       (accounts, daemon, plugins)
+                       (accounts, plugins)
                    | "max_message_length" ->
                        let value = catch (List.assoc "value") attrs
                          "max_message_lehgth MUST have value attribute" in
                        let i = catch int_of_string value
                          "max_message_length/value MUST be integer" in
                          global.max_message_length <- i;
-                         (accounts, daemon, plugins)
+                         (accounts, plugins)
                    | "plugins" ->
                        let plugins = get_plugins els in
-                         (accounts, daemon, plugins)
+                         (accounts, plugins)
                    | other ->
                        unknown other
                )
              | Xmlcdata _ ->
-                 (accounts, daemon, plugins)
-          ) ([], false, []) els in
-        List.rev accounts, daemon, List.rev plugins
+                 (accounts, plugins)
+          ) ([], []) els in
+        List.rev accounts, List.rev plugins
   | Xmlelement _
   | Xmlcdata _ ->
       unknown "Bad configuration file"
@@ -208,8 +202,11 @@ let default_cfile () =
 let get_config () =
   let usage_msg = Filename.basename Sys.argv.(0) ^ " [options]" in
   let cfile = ref (default_cfile ()) in
+  let daemon_mode = ref false in
+  let daemon () = daemon_mode := true in
   let opts = align [
     "-c", Set_string cfile, "<file>  Path to the config file";
+    "-d", Unit daemon, "Daemon mode";
     "-v", Unit version, " Show version";
   ] in
   let () = Arg.parse opts
@@ -233,5 +230,4 @@ let get_config () =
       in
       let content = read_file () in
       let xml = parse_document content in
-        read_config xml
-          
+        !daemon_mode, read_config xml

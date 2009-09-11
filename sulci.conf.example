@@ -1,4 +1,4 @@
-<sulci>
+sulci>
  <account jid='username@server'>
   <!-- <ip>127.0.0.1</ip> -->
   <!-- <ip>localhost</ip> -->
@@ -22,9 +22,6 @@
   <reconnect interval='10' times='3' />
   -->
  </account>
-
- <!-- Detach from the terminal -->
- <daemon value='true'/>
 
  <log>
   <level value='debug'/>
@@ -60,6 +57,8 @@
   <plugin name='muc_log' path='./plugins/muc_log'>
      <dir path='./chatlogs'/>
   </plugin>
+
+  <plugin name='http' path='./plugins/http_suck'/>
   
   <plugin name='commands' path='./plugins/plugin_command'>
    <prefix value='.'/>
@@ -71,18 +70,18 @@
   </plugin>
 
   <plugin name='admin' path='./plugins/plugin_admin'>
-   <command key='invite' name='invite' access='botmaster'/>
-   <command key='join' name='join' access='botmaster'/>
-   <command key='leave' name='leave' access='botmaster'/>
+   <command id='invite' name='invite' access='botmaster'/>
+   <command id='join' name='join' access='botmaster'/>
+   <command id='leave' name='leave' access='botmaster'/>
   </plugin>
 
   <plugin name='brainfuck' path='./plugins/plugin_brainfuck'>
-   <command name='bf'/>
+   <command id='bf'/>
   </plugin>
 
   <plugin name='calc' path='./plugins/plugin_calc'>
-   <command key='calc' name='calc'/>
-   <command key='rpn' name='rpn'/>
+   <command id='calc' name='calc'/>
+   <command id='rpn' name='rpn'/>
   </plugin>
 
   <plugin name='cerberus' path='./plugins/plugin_cerberus'>
@@ -92,13 +91,13 @@
 
   <plugin name='currency' path='./plugins/plugin_currency'>
    <scheduler time='11:00'/>
-   <command name='curr'/>
+   <command id='curr'/>
   </plugin>
 
   <plugin name='dict' path='./plugins/plugin_dict'>
    <!-- <server port=2628 host='localhost'/> -->
    <server host='dict.org'/>
-   <command name='dict'/>
+   <command id='dict'/>
   </plugin>
 
   <!-- it was used on http://ejabberd.jabber.ru/ to display total 
@@ -111,86 +110,86 @@
 
   <plugin name='google' path='./plugins/plugin_google'>
    <key value='00000000000000000000000000000'/>
-   <command name='google'/>
+   <command id='google'/>
   </plugin>
 
   <plugin name='google_translate' path='./plugins/google_translate'>
-   <command name='gtr'/>
+   <command id='gtr'/>
   </plugin>
 
   <plugin name='hostip' path='./plugins/plugin_hostip'>
-   <command name='hostip'/>
+   <command id='hostip'/>
   </plugin>
 
   <plugin name='markov' path='./plugins/plugin_markov'>
    <dir path='./markov_db'/>
    <max_words value='20' />
-   <command name='!!!count'/>
-   <command name='!!!top'/>
+   <command id='!!!count'/>
+   <command id='!!!top'/>
   </plugin>
 
   <plugin name='misc' path='./plugins/plugin_misc'>
-   <command key='dns' name='dns'/>
-   <command key='sh' name='sh' access='botmaster'/>
+   <command id='dns' name='dns'/>
+   <command id='sh' name='sh' access='botmaster'/>
  </plugin>
 
   <plugin name='mueller' path='./plugins/plugin_mueller'>
    <db path='/path/to/Mueller24.koi' hashext='.hash'/>
-   <command name='mueller'/>
+   <command id='mueller'/>
   </plugin>
 
   <plugin name='ping' path='./plugins/plugin_ping'>
-   <command name='ping'/>
+   <command id='ping'/>
   </plugin>
 
   <plugin name='roulette' path='./plugins/plugin_roulette'>
-   <command name='tryme'/>
+   <command id='tryme'/>
   </plugin>
 
   <plugin name='seen' path='./plugins/plugin_seen'>
    <db path='./sulci_users.db'/>
-   <command name='seen'/>
+   <command id='seen'/>
   </plugin>
 
   <plugin name='talkers' path='./plugins/plugin_talkers'>
    <db path='./talkers.db'/>
-   <command name='talkers'/>
+   <command id='talkers'/>
   </plugin>
 
   <plugin name='tld' path='./plugins/plugin_tld'>
    <db path='./tlds/tlds'/>
-   <command name='tld'/>
+   <command id='tld'/>
   </plugin>
 
   <plugin name='userinfo' path='./plugins/plugin_userinfo'>
-   <command key='version' name='version'/>
-   <command key='idle' name='idle'/>
-   <command key='uptime' name='uptime'/>
-   <command key='time' name='time'/>
-   <command key='stats' name='stats'/>
+   <command id='version' name='version'/>
+   <command id='idle' name='idle'/>
+   <command id='uptime' name='uptime'/>
+   <command id='time' name='time'/>
+   <command id='stats' name='stats'/>
   </plugin>
 
   <plugin name='translate' path='./plugins/plugin_translate'>
-   <command name='tr'/>
+   <command id='tr'/>
   </plugin>
 
-  <plugin name='vcard' path='./plugins/plugin_vcard'>
-   <command name='vcard'/>
+  <Plugin name='vcard' path='./plugins/plugin_vcard'>
+   <command id='vcard'/>
   </plugin>
 
   <plugin name='vocabulary' path='./plugins/plugin_vocabulary'>
    <db path='./vocabulary.db'/>
-   <command key='wtf' name='wtf'/>
-   <command key='dfn' name='dfn'/>
-   <command key='wtfremove' name='wtfremove' access='moderator'/>
+   <command id='wtf' name='wtf'/>
+   <command id='dfn' name='dfn'/>
+   <command id='wtfremove' name='wtfremove' access='moderator'/>
   </plugin>
 
   <plugin name='weather' path='./plugins/plugin_weather'>
-   <command name='wz'/>
+   <command id='wz' name='wz'/>
   </plugin>
 
   <plugin name='yandex' path='./plugins/plugin_yandex'>
-   <command name='blogs'/>
+   <command id='blogs'/>
   </plugin>
 
  </plugins>

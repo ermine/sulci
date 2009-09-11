@@ -1,4 +1,5 @@
 open Http_client
+open Hooks
 
 exception ClientError
 exception ServerError
@@ -81,21 +82,22 @@ let get_media_type call =
         
 let request call callback =
   let f_done call =
-    let result = match call # status with
-      | `Successful ->
-          let media, charset = get_media_type call in
-          let content = call # response_body # value in
-            OK (media, charset, content)
-      | `Client_error ->
-          Exception ClientError
-      | `Server_error ->
-          Exception ServerError
-      | `Http_protocol_error exn ->
-          Exception exn
-      | `Redirection ->    (* TODO *)
-          Exception Redirect
-      | `Unserved ->       (* raises at add_with_callback *)
-          Exception ClientError
+    let result =
+      match call # status with
+        | `Successful ->
+            let media, charset = get_media_type call in
+            let content = call # response_body # value in
+              OK (media, charset, content)
+        | `Client_error ->
+            Exception ClientError
+        | `Server_error ->
+            Exception ServerError
+        | `Http_protocol_error exn ->
+            Exception exn
+        | `Redirection ->    (* TODO *)
+            Exception Redirect
+        | `Unserved ->       (* raises at add_with_callback *)
+            Exception ClientError
     in
       callback result
   in
@@ -115,8 +117,12 @@ let http_post url headers data callback =
       h # update_field "Content-length" (string_of_int (String.length data));
       request p callback
         
-let _ =
+let plugin _opts =
   (* Unixqueue.set_debug_mode true; *)
   http_init();
   let _http_thr = Thread.create http_thread () in
+    log#info "http_suck started";
     ()
+
+let _ =
+  add_plugin "http" plugin

@@ -34,14 +34,13 @@ CREATE INDEX dfnidx ON %s (key)"
         
 let dfn_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)\\s*=\\s*(.*)"
 
-
 let get_real_jid from =
   let cond = " AND nick=" ^ escape from.lresource ^
     " AND luser=" ^ escape from.lnode ^
     " AND lserver=" ^ escape from.ldomain in
     from.lresource, from.lnode, from.ldomain, cond
 
-let dfn ?(get_real_jid=get_real_jid) xmpp env text =
+let dfn xmpp env kind jid_from text =
   let key, value=
     try
       let res = Pcre.exec ~rex:dfn_re text in
@@ -57,11 +56,11 @@ let dfn ?(get_real_jid=get_real_jid) xmpp env text =
     else
       let nick, lnode, ldomain, cond =
         if env.env_groupchat then
-          get_real_jid env.from
+          get_real_jid jid_from
         else
-          let cond = " AND luser=" ^ escape env.from.lnode ^ 
-            " AND lserver=" ^ escape env.from.ldomain in
-            env.from.lnode, env.from.lnode, env.from.ldomain, cond
+          let cond = " AND luser=" ^ escape jid_from.lnode ^ 
+            " AND lserver=" ^ escape jid_from.ldomain in
+            jid_from.lnode, jid_from.lnode, jid_from.ldomain, cond
       in
       let sql = Printf.sprintf
         "SELECT value FROM %s WHERE key=%s %s" table (escape key) cond in
@@ -105,7 +104,7 @@ let dfn ?(get_real_jid=get_real_jid) xmpp env text =
                   (Lang.get_msg env.env_lang
                      "plugin_vocabulary_nothing_to_remove" [])
 
-let wtf xmpp env text =
+let wtf xmpp env kind jid_from text =
   if text = "" then
     env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
@@ -127,7 +126,7 @@ let wtf xmpp env text =
             env.env_message xmpp kind jid_from
               (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
               
-let output_records xmpp env sql =
+let output_records xmpp env kind jid_from sql =
   let rec aux_acc i acc stmt =
     match get_row stmt with
       | Some row ->
@@ -153,7 +152,7 @@ let output_records xmpp env sql =
     with Sqlite3.Error _ ->
       exit_with_rc file db sql
 
-let wtfall xmpp env text =
+let wtfall xmpp env kind jid_from text =
   if text = "" then
     env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
@@ -168,9 +167,9 @@ let wtfall xmpp env text =
         "SELECT nick, key, value FROM %s WHERE key=%s ORDER BY stamp"
         table (escape key)
     in
-      output_records xmpp env sql
+      output_records xmpp env kind jid_from sql
       
-let wtfrand xmpp env text =
+let wtfrand xmpp env kind jid_from text =
   let key = trim(text) in
     if key = "" then
       let rand = string_of_int (Random.int (!total)) in
@@ -210,7 +209,7 @@ let wtfrand xmpp env text =
               env.env_message xmpp kind jid_from
                 (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
                 
-let wtfcount xmpp env text =
+let wtfcount xmpp env kind jid_from text =
   let key = trim(text) in
   let sql =
     if key = "" then
@@ -234,7 +233,7 @@ let wtfcount xmpp env text =
         (Lang.get_msg env.env_lang
            "plugin_vocabulary_db_is_empty" [])
         
-let wtffind xmpp env text =
+let wtffind xmpp env kind jid_from text =
   if text = "" then
     env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
@@ -243,7 +242,7 @@ let wtffind xmpp env text =
       "SELECT nick, key, value FROM %s WHERE key LIKE %s OR value LIKE %s"
       table (escape text) (escape text)
     in
-      output_records xmpp env sql
+      output_records xmpp env kind jid_from sql
 
 
 let plugin opts =

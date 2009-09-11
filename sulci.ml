@@ -112,19 +112,19 @@ let rec launch r =
     else
       Printf.printf "Process %d detached" pid
 
-let _ =
-  let accounts, daemon, plugins = Config.get_config () in
+let main accounts plugins () =
   let () = Plugins.load_plugins plugins in
+  let account = List.hd accounts in
+    reconnect account account.reconnect_times
+
+let _ =
+  let daemon, (accounts, plugins) = Config.get_config () in
     if accounts <> [] then
       if daemon then (
         ignore (Unix.setsid ());
-        launch (fun () ->
-                  let account = List.hd accounts in
-                    reconnect account account.reconnect_times
-               )
+        launch (main accounts plugins)
       )
       else
-        let account = List.hd accounts in
-          reconnect account account.reconnect_times
+        main accounts plugins ()
     else
       Printf.eprintf "no account available"

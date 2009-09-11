@@ -20,35 +20,35 @@ let add_command (command:string) proc access =
   Hashtbl.replace commands command {callback = proc; access = access}
 
 let parse_command_params params =
-  let (key, name, access) =
-    List.fold_left (fun (key, name, access) (p, v) ->
+  let (id, name, access) =
+    List.fold_left (fun (id, name, access) (p, v) ->
                       match p with
-                        | "key" ->
+                        | "id" ->
                             if v = "" then (
-                              log#notice "command/key is empty";
-                              (key, name, access)
+                              log#notice "command/id is empty";
+                              (id, name, access)
                             )
                             else
                               (v, name, access)
                         | "name" ->
                             if v = "" then (
                               log#notice "command/name is empty";
-                              (key, name, access)
+                              (id, name, access)
                             )
                             else
-                              (key, v, access)
+                              (id, v, access)
                         | "access" ->
                             if v = "" then (
                               log#notice "command/access is empty";
-                              (key, name, access)
+                              (id, name, access)
                             )
                             else
-                              (key, name, v)
+                              (id, name, v)
                         | other ->
                             log#notice "Unknown command parameter: %S" other;
-                            (key, name, access)
+                            (id, name, access)
                    ) ("", "", "") params in
-    (key, name, access)
+    (id, name, access)
 
 let add_commands cmds opts =
   let cmd_opts =
@@ -59,20 +59,22 @@ let add_commands cmds opts =
                    ) [] opts 
   in  
     if List.length cmds = 1 then
-      let key, proc = List.hd cmds in
+      let id, proc = List.hd cmds in
       let (_, name, access) =
-        try List.find (fun (key', _, _) -> key' = key) cmd_opts
-        with Not_found -> key, key, ""
+        try List.find (fun (id', _, _) -> id' = id) cmd_opts
+        with Not_found -> id, id, ""
       in
+      let name = if name = "" then id else name in
         add_command name proc access
     else
-      List.iter (fun (key, proc) ->
+      List.iter (fun (id, proc) ->
                    try
                      let (_, name, access) =
-                       List.find (fun (key', _, _) -> key = key') cmd_opts in
+                       List.find (fun (id', _, _) -> id = id') cmd_opts in
+                     let name = if name = "" then id else name in
                        add_command name proc access
                    with Not_found ->
-                     add_command key proc ""
+                     add_command id proc ""
                 ) cmds
 
 let do_command xmpp env kind jid_from text =
@@ -117,12 +119,12 @@ let process_message xmpp env stanza hooks =
         do_hook xmpp env stanza hooks
 
 let list_commands xmpp env kind jid_from text =
-  let clist = Hashtbl.fold (fun key _ acc -> key :: acc) commands [] in
+  let clist = Hashtbl.fold (fun id _ acc -> id :: acc) commands [] in
   let rsp =
     if clist = [] then
       "no commands yet"
     else
-      String.concat " " (List.rev clist)
+      String.concat " " (List.fast_sort compare clist)
   in
     env.env_message xmpp kind jid_from rsp
 

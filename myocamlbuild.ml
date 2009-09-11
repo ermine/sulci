@@ -53,7 +53,7 @@ let _ = dispatch begin function
                   chmod (A"-w") "version.ml"]
         );
       
-     flag ["ocaml"; "pp"; "use_ulex.syntax"] &
+      flag ["ocaml"; "pp"; "use_ulex.syntax"] &
         S[A"-I"; A (ocamlfind_query "ulex"); A"pa_ulex.cma"];
 
       extern "ulex";
@@ -89,7 +89,7 @@ let _ = dispatch begin function
         S(List.map (fun a -> P ("lang" / a -.- "cmx"))
             ["ru_time"; "en_time"; "es_time"]);
         
-      flag_and_dep ["ocaml"; "compile"; "byte"; "use_lang"] & 
+  flag_and_dep ["ocaml"; "compile"; "byte"; "use_lang"] & 
         S(List.map (fun a -> P ("lang" / a -.- "cmo"))
             ["ru_time"; "en_time"; "es_time"]);
         
