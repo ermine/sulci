@@ -111,6 +111,7 @@ sulci>
 
   <plugin name='google' path='./plugins/plugin_google'>
    <command id='google'/>
+   <command id='translate' name='gtr'/>
   </plugin>
 
   <plugin name='google_translate' path='./plugins/google_translate'>

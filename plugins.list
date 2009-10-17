@@ -11,7 +11,7 @@ plugin_currency
 plugin_dict
 # plugin_globalstats
 plugin_google
-plugin_google_translate
+# plugin_google_translate
 plugin_hostip
 # #plugin_markov
 plugin_misc
@@ -27,4 +27,3 @@ plugin_vcard
 plugin_vocabulary
 plugin_weather
 plugin_yandex
-
