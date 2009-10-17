@@ -110,7 +110,6 @@ sulci>
   -->
 
   <plugin name='google' path='./plugins/plugin_google'>
-   <key value='00000000000000000000000000000'/>
    <command id='google'/>
   </plugin>
 

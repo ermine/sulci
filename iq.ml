@@ -108,7 +108,6 @@ let simple_query_entity ?me ?(error_exceptions=[]) success
                           env.env_message xmpp kind jid_from
                             (process_error err env e)
                       )
-                    | _ -> ()
                 in
                   XMPP.make_iq_request xmpp ~jid_to:jid (IQGet payload) proc
         

@@ -31,6 +31,7 @@ or
      http://www.sqlite.org
 * ocaml-sqlite3 1.2+
      http://ocaml.info/home/ocaml_sources.html
+* json-wheel, json-static
 
 Note: If you plan to use Mueller dictonary, you should compile pcre library
 with enabled UTF-8 support

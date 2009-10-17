@@ -4,8 +4,6 @@ open Hooks
 exception ClientError
 exception ServerError
 exception Redirect
-exception Sys
-exception Unserved
 
 exception HTTP_Job of http_call * (http_call -> unit)
 

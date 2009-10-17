@@ -3,6 +3,7 @@ open Myocamlbuild_config
 
 let install_dir = "/tmp/sulci20"
 
+(*
 let _ =
   let f = Unix.open_process_in "git describe --always" in
   let answer = input_line f in
@@ -10,7 +11,8 @@ let _ =
     let out = open_out "REVISION" in
       output_string out answer;
       close_out out
-
+*)
+  
 let sulci_plugins () =
   let plugins ext =
     let res =
@@ -57,13 +59,7 @@ let _ = dispatch begin function
         S[A"-I"; A (ocamlfind_query "ulex"); A"pa_ulex.cma"];
 
       extern "ulex";
-        
-      flag ["ocaml"; "link"; "byte"; "use_cryptokit"] &
-        S[A"nums.cma"];
-      flag ["ocaml"; "link"; "native"; "use_cryptokit"] &
-        S[A"nums.cmxa"];
-      extern "cryptokit";
-        
+
       extern "netsys";
       extern "pcre";
       extern "netclient";
@@ -71,6 +67,21 @@ let _ = dispatch begin function
       extern "netstring";
       extern "sqlite3";
 
+      flag ["ocaml"; "pp"; "use_json_static.syntax"] &
+        S[A"-I"; A (ocamlfind_query "netsys"); A"netsys.cma";
+          A"-I"; A (ocamlfind_query "pcre"); A"pcre.cma";
+          A"-I"; A (ocamlfind_query "netstring"); A"netstring.cma";
+          A"-I"; A (ocamlfind_query "json-wheel"); A"jsonwheel.cma";
+          A"-I"; A (ocamlfind_query "json-static"); A"pa_json_static.cmo"];
+
+      extern "json-wheel";
+        
+      flag ["ocaml"; "link"; "byte"; "use_cryptokit"] &
+        S[A"nums.cma"];
+      flag ["ocaml"; "link"; "native"; "use_cryptokit"] &
+        S[A"nums.cmxa"];
+      extern "cryptokit";
+        
       extern "xml";
       extern "mltls";
       extern "treap";
