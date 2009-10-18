@@ -8,6 +8,15 @@ open Jid
 open Xep_muc
 open Common
 open Hooks
+
+type t = {
+  max_public_message_length : int
+}
+
+let global = {
+  max_public_message_length = 400
+}
+    
 (*
 open Sqlite3
 open Sqlite_util
@@ -176,83 +185,37 @@ type muc_event =
 let hook_muc_event xmpp env jid_from event =
   ()
 
-(*
-let make_msg xmpp env kind jid_from ?response_tail response =
-  let tail =
-    match response_tail with
-      | None -> ""
-      | Some t -> "\n" ^ t
-  in
-    match env.kind with
-      | Some Groupchat ->
-          let limit = 
-            let l = !msg_limit - String.length tail in
-              if l < 0 then 0 else l in
-          let resp = sub_utf8_string response limit in
-          let cutted, respo =
-            if String.length resp < String.length response then
-              true, clean_tail resp ^ "[...]" ^ tail
-            else 
-              false, resp ^ tail
-          in
-          let body =
-            if Pcre.pmatch ~pat:"/me" response then respo else
-              from.resource ^ ": " ^ respo
-          in
-            send_message xmpp ~jid_to:(bare_jid from)
-              ?kind:env.kind ~body ();
-            if cutted then
-              let msgs =
-                split_long_message !max_message_length response tail in
-                List.iter (fun body ->
-                             send_message xmpp ~kind:Chat ~jid_to:from
-                               ~body ()
-                          ) msgs
-      | _ ->
-          let msgs =
-            split_long_message !max_message_length response tail in
-            List.iter (fun body ->
-                         send_message xmpp ~kind:Chat ~jid_to:from
-                           ~body ()
-                      ) msgs
-  let tail =
-    match response_tail with
-      | None -> ""
-      | Some t -> "\n" ^ t
-  in
-    match env.kind with
-      | Some Groupchat ->
-          let limit = 
-            let l = !msg_limit - String.length tail in
-              if l < 0 then 0 else l in
-          let resp = sub_utf8_string response limit in
-          let cutted, respo =
-            if String.length resp < String.length response then
-              true, clean_tail resp ^ "[...]" ^ tail
-            else 
-              false, resp ^ tail
-          in
-          let body =
-            if Pcre.pmatch ~pat:"/me" response then respo else
-              from.resource ^ ": " ^ respo
-          in
-            send_message xmpp ~jid_to:(bare_jid from)
-              ?kind:env.kind ~body ();
-            if cutted then
-              let msgs =
-                split_long_message !max_message_length response tail in
-                List.iter (fun body ->
-                             send_message xmpp ~kind:Chat ~jid_to:from
-                               ~body ()
-                          ) msgs
-      | _ ->
-          let msgs =
-            split_long_message !max_message_length response tail in
-            List.iter (fun body ->
-                         send_message xmpp ~kind:Chat ~jid_to:from
-                           ~body ()
-                      ) msgs
-*)
+let make_msg xmpp kind jid_from ?response_tail response =
+  match kind with
+    | Some Groupchat ->
+        let tail =
+          match response_tail with
+            | None -> ""
+            | Some t -> "\n" ^ t
+        in
+        let limit = 
+          let l = global.max_public_message_length - String.length tail in
+            if l < 0 then 0 else l in
+        let resp = sub_utf8_string response limit in
+        let cut, respo =
+          if String.length resp < String.length response then
+            true, clean_tail resp ^ "[...]" ^ tail
+          else 
+            false, resp ^ tail
+        in
+        let body =
+          if Pcre.pmatch ~pat:"/me" response then respo else
+            jid_from.resource ^ ": " ^ respo
+        in
+          send_message xmpp ~jid_to:(bare_jid jid_from) ?kind ~body ();
+          if cut then
+            let msgs =
+              split_long_message Hooks.global.max_message_length response tail in
+              List.iter (fun body ->
+                           send_message xmpp ~kind:Chat ~jid_to:jid_from ~body ()
+                        ) msgs
+    | _ ->
+        Hooks.make_msg xmpp kind jid_from ?response_tail response
 
 let get_reason = function
   | None -> None
@@ -501,18 +464,22 @@ let process_message_user xmpp env stanza from data =
   let () =
     match stanza.kind with
       | None
-      | Some Normal ->
-          (match data.User.decline with
-             | None -> ()
-             | Some (jid_from, jid_to, reason) ->
-                 hook_muc_event xmpp env from
-                   (MUC_decline (jid_from, jid_to, reason))
-          );
+      | Some Normal -> (
+          match data.User.decline with
+            | None -> ()
+            | Some (jid_from, jid_to, reason) ->
+                hook_muc_event xmpp env from
+                  (MUC_decline (jid_from, jid_to, reason))
+        );
           List.iter
             (fun (jid_from, jid_to, reason) ->
                hook_muc_event xmpp env from
                  (MUC_invite (jid_from, jid_to, reason, data.User.password))
             ) data.User.invite
+      | Some Groupchat ->
+          ()
+      | _ ->
+          ()
   in
     process_message_status xmpp env stanza data.User.status;
     if data.User.decline <> None || data.User.invite <> [] ||
@@ -525,6 +492,16 @@ let process_message xmpp env stanza hooks =
   match stanza.jid_from with
     | None -> do_hook xmpp env stanza hooks
     | Some from ->
+        let env =
+          try
+            let room_env = get_room_env from in
+              {env_groupchat = true;
+               env_lang = room_env.lang;
+               env_get_entity = get_entity;
+               env_message = make_msg;
+              }
+          with Not_found -> env
+        in
         let continue =
           match catch (get_element (ns_muc_user, "x")) stanza.x with
             | Some el ->
@@ -550,6 +527,10 @@ let process_message xmpp env stanza hooks =
                                     true
                                   else
                                     false
+                            | None, None ->
+                                true
+                            | Some s, _ ->
+                                true
                 )
               | _ ->
                   true
@@ -561,7 +542,7 @@ let process_message xmpp env stanza hooks =
 
 let enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
     nick room =
-  Groupchat.add (room.lnode, room.ldomain)
+  groupchats := Groupchat.add (room.lnode, room.ldomain)
     {mynick = nick;
      lang = xmpp.xmllang;
      occupants = Occupant.empty} !groupchats;

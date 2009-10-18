@@ -16,7 +16,8 @@ type command = {
 
 let commands : (string, command) Hashtbl.t = Hashtbl.create 10
 
-let add_command (command:string) proc access =
+let add_command id (command:string) proc access =
+  log#info "Added a command id: %s name: %s access: %s" id command access;
   Hashtbl.replace commands command {callback = proc; access = access}
 
 let parse_command_params params =
@@ -65,16 +66,16 @@ let add_commands cmds opts =
         with Not_found -> id, id, ""
       in
       let name = if name = "" then id else name in
-        add_command name proc access
+        add_command id name proc access
     else
       List.iter (fun (id, proc) ->
                    try
                      let (_, name, access) =
                        List.find (fun (id', _, _) -> id = id') cmd_opts in
                      let name = if name = "" then id else name in
-                       add_command name proc access
+                       add_command id name proc access
                    with Not_found ->
-                     add_command id proc ""
+                     add_command id id proc ""
                 ) cmds
 
 let do_command xmpp env kind jid_from text =

@@ -1,4 +1,4 @@
-sulci>
+<sulci>
  <account jid='username@server'>
   <!-- <ip>127.0.0.1</ip> -->
   <!-- <ip>localhost</ip> -->
@@ -46,7 +46,7 @@ sulci>
  <plugins>
 
   <plugin name='muc' path='./plugins/muc'>
-   <msg_limit value='400'/>
+   <max_public_message_length value='400'/>
    <db path='./sulci_muc.db'/>
    <acl role='moderator' class='moderator'/>
    <acl affiliation='owner' class='owner'/>
@@ -70,10 +70,10 @@ sulci>
   </plugin>
 
   <plugin name='admin' path='./plugins/plugin_admin'>
-   <command id='invite' name='invite' access='botmaster'/>
-   <command id='join' name='join' access='botmaster'/>
-   <command id='leave' name='leave' access='botmaster'/>
-   <command id='sh' name='sh' access='botmaster'/>
+   <command id='invite' access='botmaster'/>
+   <command id='join' access='botmaster'/>
+   <command id='leave' access='botmaster'/>
+   <command id='sh' access='botmaster'/>
   </plugin>
 
   <plugin name='brainfuck' path='./plugins/plugin_brainfuck'>
@@ -81,8 +81,8 @@ sulci>
   </plugin>
 
   <plugin name='calc' path='./plugins/plugin_calc'>
-   <command id='calc' name='calc'/>
-   <command id='rpn' name='rpn'/>
+   <command id='calc'/>
+   <command id='rpn'/>
   </plugin>
 
   <plugin name='cerberus' path='./plugins/plugin_cerberus'>
@@ -130,7 +130,7 @@ sulci>
   </plugin>
 
   <plugin name='misc' path='./plugins/plugin_misc'>
-   <command id='dns' name='dns'/>
+   <command id='dns'/>
  </plugin>
 
   <plugin name='mueller' path='./plugins/plugin_mueller'>
@@ -162,11 +162,11 @@ sulci>
   </plugin>
 
   <plugin name='userinfo' path='./plugins/plugin_userinfo'>
-   <command id='version' name='version'/>
-   <command id='idle' name='idle'/>
-   <command id='uptime' name='uptime'/>
-   <command id='time' name='time'/>
-   <command id='stats' name='stats'/>
+   <command id='version'/>
+   <command id='idle'/>
+   <command id='uptime'/>
+   <command id='time'/>
+   <command id='stats'/>
   </plugin>
 
   <plugin name='translate' path='./plugins/plugin_translate'>
@@ -179,13 +179,13 @@ sulci>
 
   <plugin name='vocabulary' path='./plugins/plugin_vocabulary'>
    <db path='./vocabulary.db'/>
-   <command id='wtf' name='wtf'/>
-   <command id='dfn' name='dfn'/>
-   <command id='wtfremove' name='wtfremove' access='moderator'/>
+   <command id='wtf'/>
+   <command id='dfn'/>
+   <command id='wtfremove' access='moderator'/>
   </plugin>
 
   <plugin name='weather' path='./plugins/plugin_weather'>
-   <command id='wz' name='wz'/>
+   <command id='wz'/>
   </plugin>
 
   <plugin name='yandex' path='./plugins/plugin_yandex'>
