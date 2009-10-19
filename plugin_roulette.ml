@@ -2,60 +2,53 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
 open StanzaError
 open XMPP
 open Jid
-open Types
-open Common
 open Hooks
-open Muc_types
 open Muc
-open Nicks
+open Xep_muc
   
 let r = Random.self_init ()
 
-let roulette text from xml env out =
+let roulette xmpp env kind jid_from text =
   if text <> "" then
-    make_msg out xml 
+    env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_roulette_syntax_error" [])
   else
-    if env.env_groupchat then
-      let room_env = get_room_env from in
-      let myitem = Nicks.find room_env.mynick room_env.nicks in
-        if myitem.role = `Moderator then
-          let item = Nicks.find from.lresource room_env.nicks in
-            if item.role = `Moderator then
-              make_msg out xml
-                (Lang.get_msg env.env_lang "plugin_roulette_not_allowed" [])
-            else if Random.int 10 = 1 then
-              let id = new_id () in
-              let reason = 
-                Lang.get_msg env.env_lang "plugin_roulette_kick_reason" [] in
-              let proc t _f x o = 
-                match t with
-                  | IqResult _el ->
-                      if safe_get_attr_value "type" (get_attrs xml) =
-                        "groupchat" then
-                          make_msg o xml
-                            (Lang.get_msg env.env_lang "plugin_roulette_bye" [])
-                  | IqError err ->
-                      make_msg out xml (if err.err_text = "" then
-                                          Lang.get_msg env.env_lang
-                                            "plugin_roulette_kick_failed" []
-                                        else err.err_text)
-                  | _ ->
-                      ()
-              in
-                register_iq_query_callback id proc;
-                out (Muc.kick ~reason id (from.lnode, from.ldomain)
-                       from.resource);
-            else
-              make_msg out xml
-                (Lang.get_msg env.env_lang "plugin_roulette_next_time" [])
-        else
-          make_msg out xml
-            (Lang.get_msg env.env_lang "plugin_roulette_not_allowed" [])
+    let room_env = get_room_env jid_from in
+    let myitem = Occupant.find room_env.mynick room_env.occupants in
+      if myitem.role = RoleModerator then
+        let item = Occupant.find jid_from.lresource room_env.occupants in
+          if item.role = RoleModerator then
+            env.env_message xmpp kind jid_from
+              (Lang.get_msg env.env_lang "plugin_roulette_not_allowed" [])
+          else if Random.int 10 = 1 then
+            let callback  ev _jidfrom _jidto _lang () =
+              match ev with
+                | IQResult el ->
+                    env.env_message xmpp kind jid_from 
+                      (Lang.get_msg env.env_lang "plugin_roulette_bye" [])
+                | IQError err ->
+                    env.env_message xmpp kind jid_from
+                      (if err.err_text = "" then
+                         Lang.get_msg env.env_lang
+                           "plugin_roulette_kick_failed" []
+                       else err.err_text)
+            in
+            let reason = 
+              Lang.get_msg env.env_lang "plugin_roulette_kick_reason" [] in
+              Muc.kick xmpp ~reason jid_from jid_from.lresource
+                callback
+          else
+            env.env_message xmpp kind jid_from
+              (Lang.get_msg env.env_lang "plugin_roulette_next_time" [])
+      else
+        env.env_message xmpp kind jid_from
+          (Lang.get_msg env.env_lang "plugin_roulette_not_allowed" [])
           
+let plugin opts =
+    Plugin_command.add_commands [("roulette", roulette)] opts
+
 let _ =
-  register_command "tryme" roulette
+  add_plugin "roulette" plugin

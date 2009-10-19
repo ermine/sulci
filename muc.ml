@@ -525,6 +525,13 @@ let process_message xmpp env stanza hooks =
                                 let nick, text = split_nick_body room_env b in
                                   if nick = "" then
                                     true
+                                  else if nick = room_env.mynick then (
+                                    do_hook xmpp env
+                                      {stanza with content =
+                                          {stanza.content with body = Some text}}
+                                      hooks;
+                                    false
+                                  )
                                   else
                                     false
                             | None, None ->

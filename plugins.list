@@ -11,13 +11,12 @@ plugin_currency
 plugin_dict
 # plugin_globalstats
 plugin_google
-# plugin_google_translate
 plugin_hostip
 # #plugin_markov
 plugin_misc
 # plugin_mueller
 plugin_ping
-# plugin_roulette
+plugin_roulette
 # plugin_seen
 # plugin_talkers
 plugin_tld

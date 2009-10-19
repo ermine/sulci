@@ -143,7 +143,7 @@
   </plugin>
 
   <plugin name='roulette' path='./plugins/plugin_roulette'>
-   <command id='tryme'/>
+   <command id='roulette' name='tryme'/>
   </plugin>
 
   <plugin name='seen' path='./plugins/plugin_seen'>
