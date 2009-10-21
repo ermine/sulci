@@ -134,7 +134,17 @@ let _ = dispatch begin function
                    P "tlds/tlds.txt";
                    P "tlds/tlds"])
         );
-        
+      
+      rule "sqlgg"
+        ~prod:"%_sql.ml"
+        ~dep:"%.sql"
+        (fun env _ ->
+           let src = env "%.sql" in
+           let dst = env "%_sql.ml" in
+             Cmd (S [Px "sqlgg.byte"; A"-gen"; A"ocaml"; A"-name"; A"Make";
+                     A src; Sh">"; A dst])
+        );
+
       rule "install sulci"
         ~prod:"install"
         ~deps:["sulci.native";

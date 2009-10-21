@@ -18,7 +18,7 @@ plugin_misc
 plugin_ping
 plugin_roulette
 # plugin_seen
-# plugin_talkers
+plugin_talkers
 plugin_tld
 plugin_translate
 plugin_userinfo

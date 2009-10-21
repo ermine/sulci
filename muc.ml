@@ -510,7 +510,7 @@ let process_message xmpp env stanza hooks =
                 true
         in
         let continue =
-          if continue then
+          if continue && from.lresource <> "" then
             match stanza.kind with
               | Some Chat
               | Some Groupchat -> (

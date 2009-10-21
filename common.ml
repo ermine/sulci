@@ -57,6 +57,25 @@ let trim str =
       
 exception InvalidUTF8
 
+let length_utf8 text =
+  let rec aux_sub i j =
+    if i < String.length text then
+      match text.[i] with
+        | '\000' .. '\127' ->
+            aux_sub (succ i) (succ j)
+        | '\193' .. '\223' ->
+            aux_sub (i+2) (succ j)
+        | '\224' .. '\239' ->
+            aux_sub (i+3) (succ j)
+        | '\240' .. '\248' ->
+            aux_sub (i+4) (succ j)
+        | _ -> raise InvalidUTF8
+    else
+      j
+  in
+    aux_sub 0 0
+  
+
 let sub_utf8_string text count =
   let len = String.length text in
   let rec aux_sub i l =
