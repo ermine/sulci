@@ -156,4 +156,3 @@ exception DNSPrepError
 let dnsprep str =
   if String.contains str '.' then ()
   else raise DNSPrepError
-    
