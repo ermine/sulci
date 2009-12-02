@@ -30,7 +30,10 @@ let ping =
 
     
 let plugin opts =
-  add_commands [("ping", ping)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("ping", ping)] opts
+    )
     
 let _ =
-  add_plugin "ping" plugin
+  Plugin.add_plugin "ping" plugin

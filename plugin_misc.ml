@@ -32,7 +32,10 @@ let dns xmpp env kind jid_from text =
              Lang.get_msg env.env_lang "plugin_misc_dns_not_resolved" [])
       
 let plugin opts =
-  add_commands [("dns", dns)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("dns", dns)] opts
+    )
 
 let _ =
-  add_plugin "misc" plugin
+  Plugin.add_plugin "misc" plugin

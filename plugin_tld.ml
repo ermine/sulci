@@ -26,16 +26,19 @@ let plugin opts =
     try List.assoc "path" (List.assoc "db" opts)
     with Not_found ->
       raise
-        (PluginError
+        (Plugin.PluginError
            "Please specify <db path=/path/tlds'/> element in configuration file")
   in
   let db =
     try opendbm tld_file [Dbm_rdonly] 0o666
     with Dbm_error err ->
-      raise (PluginError
+      raise (Plugin.PluginError
                (Printf. sprintf "Cannot open db file %s: %s" tld_file err))
-  in        
-    add_commands [("tld", (tld db))] opts
+  in
+    add_for_token
+      (fun _opts xmpp ->
+         add_commands xmpp [("tld", (tld db))] opts
+      )
 
 let _ =
-  add_plugin "tld" plugin
+  Plugin.add_plugin "tld" plugin

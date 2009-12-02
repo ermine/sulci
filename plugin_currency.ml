@@ -78,17 +78,6 @@ let load_curr () =
   in
     Http_suck.http_get url callback
       
-let get_next_update (hour, min) =
-  let curr_time = gettimeofday () in
-  let curr_tm = localtime curr_time in
-  let noun, _ = mktime 
-    {curr_tm with 
-       tm_sec = 0; tm_min = min; tm_hour = hour;
-       tm_mday = (if curr_tm.tm_hour < 11 then 
-                    curr_tm.tm_mday else curr_tm.tm_mday + 1)} 
-  in
-    noun
-      
 let rex = Pcre.regexp 
   "([0-9]+|[0-9]+\\.[0-9]+)\\s+([a-zA-Z]{3})\\s+([a-zA-Z]{3})"
   
@@ -130,25 +119,30 @@ let currency xmpp env kind jid_from text =
           env.env_message xmpp kind jid_from 
             (Lang.get_msg env.env_lang "plugin_currency_toobig_number" [])
       | Not_found ->
-          ()
+          env.env_message xmpp kind jid_from "?"
       | exn ->
+          env.env_message xmpp kind jid_from "?";
           log#error "plugin_currency.ml (:%s) %s"
             text (Printexc.to_string exn)
             
 let plugin opts =
-  add_commands [("curr", currency)] opts;
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("curr", currency)] opts
+    );
   load_curr ();
   let t =
     try List.assoc "time" (List.assoc "refresh" opts)
     with Not_found -> "11:00" in
-  let v =
+  let (hour, min) =
     try Scanf.sscanf t "%d:%d" (fun hoir min -> (hoir, min))
     with Scanf.Scan_failure str ->
-      raise (PluginError (Printf.sprintf "Invalid option refresh: %s" str))
+      raise (Plugin.PluginError
+               (Printf.sprintf "Invalid option refresh: %s" str))
   in
-  let _ = Scheduler.add_task timerQ load_curr (get_next_update v)
-    (fun () -> get_next_update v) in
+  let _ = Scheduler.add_task timerQ load_curr
+    (get_next_time hour min ()) (get_next_time hour min) in
     ()
-        
-let _ =
-  add_plugin "currency" plugin
+      
+let () =
+  Plugin.add_plugin "currency" plugin

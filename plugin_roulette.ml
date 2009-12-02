@@ -11,12 +11,12 @@ open Xep_muc
   
 let r = Random.self_init ()
 
-let roulette xmpp env kind jid_from text =
+let roulette muc_context xmpp env kind jid_from text =
   if text <> "" then
     env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_roulette_syntax_error" [])
   else
-    let room_env = get_room_env jid_from in
+    let room_env = get_room_env muc_context jid_from in
     let myitem = Occupant.find room_env.mynick room_env.occupants in
       if myitem.role = RoleModerator then
         let item = Occupant.find jid_from.lresource room_env.occupants in
@@ -24,7 +24,7 @@ let roulette xmpp env kind jid_from text =
             env.env_message xmpp kind jid_from
               (Lang.get_msg env.env_lang "plugin_roulette_not_allowed" [])
           else if Random.int 10 = 1 then
-            let callback  ev _jidfrom _jidto _lang () =
+            let callback ev _jidfrom _jidto _lang () =
               match ev with
                 | IQResult el ->
                     env.env_message xmpp kind jid_from 
@@ -48,7 +48,11 @@ let roulette xmpp env kind jid_from text =
           (Lang.get_msg env.env_lang "plugin_roulette_not_allowed" [])
           
 let plugin opts =
-    Plugin_command.add_commands [("roulette", roulette)] opts
+  Muc.add_for_muc_context
+    (fun muc_context xmpp ->
+       Plugin_command.add_commands xmpp
+         [("roulette", roulette muc_context)] opts
+    )
 
-let _ =
-  add_plugin "roulette" plugin
+let () =
+  Plugin.add_plugin "roulette" plugin

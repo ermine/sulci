@@ -2,7 +2,6 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Light_xml
 open Transport
 open StreamError
 open XMPP
@@ -28,7 +27,7 @@ let session xmpp =
   List.iter (fun proc -> try proc xmpp with exn ->
                log#error "sulci.ml: %s" (Printexc.to_string exn);
                log#debug "%s" (Printexc.get_backtrace ())
-            ) global.on_connect
+            ) (List.rev xmpp.data.on_connect)
 
 let run account =
   let myjid =
@@ -37,7 +36,7 @@ let run account =
     else
       replace_resource account.jid account.resource
   in
-  let session_key = string_of_int (Random.int 1000) in
+  let () = log#info "Creating a token for %s" (string_of_jid myjid) in
   let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   let socket = {
     fd = s;
@@ -51,20 +50,28 @@ let run account =
        | Some i -> i
     )
   in
-  let xmpp = XMPP.create session_key socket myjid in
-    Transport.connect s host port;
-    XMPP.open_stream xmpp ~use_tls:false account.password session;
-    let rec loop () =
-      XMPP.parse xmpp;
-      loop ()
-    in
-      loop ()
-
-let rec reconnect account times =
-  try
-    if times >= 0 then
-      run account
-  with
+  let session_data = {
+    Hooks.max_stanza_length = account.Config.max_stanza_length;
+    Hooks.max_message_length = account.Config.max_message_length;
+    on_connect = [];
+    on_disconnect = [];
+    presence_hooks = [];
+    message_hooks = [];
+    skey = "abc"
+  } in
+  let xmpp = XMPP.create session_data socket myjid in
+    Hooks.run_for_token [] xmpp;
+    let rec reconnect times =
+      try
+        if times >= 0 then
+          Transport.connect s host port;
+        XMPP.open_stream xmpp ~use_tls:false account.password session;
+        let rec loop () =
+          XMPP.parse xmpp;
+          loop ()
+        in
+          loop ()
+      with
 (*      
     | Unix.Unix_error (code, "connect", _) ->
         log#info "Unable to connect to %s:%d: %s"
@@ -75,35 +82,37 @@ let rec reconnect account times =
         );
         reconnect (times - 1)
 *)        
-    | Sasl.Failure cond ->
-        log#info "Auth.Failure: %s" cond;
-        (match cond with
-           | "non-authorized" ->
-               print_endline "will register";
-           | _ ->
-               ()
-        )
-    | Sasl.AuthError reason ->
-        log#crit "Authorization failed: %s" reason;
-        Pervasives.exit 127
-    | End_of_file ->
-        log#info"The connection to the server is lost";
-        List.iter (fun proc -> proc ()) global.on_disconnect;
-        reconnect account times
-    | StreamError err -> (
-        match err.err_condition with
-          | ERR_CONFLICT ->
-              log#info "Connection to the server closed: %s" err.err_text
-          | _ ->
-              log#info "The server reject us: %s: %s"
-                (string_of_condition err.err_condition) err.err_text
-      );
-        Pervasives.exit 127
-    | exn ->
-        log#error "sulci.ml: %s" (Printexc.to_string exn);
-        log#error "Probably it is a bug, please send me a bugreport";
-        log#debug "%s" (Printexc.get_backtrace ());
-        Pervasives.exit 127
+        | Sasl.Failure cond ->
+            log#info "Auth.Failure: %s" cond;
+            (match cond with
+               | "non-authorized" ->
+                   ()
+               | _ ->
+                   ()
+            )
+        | Sasl.AuthError reason ->
+            log#crit "Authorization failed: %s" reason;
+            Pervasives.exit 127
+        | End_of_file ->
+            log#info"The connection to the server is lost";
+            List.iter (fun proc -> proc ()) (List.rev xmpp.data.on_disconnect);
+            reconnect times
+        | StreamError err -> (
+            match err.err_condition with
+              | ERR_CONFLICT ->
+                  log#info "Connection to the server closed: %s" err.err_text
+              | _ ->
+                  log#info "The server reject us: %s: %s"
+                    (string_of_condition err.err_condition) err.err_text
+          );
+            Pervasives.exit 127
+        | exn ->
+            log#error "sulci.ml: %s" (Printexc.to_string exn);
+            log#error "Probably it is a bug, please send me a bugreport";
+            log#debug "%s" (Printexc.get_backtrace ());
+            Pervasives.exit 127
+    in
+      reconnect account.reconnect_times
           
 let rec launch r =
   let pid = Unix.fork () in
@@ -113,9 +122,9 @@ let rec launch r =
       Printf.printf "Process %d detached" pid
 
 let main accounts plugins () =
-  let () = Plugins.load_plugins plugins in
+  let () = Plugin.load_plugins plugins in
   let account = List.hd accounts in
-    reconnect account account.reconnect_times
+    run account
 
 let _ =
   let daemon, (accounts, plugins) = Config.get_config () in

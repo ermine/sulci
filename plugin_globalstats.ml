@@ -2,17 +2,17 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xml
+open Unix
 open XMPP
-open Xep_stats
-open Config
-open Common
 open Hooks
+open Plugin_scheduler
+
+module S = Xep_stats
 
 let find name alist =
   try
-    let t = List.find (fun t -> t.name = name) alist in
-      int_of_string t.value
+    let t = List.find (fun t -> t.S.name = name) alist in
+      int_of_string t.S.value
   with _ -> 0
     
 let stats_sum serverlist result xmpp =
@@ -28,7 +28,7 @@ let stats_sum serverlist result xmpp =
              match el with
                | None -> ()
                | Some el ->
-                   let stats = decode el in
+                   let stats = S.decode el in
                    let total = find "users/total" stats in
                    let online = find "users/online" stats in
                      totals := !totals + total;
@@ -50,28 +50,33 @@ let stats_sum serverlist result xmpp =
           close_out sout
     in
       XMPP.make_iq_request xmpp ~jid_to:(Jid.make_jid "" server "")
-        (IQGet (make_iq_get ["users/total"; "users/online"])) proc
+        (IQGet (S.make_iq_get ["users/total"; "users/online"])) proc
   in
   let server = input_line sin in
     each_server server
       
-let _ =
-  if Light_xml.mem_xml Config.config
-    ["sulci"; "plugins"; "globalstats"] "store" [] then (
-    let serverlist = Light_xml.get_attr_s Config.config 
-      ~path:["plugins"; "globalstats"; "store"] "serverlist" in
-    let result = Light_xml.get_attr_s Config.config 
-      ~path:["plugins"; "globalstats"; "store"] "result" in
-    let interval = float_of_string 
-      (Light_xml.get_attr_s Config.config
-         ~path:["plugins"; "globalstats"; "store"] "interval") in
-      
-    let start_stats out =
-      let _ = Scheduler.add_task timerQ
-        (fun () -> try stats_sum serverlist result out with exn ->
-           log#error "Plugin_globalstats: %s" (Printexc.to_string exn))
-        (Unix.gettimeofday () +. 10.) (fun () -> interval)
-      in ()
+let poll serverlist result xmpp () =
+  try stats_sum serverlist result xmpp with exn ->
+    log#error "Plugin_globalstats: %s" (Printexc.to_string exn)
+
+let get_next interval () =
+  let curr_tm = localtime (gettimeofday ()) in
+  let next, _ = mktime {curr_tm with tm_min = curr_tm.tm_min + interval} in
+    next
+
+let plugin opts =
+  let serverlist = List.assoc "file" (List.assoc "serverlist" opts) in
+  let result = List.assoc "file" (List.assoc "result" opts) in
+  let interval =
+    let v = List.assoc "value" (List.assoc "interval" opts) in
+      int_of_string v
     in
-      register_on_connect start_stats
-  )
+      add_for_token
+        (fun _opts xmpp ->
+           let _ = Scheduler.add_task timerQ (poll serverlist result xmpp)
+             (get_next interval ()) (get_next interval) in
+             ()
+        )
+
+let () =
+  Plugin.add_plugin "globalstats" plugin

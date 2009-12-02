@@ -49,8 +49,11 @@ let blogs xmpp env kind jid_from text =
       Http_suck.http_get url callback
         
 let plugin opts =
-  add_commands [("blogs", blogs)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("blogs", blogs)] opts
+    )
 
-let _ =
-  add_plugin "yandex" plugin
+let () =
+  Plugin.add_plugin "yandex" plugin
   

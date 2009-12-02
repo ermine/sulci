@@ -33,7 +33,10 @@ let vsearch =
     Iq.simple_query_entity success ~payload:(Xep_vcard.make_iq_get ())
      
 let plugin opts =
-  add_commands [("vcard", vsearch)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("vcard", vsearch)] opts
+    )
 
 let _ =
-  add_plugin "vcard" plugin
+  Plugin.add_plugin "vcard" plugin

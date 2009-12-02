@@ -11,10 +11,9 @@ open Plugin_command
 let msg xmpp env kind jid_from text =
   try
     let s = String.index text ' ' in
-    let to_ = jid_of_string (String.sub text 0 s) in
-    let msg_body = string_after text (s+1) in
-      XMPP.send_message xmpp ~jid_to:to_
-        ~kind:Chat ~body:msg_body ();
+    let jid_to = jid_of_string (String.sub text 0 s) in
+    let body = string_after text (s+1) in
+      env.env_message xmpp (Some Chat) jid_to body;
       env.env_message xmpp kind jid_from "done"
   with _ ->
     env.env_message xmpp kind jid_from "?"
@@ -68,12 +67,15 @@ let shell xmpp env kind jid_from text =
         env.env_message xmpp kind jid_from (String.concat "\n" lines)
 
 let plugin opts =
-  add_commands ["msg", msg;
-                "quit", quit;
-                "lang_update", lang_update;
-                "lang_msgid", lang_admin;
-                "sh", shell
-               ] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp ["msg", msg;
+                          "quit", quit;
+                          "lang_update", lang_update;
+                          "lang_msgid", lang_admin;
+                          "sh", shell
+                         ] opts
+    )
 
-let _ =
-    add_plugin "admin" plugin
+let () =
+  Plugin.add_plugin "admin" plugin

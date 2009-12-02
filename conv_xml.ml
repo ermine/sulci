@@ -23,4 +23,4 @@ let plugin opts =
     Conversion.init ~decoder_dir ~encoder_dir ()
 
 let _ =
-  add_plugin "conversion" plugin
+  Plugin.add_plugin "conversion" plugin

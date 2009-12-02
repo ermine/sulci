@@ -58,7 +58,10 @@ let icalc xmpp env kind jid_from text =
       (Lang.get_msg env.env_lang "plugin_calc_empty_command" [])
       
 let plugin opts =
-  add_commands [("calc", icalc); ("rpn", pcalc)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("calc", icalc); ("rpn", pcalc)] opts
+    )
 
 let _ =
-  add_plugin "calc" plugin
+  Plugin.add_plugin "calc" plugin

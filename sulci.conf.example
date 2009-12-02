@@ -21,6 +21,9 @@
        do times more than 3.
   <reconnect interval='10' times='3' />
   -->
+  <!-- Max length of any stanza. By default 400 Unicode symbols
+  <max_stanza_length value='4000'/>
+  -->
  </account>
 
  <log>
@@ -41,8 +44,6 @@
 
  <acl jid='ermine@jabber.ru' class='botmaster'/>
  
- <max_message_length value='4000'/>
-
  <plugins>
 
   <plugin name='muc' path='./plugins/muc'>
@@ -105,7 +106,9 @@
        registered users and users online using ejabberd -->
   <!--
   <plugin name='globalstats' path='./plugins/plugin_globalstats'>
-   <store serverlist='servers.list' result='servers.res' interval='3600'/>
+   <serverlist file='servers.list'/>
+   <result file='servers.res'/>
+   <interval value='3600'/>
   </plugin>
   -->
 
@@ -125,8 +128,8 @@
   <plugin name='markov' path='./plugins/plugin_markov'>
    <dir path='./markov_db'/>
    <max_words value='20' />
-   <command id='!!!count'/>
-   <command id='!!!top'/>
+   <command id='markov_count' name='!!!count'/>
+   <command id='markov_top' name='!!!top'/>
   </plugin>
 
   <plugin name='misc' path='./plugins/plugin_misc'>
@@ -134,7 +137,7 @@
  </plugin>
 
   <plugin name='mueller' path='./plugins/plugin_mueller'>
-   <db path='/path/to/Mueller24.koi' hashext='.hash'/>
+   <file path='/path/to/Mueller24.koi'/>
    <command id='mueller'/>
   </plugin>
 

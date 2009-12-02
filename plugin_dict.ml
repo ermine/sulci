@@ -182,7 +182,10 @@ let dict xmpp env kind jid_from text =
             (Lang.get_msg env.env_lang "plugin_dict_invalid_syntax" [])
             
 let plugin opts =
-  add_commands [("dict", dict)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("dict", dict)] opts
+    )
 
 let _ =
-  add_plugin "dict" plugin
+  Plugin.add_plugin "dict" plugin

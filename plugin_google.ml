@@ -135,8 +135,11 @@ let google_translate xmpp env kind jid_from text =
               (Lang.get_msg env.env_lang "plugin_google_invalid_syntax" [])
         
 let plugin opts =
-  add_commands [("google", google_search);
-                ("translate", google_translate)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("google", google_search);
+                          ("translate", google_translate)] opts
+    )
 
 let _ =
-  add_plugin "google" plugin
+  Plugin.add_plugin "google" plugin

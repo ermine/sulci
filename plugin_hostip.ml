@@ -61,4 +61,4 @@ let plugin opts =
   ()
     
 let _ =
-  add_plugin "hostip" plugin
+  Plugin.add_plugin "hostip" plugin

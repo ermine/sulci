@@ -113,7 +113,10 @@ let translate xmpp env kind jid_from text =
             (Lang.get_msg env.env_lang "plugin_translate_bad_syntax" [])
             
 let plugin opts =
-  add_commands [("tr", translate)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("tr", translate)] opts
+    )
 
 let _ =
-  add_plugin "translate" plugin
+  Plugin.add_plugin "translate" plugin

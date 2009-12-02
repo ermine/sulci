@@ -171,7 +171,10 @@ let weather xmpp env kind jid_from text =
       
 
 let plugin opts =
-  add_commands [("wz", weather)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("wz", weather)] opts
+    )
 
 let _ =
-  add_plugin "weather" plugin
+  Plugin.add_plugin "weather" plugin

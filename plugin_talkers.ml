@@ -14,11 +14,11 @@ module Sql = Talkers_sql.Make(Sqlgg_sqlite3)
 let split_words text =
   Pcre.split ~pat:"[ \t\n]+" text
 
-let talkers db xmpp env kind jid_from nick text =
+let muc_talkers db muc_context xmpp env kind jid_from nick text =
   match kind with
     | Some Groupchat ->
         if text <> "" then
-          let room_env = get_room_env jid_from in
+          let room_env = get_room_env muc_context jid_from in
           let room = string_of_jid (bare_jid jid_from) in
           let sentences = 1L in
           let words = Int64.of_int (List.length (split_words text)) in
@@ -43,7 +43,8 @@ let talkers db xmpp env kind jid_from nick text =
           let _ =
             match test with
               | None ->
-                  Sql.insert_new db ~nick ~jid ~room ~words ~me ~sentences
+                  let nick = jid_from.lresource in
+                    Sql.insert_new db ~nick ~jid ~room ~words ~me ~sentences
               | Some _ ->
                   update ~words ~me ~sentences
           in
@@ -51,30 +52,26 @@ let talkers db xmpp env kind jid_from nick text =
     | _ ->
         ()
           
-let cmd_talkers db xmpp env kind jid_from text =
+let cmd_talkers db muc_context xmpp env kind jid_from text =
   let room = string_of_jid (bare_jid jid_from) in
   let nick = Stringprep.resourceprep text in
-  let result = ref [] in
-  let max = ref 0 in
-  let accu nick words me sentences =
+  let accu nick words me sentences (max_len, result) =
     let len = length_utf8 nick in
-      if len > !max then max := len;
-      result := (len, nick, words, me, sentences) :: !result
+      (max max_len len, (len, nick, words, me, sentences) :: result)
   in
   let select =
     if text = "" then
-      Sql.select_talkers_limit ~room
+      Sql.Fold.select_talkers_limit ~room
     else
-      Sql.select_talkers_by_nick ~room ~nick
+      Sql.Fold.select_talkers_by_nick ~room ~nick
   in
-    select db accu;
-    if !result <> [] then
+  let max, result = select db accu (0, []) in
+    if result <> [] then
       let nick_title =
         Lang.get_msg env.env_lang "plugin_talkers_top_header_man" [] in
       let nick_title_len = length_utf8 nick_title in
-      let () =
-        if nick_title_len > !max then max := nick_title_len in
-      let tabs = !max / 8 + 1 in
+      let max = Pervasives.max nick_title_len max in
+      let tabs = max / 8 + 1 in
       let tab = String.make tabs '\t' in
       let data =
         List.fold_left (fun acc (len, nick, words, me, sentences) ->
@@ -85,33 +82,36 @@ let cmd_talkers db xmpp env kind jid_from text =
                                words me sentences
                                (Int64.to_float (Int64.div words sentences))
                             ) :: acc
-                       ) [] (List.rev !result) in
-      let header = Printf.sprintf "%s%s%s\t%s\t%s"
+                       ) [] (List.rev result) in
+      let header = Printf.sprintf "%s%s%s\t%s\t%s\t%s"
         nick_title
+        (let tabs = max / 8 + 1 in String.make tabs '\t')
         (Lang.get_msg env.env_lang "plugin_talkers_top_header_words" [])
         (Lang.get_msg env.env_lang "plugin_talkers_top_header_actions" [])
         (Lang.get_msg env.env_lang "plugin_talkers_top_header_sentences" [])
         (Lang.get_msg env.env_lang "plugin_talkers_top_header_average" [])
       in
         env.env_message xmpp kind jid_from
-          (String.concat "\n" (header :: (List.rev data)))
+          ("\n" ^ (String.concat "\n" (header :: (List.rev data))))
     else
       env.env_message xmpp kind jid_from
         (Lang.get_msg env.env_lang "plugin_talkers_no_result" [])
             
 let plugin opts =
   let file =
-    try List.assoc "path" (List.assoc "db" opts)
-    with Not_found ->
-      raise
-        (PluginError
-           "Please specify <db path='/path/talkers.db'/> element in configuration file") in
-  let db = db_open file in
-    ignore (Sql.create_talkers db);
-    ignore (Sql.create_index_talkers_idx db);
-    ignore (Sql.create_index_words_idx db);
-    Plugin_command.add_commands [("talkers", cmd_talkers db)] opts
+    try List.assoc "file" (List.assoc "db" opts)
+    with Not_found -> "talkers.db" in
+    Muc.add_for_muc_context
+      (fun muc_context xmpp ->
+         (* get spool path *)
+         let db = db_open file in
+           ignore (Sql.create_talkers db);
+           ignore (Sql.create_index_talkers_idx db);
+           ignore (Sql.create_index_words_idx db);
+           Muc.add_hook_conversation muc_context (muc_talkers db);
+           Plugin_command.add_commands xmpp
+             ["talkers", cmd_talkers db muc_context] opts
+      )
     
-let _ =
-  add_plugin "talkers" plugin
-
+let () =
+  Plugin.add_plugin "talkers" plugin

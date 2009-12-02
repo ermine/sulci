@@ -6,19 +6,28 @@ open XMPP
 open Jid
 open Common
 open Hooks
-
-let prefix = ref ""
+open Acl
 
 type command = {
   callback : xmpp -> env -> message_type option -> jid -> string -> unit;
   access : string
 }
 
-let commands : (string, command) Hashtbl.t = Hashtbl.create 10
+type command_context = {
+  mutable prefix : string;
+  commands : (string, command) Hashtbl.t
+}
 
-let add_command id (command:string) proc access =
-  log#info "Added a command id: %s name: %s access: %s" id command access;
-  Hashtbl.replace commands command {callback = proc; access = access}
+let storage = Hashtbl.create 2
+
+let get_context xmpp =
+  Hashtbl.find storage xmpp.data.skey
+    (* try .. with -> error *)
+
+let add_command xmpp id (command:string) proc access =
+  log#info "Registered a command id: %s name: %s access: %s" id command access;
+  let ctx = get_context xmpp in
+    Hashtbl.replace ctx.commands command {callback = proc; access = access}
 
 let parse_command_params params =
   let (id, name, access) =
@@ -51,76 +60,70 @@ let parse_command_params params =
                    ) ("", "", "") params in
     (id, name, access)
 
-let add_commands cmds opts =
+let parse_opts cmds opts =
   let cmd_opts =
     List.fold_left (fun acc -> function
                       | "command", params ->
                           parse_command_params params :: acc
                       | _ -> acc
-                   ) [] opts 
-  in  
-    if List.length cmds = 1 then
-      let id, proc = List.hd cmds in
-      let (_, name, access) =
-        try List.find (fun (id', _, _) -> id' = id) cmd_opts
-        with Not_found -> id, id, ""
-      in
-      let name = if name = "" then id else name in
-        add_command id name proc access
-    else
-      List.iter (fun (id, proc) ->
-                   try
-                     let (_, name, access) =
-                       List.find (fun (id', _, _) -> id = id') cmd_opts in
-                     let name = if name = "" then id else name in
-                       add_command id name proc access
-                   with Not_found ->
-                     add_command id id proc ""
-                ) cmds
+                   ) [] opts in
+  let res =
+    List.fold_left (fun acc (id, proc) ->
+                      let id', name, access =
+                        try List.find (fun (id', _, _) -> id' = id) cmd_opts
+                        with Not_found -> (id, "", "") in
+                      let name = if name = "" then id else name in
+                        (id, name, access, proc) :: acc
+                   ) [] cmds
+  in List.rev res
+      
+let add_commands xmpp cmds opts =
+  let data = parse_opts cmds opts in
+    List.iter (fun (id, name, access, proc) ->
+                 add_command xmpp id name proc access
+              ) data
 
-let do_command xmpp env kind jid_from text =
-  if !prefix = "" || is_prefix !prefix text then
-    let start = String.length !prefix in
+let do_command ctx xmpp env kind jid_from text =
+  if text <> "" && (ctx.prefix = "" || is_prefix ctx.prefix text) then
+    let start = String.length ctx.prefix in
     let command =
       try let sp = String.index_from text start ' ' in
         String.sub text start (sp - start)
       with Not_found ->
         string_after text start
     in
-    let proc = try Some (Hashtbl.find commands command) with Not_found -> None in
+    let proc =
+      try Some (Hashtbl.find ctx.commands command)
+      with Not_found -> None in
       match proc with
-        | None -> ()
+        | None -> true
         | Some c ->
             if check_access jid_from c.access then
-              let params = try
-                string_after text (String.index text ' ') with _ -> "" in
+              let params =
+                try string_after text (String.index text ' ') with _ -> ""
+              in
                 try c.callback xmpp env kind jid_from (trim params) with exn -> 
                   log#error "[executing command %s] %s" command
                     (Printexc.to_string exn);
                   log#debug "%s" (Printexc.get_backtrace ())
             else
-              () (* todo *)
+              env.env_message xmpp kind jid_from "no access";
+            false
   else
-    ()
+    true
         
 let process_message xmpp env stanza hooks =
   match stanza.jid_from, stanza.content.subject, stanza.content.body with
     | Some from, None, Some text ->
-        let flag =
-          if text <> "" then (
-            do_command xmpp env stanza.kind from text;
-            false
-          )
-          else
-            true
-        in
-          if flag then
+        let ctx = get_context xmpp in
+          if do_command ctx xmpp env stanza.kind from text then
             do_hook xmpp env stanza hooks
     | _ ->
         do_hook xmpp env stanza hooks
 
 let list_commands xmpp env kind jid_from text =
-  let clist = Hashtbl.fold (fun id _ acc -> id :: acc) commands [] in
+  let ctx = get_context xmpp in
+  let clist = Hashtbl.fold (fun id _ acc -> id :: acc) ctx.commands [] in
   let rsp =
     if clist = [] then
       "no commands yet"
@@ -130,15 +133,28 @@ let list_commands xmpp env kind jid_from text =
     env.env_message xmpp kind jid_from rsp
 
 let help xmpp env kind jid_from text =
-  env.env_message xmpp kind jid_from "no help yet"
+  let _ctx = get_context xmpp in
+    env.env_message xmpp kind jid_from "no help yet"
 
 let plugin opts =
-  add_commands [("help", help); ("commands", list_commands)] opts;
-  let pref =
+  let prefix =
     try let v = List.assoc "prefix" opts in List.assoc "value" v
-    with Not_found -> "" in
-    prefix := pref;
-    add_message_hook 70 "commands" process_message
-
-let _ =
-  add_plugin "commands" plugin
+    with Not_found -> ""
+  in
+  let spec = parse_opts [("help", help); ("commands", list_commands)] opts in
+    add_for_token
+      (fun _opts xmpp ->
+         let ctx =
+           {prefix = prefix;
+            commands = Hashtbl.create 10};
+         in
+           Hashtbl.add storage xmpp.data.skey ctx;
+           add_message_hook xmpp 70 "commands" process_message;
+           List.iter (fun (id, name, access, proc) ->
+                        Hashtbl.add ctx.commands name
+                          {callback = proc; access = access}
+                     ) spec;
+      )
+      
+let () =
+  Plugin.add_plugin "commands" plugin

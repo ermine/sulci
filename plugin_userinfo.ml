@@ -154,11 +154,14 @@ let stats =
                                        "users/total"])
       
 let plugin opts =
-  add_commands [("version", version);
-                ("time", time);
-                ("idle", idle);
-                ("uptime", uptime);
-                ("stats", stats)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("version", version);
+                          ("time", time);
+                          ("idle", idle);
+                          ("uptime", uptime);
+                          ("stats", stats)] opts
+    )
 
 let _ =
-  add_plugin "userinfo" plugin
+  Plugin.add_plugin "userinfo" plugin

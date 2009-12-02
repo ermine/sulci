@@ -123,4 +123,4 @@ let plugin _opts =
     ()
 
 let _ =
-  add_plugin "http" plugin
+  Plugin.add_plugin "http" plugin

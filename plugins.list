@@ -1,28 +1,32 @@
 muc
-# muc_log
+muc_log
 plugin_scheduler
 conv_xml
 plugin_command
 plugin_admin
+plugin_admin_muc
 plugin_brainfuck
 plugin_calc
-# plugin_cerberus
+plugin_cerberus
 plugin_currency
 plugin_dict
-# plugin_globalstats
+plugin_globalstats
 plugin_google
 plugin_hostip
-# #plugin_markov
+plugin_markov
 plugin_misc
-# plugin_mueller
+plugin_mueller
 plugin_ping
 plugin_roulette
-# plugin_seen
+plugin_seen
 plugin_talkers
 plugin_tld
 plugin_translate
 plugin_userinfo
 plugin_vcard
 plugin_vocabulary
+plugin_vocabulary_muc
 plugin_weather
 plugin_yandex
+
+plugin_1april

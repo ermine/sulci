@@ -37,7 +37,10 @@ let bf xmpp env kind jid_from text =
       ignore (Thread.create f ())
 
 let plugin opts =
-  add_commands [("bf", bf)] opts
+  add_for_token
+    (fun _opts xmpp ->
+       add_commands xmpp [("bf", bf)] opts
+    )
 
 let _ =
-  add_plugin "brainfuck" plugin
+  Plugin.add_plugin "brainfuck" plugin

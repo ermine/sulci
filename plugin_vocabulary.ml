@@ -2,46 +2,29 @@
  * (c) 2004-2009  Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
+open XMPP
 open Jid
 open Common
 open Hooks
 open Plugin_command
 open Sqlite3
-open Sqlite_util
 
-let total = ref 0
+module Sql = Wtf_sql.Make(Sqlgg_sqlite3)
 
-let file = "wtf.db"
+type wtf_context = {
+  mutable total : int;
+  db : Sqlite3.db
+}
 
-let table = "wtf"
+let storage : (string, wtf_context) Hashtbl.t = Hashtbl.create 5
 
-let db =
-  let db = Sqlite3.db_open file in
-    create_table file db
-      (Printf.sprintf
-         "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'" table)
-      (Printf.sprintf
-         "CREATE TABLE %s (stamp integer, nick varchar, luser varchar, lserver varchar, key varchar, value varchar);
-CREATE INDEX dfnidx ON %s (key)"
-         table  table);
-    let t =
-      match get_one_row file db
-        (Printf.sprintf "SELECT count(*) FROM %s" table) with
-          | None -> 0
-          | Some r -> Int64.to_int (int64_of_data r.(0)) in
-      total := t;
-      db
-        
+let get_context xmpp =
+  Hashtbl.find storage xmpp.data.skey
+
 let dfn_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)\\s*=\\s*(.*)"
 
-let get_real_jid from =
-  let cond = " AND nick=" ^ escape from.lresource ^
-    " AND luser=" ^ escape from.lnode ^
-    " AND lserver=" ^ escape from.ldomain in
-    from.lresource, from.lnode, from.ldomain, cond
-
 let dfn xmpp env kind jid_from text =
-  let key, value=
+  let key, value =
     try
       let res = Pcre.exec ~rex:dfn_re text in
       let key = Pcre.get_substring res 1 in
@@ -54,49 +37,35 @@ let dfn xmpp env kind jid_from text =
       env.env_message xmpp kind jid_from
         (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
     else
-      let nick, lnode, ldomain, cond =
-        if env.env_groupchat then
-          get_real_jid jid_from
-        else
-          let cond = " AND luser=" ^ escape jid_from.lnode ^ 
-            " AND lserver=" ^ escape jid_from.ldomain in
-            jid_from.lnode, jid_from.lnode, jid_from.ldomain, cond
-      in
-      let sql = Printf.sprintf
-        "SELECT value FROM %s WHERE key=%s %s" table (escape key) cond in
-        match get_one_row file db sql with
-          | Some r ->
-              if value = (string_of_data r.(0)) then
+      let ctx = get_context xmpp in
+      let r = Sql.dfn_check_by_jid ctx.db
+        ~key ~luser:jid_from.lnode ~lserver:jid_from.ldomain in
+        match r with
+          | Some v ->
+              if value = v then
                 env.env_message xmpp kind jid_from
                   (Lang.get_msg env.env_lang "plugin_vocabulary_dfn_again" [])
               else if value = "" then (
-                simple_exec file db
-                  (Printf.sprintf
-                     "DELETE FROM %s WHERE key=%s %s" table (escape key) cond);
-                decr total;
+                ignore (Sql.dfn_delete_by_jid ctx.db
+                          ~key ~luser:jid_from.lnode ~lserver:jid_from.ldomain);
+                ctx.total <- ctx.total - 1;
                 env.env_message xmpp kind jid_from
                   (Lang.get_msg env.env_lang "plugin_vocabulary_removed" [])
               )
               else
-                let stamp =
-                  Int32.to_string (Int32.of_float  (Unix.gettimeofday ())) in
-                  simple_exec file db
-                    (Printf.sprintf
-                       "UPDATE %s SET stamp=%s, nick=%s, value=%s WHERE key=%s %s"
-                       table stamp (escape nick) (escape value) (escape key) cond);
+                let nick = jid_from.lnode in
+                let stamp = Int64.of_float  (Unix.gettimeofday ()) in
+                  ignore (Sql.dfn_update_by_jid ctx.db ~stamp ~nick ~key ~value
+                            ~luser:jid_from.lnode ~lserver:jid_from.ldomain);
                   env.env_message xmpp kind jid_from
                     (Lang.get_msg env.env_lang "plugin_vocabulary_replaced" [])
           | None ->
               if value <> "" then
-                let stamp = Int32.to_string (Int32.of_float 
-                                               (Unix.gettimeofday ())) in
-                  simple_exec file db
-                    (Printf.sprintf
-                       "INSERT INTO %s (stamp,nick,luser,lserver,key,value)
-  VALUES(%s,%s,%s,%s,%s,%s)"
-                       table stamp (escape nick) (escape lnode) (escape ldomain)
-                       (escape key) (escape value));
-                  incr total;
+                let nick = jid_from.lnode in
+                let stamp = Int64.of_float (Unix.gettimeofday ()) in
+                  ignore (Sql.dfn_new ctx.db ~stamp ~key ~value ~nick 
+                            ~luser:jid_from.lnode ~lserver:jid_from.ldomain);
+                  ctx.total <- ctx.total + 1;
                   env.env_message xmpp kind jid_from
                     (Lang.get_msg env.env_lang "plugin_vocabulary_recorded" [])
               else
@@ -114,43 +83,23 @@ let wtf xmpp env kind jid_from text =
         let q = String.index text '?' in
           String.sub text 0 q
       with Not_found -> text in
-    let sql = Printf.sprintf
-      "SELECT nick, value FROM %s WHERE key=%s ORDER BY stamp DESC LIMIT 1"
-      table (escape key) in
-      match get_one_row file db sql with
-        | Some r ->
-            env.env_message xmpp kind jid_from
-              (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
-                 [string_of_data r.(0); key; string_of_data r.(1)])
+    let ctx = get_context xmpp in
+      match Sql.get_wtf_one ctx.db ~key with
         | None ->
             env.env_message xmpp kind jid_from
               (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
+        | Some (nick, value) ->
+            env.env_message xmpp kind jid_from
+              (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
+                 [nick; key; value])
               
-let output_records xmpp env kind jid_from sql =
-  let rec aux_acc i acc stmt =
-    match get_row stmt with
-      | Some row ->
-          let str = Printf.sprintf "%d) %s"
-            i
-            (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
-               [Data.to_string row.(0);
-                Data.to_string row.(1);
-                Data.to_string row.(2)])
-          in
-            aux_acc (i+1) (str :: acc) stmt
-      | None ->
-          if acc = [] then "" else String.concat "\n" (List.rev acc)
+let collect_records env nick key value (i, acc) =
+  let str = Printf.sprintf "%d) %s"
+    i
+    (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
+       [nick; key; value])
   in
-    try
-      let stmt = prepare db sql in
-      let reply = aux_acc 1 [] stmt in
-        if reply = "" then
-          env.env_message xmpp kind jid_from
-            (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
-        else
-          env.env_message xmpp kind jid_from reply
-    with Sqlite3.Error _ ->
-      exit_with_rc file db sql
+    (succ i, str :: acc)
 
 let wtfall xmpp env kind jid_from text =
   if text = "" then
@@ -161,73 +110,71 @@ let wtfall xmpp env kind jid_from text =
       try
         let q = String.index text '?' in
           String.sub text 0 q
-      with Not_found -> text in
-    let sql =
-      Printf.sprintf
-        "SELECT nick, key, value FROM %s WHERE key=%s ORDER BY stamp"
-        table (escape key)
+      with Not_found -> text
     in
-      output_records xmpp env kind jid_from sql
+    let ctx = get_context xmpp in
+    let (_, reply) =
+      Sql.Fold.get_wtf_all ctx.db ~key (collect_records env) (1, []) in
+      if reply = [] then
+        env.env_message xmpp kind jid_from
+          (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
+      else
+        env.env_message xmpp kind jid_from (String.concat "\n" (List.rev reply))
       
 let wtfrand xmpp env kind jid_from text =
-  let key = trim(text) in
+  let ctx = get_context xmpp in
+  let key = trim (text) in
     if key = "" then
-      let rand = string_of_int (Random.int (!total)) in
-      let sql = Printf.sprintf
-        "SELECT nick, key, value FROM %s LIMIT %s,1" table rand in
       let reply =
-        match get_one_row file db sql with
-          | None ->
-              Lang.get_msg env.env_lang "plugin_vocabulary_db_is_empty" []
-          | Some r ->
-              Lang.get_msg env.env_lang "plugin_vocabulary_answer"
-                [string_of_data r.(0);
-                 string_of_data r.(1);
-                 string_of_data r.(2);]
-      in          
+        if ctx.total > 0 then
+          let rand = Int64.of_int (Random.int (ctx.total)) in
+            match Sql.get_rand ctx.db ~rand with
+              | None ->
+                  Lang.get_msg env.env_lang "plugin_vocabulary_db_is_empty" []
+              | Some (nick, key, value) ->
+                  Lang.get_msg env.env_lang "plugin_vocabulary_answer"
+                    [nick; key; value]
+        else
+          Lang.get_msg env.env_lang "plugin_vocabulary_db_is_empty" []
+      in
         env.env_message xmpp kind jid_from reply
     else
-      let sql = Printf.sprintf
-        "SELECT count(*) FROM %s WHERE key=%s" table (escape key) in
-        match get_one_row file db sql with
-          | Some r -> (
-              let sql = Printf.sprintf
-                "SELECT nick, value FROM %s WHERE key=%s LIMIT %d,1"
-                table (escape key)
-                (Random.int (Int64.to_int (int64_of_data r.(0)))) in
-                match get_one_row file db sql with
-                  | Some q ->
+      match Sql.get_key_total ctx.db ~key with
+        | Some r -> (
+            if r > 0L then
+              let rand = Int64.of_int (Random.int (Int64.to_int r)) in
+                match Sql.get_rand_key ctx.db ~key ~rand with
+                  | Some (nick, value) ->
                       env.env_message xmpp kind jid_from
                         (Lang.get_msg env.env_lang "plugin_vocabulary_answer"
-                           [string_of_data q.(0); key; string_of_data q.(1)])
+                           [nick; key; value])
                   | None ->
                       env.env_message xmpp kind jid_from
                         (Lang.get_msg env.env_lang
                            "plugin_vocabulary_not_found" [])
-            )
-          | None ->
+            else
               env.env_message xmpp kind jid_from
                 (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
+          )
+        | None ->
+            env.env_message xmpp kind jid_from
+              (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
                 
 let wtfcount xmpp env kind jid_from text =
+  let ctx = get_context xmpp in
   let key = trim(text) in
-  let sql =
+  let count =
     if key = "" then
-      Printf.sprintf "SELECT count(*) FROM %s" table
+      ctx.total
     else
-      Printf.sprintf "SELECT count(*) FROM %s WHERE key=%s" table (escape key)
+      match Sql.wtf_count ctx.db ~key with
+        | None -> 0
+        | Some i -> Int64.to_int i
   in
-  let i =
-    match get_one_row file db sql with
-      | None -> 0
-      | Some r -> Int64.to_int (int64_of_data r.(0))
-  in
-    if key = "" then
-      total := i;
-    if i > 0 then
+    if count > 0 then
       env.env_message xmpp kind jid_from
         (Lang.get_msg env.env_lang "plugin_vocabulary_records"
-           [string_of_int i])
+           [string_of_int count])
     else
       env.env_message xmpp kind jid_from
         (Lang.get_msg env.env_lang
@@ -238,20 +185,75 @@ let wtffind xmpp env kind jid_from text =
     env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
   else
-    let sql = Printf.sprintf
-      "SELECT nick, key, value FROM %s WHERE key LIKE %s OR value LIKE %s"
-      table (escape text) (escape text)
-    in
-      output_records xmpp env kind jid_from sql
+    let ctx = get_context xmpp in
+    let (_, reply) = Sql.Fold.wtffind ctx.db ~key:text ~value:text
+      (collect_records env) (1, []) in
+      if reply = [] then
+        env.env_message xmpp kind jid_from
+          (Lang.get_msg env.env_lang "plugin_vocabulary_not_found" [])
+      else
+        env.env_message xmpp kind jid_from (String.concat "\n" (List.rev reply))
 
+let wtfremove_re = Pcre.regexp ~flags:[`DOTALL; `UTF8] "([^=]+)(\\s*=\\s*(.*))?"
+
+let wtfremove xmpp env kind jid_from text =
+  let key, value =
+    try
+      let res = Pcre.exec ~rex:wtfremove_re text in
+      let key = Pcre.get_substring res 1 in
+      let value = try Pcre.get_substring res 3 with Not_found -> "" in
+        key, value
+    with Not_found ->
+      ("", "")
+  in
+    if key = "" then
+      env.env_message xmpp kind jid_from
+        (Lang.get_msg env.env_lang "plugin_vocabulary_invalid_syntax" [])
+    else
+      let ctx = get_context xmpp in
+      let records =
+        if value = "" then
+          Sql.delete_key ctx.db ~key
+        else
+          Sql.delete_key_value ctx.db ~key ~value
+      in
+        env.env_message xmpp kind jid_from
+          (Lang.get_msg env.env_lang "plugin_vocabulary_removed"
+             [string_of_int (Int64.to_int records)])
 
 let plugin opts =
-  add_commands [("dfn", dfn);
-                ("wtf", wtf);
-                ("wtfall", wtfall);
-                ("wtfrand", wtfrand);
-                ("wtfcount", wtfcount);
-                ("wtffind", wtffind)] opts
+  let file =
+    try List.assoc "path" (List.assoc "db" opts)
+    with Not_found ->
+      raise
+        (Plugin.PluginError
+         "Please specify <db path='/path/wtf.db'/> element in configuration file"
+        ) in
+    add_for_token
+      (fun _opts xmpp ->
+         let db = db_open file in
+           ignore (Sql.create_wtf db);
+           ignore (Sql.create_index_dfnidx db);
+           ignore (Sql.create_index_dfncheck db);
+           let t =
+             match Sql.total db with
+               | None -> 0
+               | Some i -> Int64.to_int i
+           in
+           let ctx = {
+             total = t;
+             db = db
+           } in
+             Hashtbl.add storage xmpp.data.skey ctx;
+             add_commands xmpp [("dfn", dfn);
+                                 ("wtf", wtf);
+                                 ("wtfall", wtfall);
+                                 ("wtfrand", wtfrand);
+                                 ("wtfcount", wtfcount);
+                                 ("wtffind", wtffind);
+                                 ("wtfremove", wtfremove)
+                               ] opts
+      )
 
-let _ =
-  add_plugin "vocabulary" plugin
+let () =
+  Plugin.add_plugin "vocabulary" plugin

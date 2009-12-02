@@ -8,35 +8,90 @@ open Jid
 open Xep_muc
 open Common
 open Hooks
-
-type t = {
-  max_public_message_length : int
-}
-
-let global = {
-  max_public_message_length = 400
-}
-    
-(*
 open Sqlite3
-open Sqlite_util
+module Sql = Muc_sql.Make(Sqlgg_sqlite3)
 
-let file =
-  try trim (Light_xml.get_cdata Config.config ~path:["muc"; "db"])
-  with Not_found -> "sulci_muc.db"
+type occupant = {
+  (* nick : string; *)
+  mutable jid : Jid.jid option;
+  mutable affiliation : affiliation;
+  mutable role : role
+}
 
-let table = "muc"
+module OccupantNick =
+struct
+  type t = string
+  let compare x y = if x = y then 0 else if x < y then 1 else -1
+end
+module Occupant = Map.Make(OccupantNick)
 
-let db =
-  let db = Sqlite3.db_open file in
-    create_table file db
-      (Printf.sprintf
-         "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'" table)
-      (Printf.sprintf
-         "CREATE TABLE %s (room text, nick text, lang text, chatlog char(1), filter text)"
-         table);
-    db
+type room_env = {
+  mutable mynick : string;
+  mutable can_send : bool;
+  queue : (string * (xmpp -> unit -> unit)) Queue.t;
+  lang : string;
+  mutable occupants : occupant Occupant.t
+}
+  
+module GroupID =
+struct
+  type t = string * string
+  let compare = compare
+end
+module Groupchat = Map.Make(GroupID)
 
+type reason = string
+type password = string
+
+type muc_event =
+  | MUC_join
+  | MUC_leave of reason option
+  | MUC_nick of string * reason option
+  | MUC_destroy of jid option * password option * reason option
+  | MUC_ban of reason option
+  | MUC_kick of reason option
+  | MUC_room_created
+  | MUC_affiliation of reason option
+  | MUC_members_only of reason option
+  | MUC_system_shutdown of reason option
+  | MUC_decline of jid option * jid option * reason option
+  | MUC_invite of jid option * jid option * reason option * password option
+
+type muc_context = {
+  max_public_message_length : int;
+  default_mynick : string option;
+  db : Sqlite3.db;
+  mutable groupchats : room_env Groupchat.t;
+  mutable conversation_procs :
+    (muc_context -> xmpp -> env -> message_type option ->
+       jid -> string -> string -> unit) list;
+  mutable muc_event_handlers :
+    (muc_context -> xmpp -> env -> jid -> muc_event -> unit) list;
+}
+
+let ctx_hooks : (muc_context -> xmpp -> unit) list ref = ref []
+
+let add_muc_event_handler muc_context handler =
+  muc_context.muc_event_handlers <- handler :: muc_context.muc_event_handlers
+    
+let hook_muc_event muc_context xmpp env jid_from event =
+  List.iter (fun proc -> proc muc_context xmpp env jid_from event)
+    muc_context.muc_event_handlers
+
+let add_hook_conversation ctx proc =
+  ctx.conversation_procs <- proc :: ctx.conversation_procs
+    
+let process_conversation nick text ctx xmpp env stanza hooks =
+  let () =
+    match stanza.jid_from with
+      | None -> ()
+      | Some from ->
+          List.iter (fun proc -> proc ctx xmpp env stanza.kind from nick text)
+            ctx.conversation_procs;
+  in
+    do_hook xmpp env stanza hooks
+
+(*
 let add_room room nick lang chatlog filter =
   let sql = Printf.sprintf
     "INSERT INTO %s (room, nick, lang, chatlog, filter) VALUES(%s, %s, %s, '%s', %s)"
@@ -59,10 +114,6 @@ let load_rooms xmpp =
               | _ -> false
           in
           let filter = Data.to_string row.(4) in
-            (*
-            if chatlog then
-              Muc_log.add_chatlog room;
-             *)
             register_room ~lang ~filter mynick room;
             out (join_room mynick (room.lnode, room.ldomain)); 
             iter_room stmt
@@ -77,52 +128,27 @@ let load_rooms xmpp =
 
 *)
 
-type occupant = {
-  (* nick : string; *)
-  mutable jid : Jid.jid option;
-  mutable affiliation : affiliation;
-  mutable role : role
-}
+let get_room_env ctx jid =
+  Groupchat.find (jid.lnode, jid.ldomain) ctx.groupchats
 
-module OccupantNick =
-struct
-  type t = string
-  let compare x y = if x = y then 0 else if x < y then 1 else -1
-end
-module Occupant = Map.Make(OccupantNick)
+let is_joined ctx jid =
+  Groupchat.mem (jid.lnode, jid.ldomain) ctx.groupchats
 
-type room_env = {
-  mutable mynick : string;
-  lang : string;
-  mutable occupants : occupant Occupant.t
-}
-
-module GroupID =
-struct
-  type t = string * string
-  let compare = compare
-end
-module Groupchat = Map.Make(GroupID)
-let groupchats = ref Groupchat.empty
-    
-let get_room_env jid =
-  Groupchat.find (jid.lnode, jid.ldomain) !groupchats
-
-let get_entity text from =
+let get_entity ctx text jid_from =
   if text = "" then
-    EntityYou from
+    EntityYou jid_from
   else
-    let room_env = get_room_env from in
+    let room_env = get_room_env ctx jid_from in
       if room_env.mynick = text then
-        EntityMe from
+        EntityMe jid_from
       else if Occupant.mem text room_env.occupants then
-        if from.resource = text then
-          EntityYou from
+        if jid_from.resource = text then
+          EntityYou jid_from
         else
-          EntityUser (text, {from with resource = text; lresource = text})
+          EntityUser (text, {jid_from with resource = text; lresource = text})
       else
         let jid = try jid_of_string text with _ -> raise BadEntity in
-          if Jid.equal jid from then
+          if Jid.equal jid jid_from then
             EntityYou jid
           else if jid.lnode = "" then (
             (try dnsprep jid.ldomain
@@ -131,16 +157,16 @@ let get_entity text from =
           ) else
             EntityUser (text, jid)
 
-let check_access jid classname =
-  match catch get_room_env jid with
-    | None -> Hooks.check_access jid classname
+let check_access xmpp jid classname =
+  match catch (get_room_env xmpp) jid with
+    | None -> Acl.check_access jid classname
     | Some room_env ->
         match catch (Occupant.find jid.lresource) room_env.occupants with
-          | None -> Hooks.check_access jid classname
+          | None -> Acl.check_access jid classname
           | Some occupant ->
               match occupant.jid with
-                | None -> Hooks.check_access jid classname
-                | Some ojid -> Hooks.check_access ojid classname
+                | None -> Acl.check_access jid classname
+                | Some ojid -> Acl.check_access ojid classname
 
 let nick_sep = [':'; ','; '.'; '>']
 
@@ -167,25 +193,7 @@ let split_nick_body room_env body =
     | NickBody (nick, body) ->
         nick, body
 
-type reason = string
-type password = string
-    
-type muc_event =
-  | MUC_leave of reason option
-  | MUC_nick of string * reason option
-  | MUC_destroy of jid option * password option * reason option
-  | MUC_ban of reason option
-  | MUC_kick of reason option
-  | MUC_affiliation of reason option
-  | MUC_members_only of reason option
-  | MUC_system_shutdown of reason option
-  | MUC_decline of jid option * jid option * reason option
-  | MUC_invite of jid option * jid option * reason option * password option
-
-let hook_muc_event xmpp env jid_from event =
-  ()
-
-let make_msg xmpp kind jid_from ?response_tail response =
+let make_msg ctx xmpp kind jid_from ?response_tail response =
   match kind with
     | Some Groupchat ->
         let tail =
@@ -193,8 +201,8 @@ let make_msg xmpp kind jid_from ?response_tail response =
             | None -> ""
             | Some t -> "\n" ^ t
         in
-        let limit = 
-          let l = global.max_public_message_length - String.length tail in
+        let limit =
+          let l = ctx.max_public_message_length - String.length tail in
             if l < 0 then 0 else l in
         let resp = sub_utf8_string response limit in
         let cut, respo =
@@ -207,13 +215,18 @@ let make_msg xmpp kind jid_from ?response_tail response =
           if Pcre.pmatch ~pat:"/me" response then respo else
             jid_from.resource ^ ": " ^ respo
         in
-          send_message xmpp ~jid_to:(bare_jid jid_from) ?kind ~body ();
+        let room_env = get_room_env ctx jid_from in
+          if room_env.can_send then (
+            XMPP.send_message xmpp ~jid_to:(bare_jid jid_from) ?kind ~body ();
+            room_env.can_send <- false
+          ) else (
+            let send_message xmpp () =
+              XMPP.send_message xmpp
+                ~jid_to:(bare_jid jid_from) ~body ?kind () in
+              Queue.add (jid_from.lresource, send_message) room_env.queue
+          );
           if cut then
-            let msgs =
-              split_long_message Hooks.global.max_message_length response tail in
-              List.iter (fun body ->
-                           send_message xmpp ~kind:Chat ~jid_to:jid_from ~body ()
-                        ) msgs
+            Hooks.make_msg xmpp (Some Chat) jid_from ?response_tail response
     | _ ->
         Hooks.make_msg xmpp kind jid_from ?response_tail response
 
@@ -221,7 +234,7 @@ let get_reason = function
   | None -> None
   | Some i -> i.User.reason
   
-let process_presence_user xmpp env stanza from room_env data enter =
+let process_presence_user ctx xmpp env stanza from room_env data enter =
   let () =
     match data.User.item with
       | None -> ()
@@ -244,7 +257,7 @@ let process_presence_user xmpp env stanza from room_env data enter =
       | None -> false
       | Some (venue, reason) ->
           if stanza.kind = Some Unavailable then (
-            hook_muc_event xmpp env from
+            hook_muc_event ctx xmpp env from
               (MUC_destroy (venue, data.User.password, reason));
             true
           ) else
@@ -269,6 +282,8 @@ let process_presence_user xmpp env stanza from room_env data enter =
        | 201 ->
            (* context Entering a room *)
            (* Inform user that a new room has been created *)
+           if enter then
+             hook_muc_event ctx xmpp env from MUC_room_created;
            removal
        | 210 ->
            (* context Entering a room *)
@@ -282,14 +297,14 @@ let process_presence_user xmpp env stanza from room_env data enter =
            (* Inform user that he or she has been banned from the room *)
            if stanza.kind = Some Unavailable then
              let reason = get_reason data.User.item in
-               hook_muc_event xmpp env from (MUC_ban reason);
+               hook_muc_event ctx xmpp env from (MUC_ban reason);
                true
            else
              removal
        | 303 -> (
            (* context Exiting a room *)
            (* Inform all occupants of new room nickname *)
-           if stanza.kind = None then
+           if stanza.kind = Some Unavailable then
              match data.User.item with
                | None -> removal
                | Some i ->
@@ -302,7 +317,7 @@ let process_presence_user xmpp env stanza from room_env data enter =
                            (Occupant.find from.lresource room_env.occupants)
                            room_env.occupants;
                          let reason = get_reason data.User.item in
-                           hook_muc_event xmpp env from
+                           hook_muc_event ctx xmpp env from
                              (MUC_nick (newnick, reason));
                            true
            else
@@ -313,7 +328,7 @@ let process_presence_user xmpp env stanza from room_env data enter =
            (* Inform user that he or she has been kicked from the room *)
            if stanza.kind = Some Unavailable then
              let reason = get_reason data.User.item in
-               hook_muc_event xmpp env from (MUC_kick reason);
+               hook_muc_event ctx xmpp env from (MUC_kick reason);
                true
            else
              removal
@@ -324,7 +339,7 @@ let process_presence_user xmpp env stanza from room_env data enter =
               the room because of an affiliation change *)
            if stanza.kind = Some Unavailable then
              let reason = get_reason data.User.item in
-               hook_muc_event xmpp env from (MUC_affiliation reason);
+               hook_muc_event ctx xmpp env from (MUC_affiliation reason);
                true
            else
              removal
@@ -336,7 +351,7 @@ let process_presence_user xmpp env stanza from room_env data enter =
               members-only and the user is not a member *)
            if stanza.kind = Some Unavailable then
              let reason = get_reason data.User.item in
-               hook_muc_event xmpp env from (MUC_members_only reason);
+               hook_muc_event ctx xmpp env from (MUC_members_only reason);
                true
            else
              removal
@@ -347,7 +362,7 @@ let process_presence_user xmpp env stanza from room_env data enter =
               because of a system shutdown *)
            if stanza.kind = Some Unavailable then
              let reason = get_reason data.User.item in
-               hook_muc_event xmpp env from (MUC_system_shutdown reason);
+               hook_muc_event ctx xmpp env from (MUC_system_shutdown reason);
                true
            else
              removal
@@ -355,29 +370,35 @@ let process_presence_user xmpp env stanza from room_env data enter =
            removal
     ) removal data.User.status in
     if stanza.kind = Some Unavailable && not removal then
-      hook_muc_event xmpp env from (MUC_leave stanza.content.status)
+      hook_muc_event ctx xmpp env from (MUC_leave stanza.content.status)
 
-let process_presence_x xmpp env stanza from room_env enter =
+let process_presence_x ctx xmpp env stanza from room_env enter =
   List.iter (function
                | Xmlelement (qname, _, _) as el ->
                    if qname = (ns_muc_user, "x") then
-                     process_presence_user xmpp env stanza from room_env
+                     process_presence_user ctx xmpp env stanza from room_env
                        (User.decode el) enter
                | _ ->
                    ()
             ) stanza.x
                           
-let process_presence xmpp env stanza hooks =
+let process_presence ctx xmpp env stanza hooks =
   match stanza.jid_from with
     | None -> do_hook xmpp env stanza hooks
     | Some from ->
-        match catch get_room_env from with
+        match catch (get_room_env ctx) from with
           | None -> do_hook xmpp env stanza hooks
           | Some room_env ->
-              let env = {env_groupchat = true;
+              let identity jid =
+                let item = Occupant.find jid.lresource room_env.occupants in
+                  match item.jid with
+                    | None -> jid
+                    | Some j -> j
+              in
+              let env = {env_identity = identity;
                          env_lang = room_env.lang;
-                         env_get_entity = get_entity;
-                         env_message = make_msg;
+                         env_get_entity = get_entity ctx;
+                         env_message = make_msg ctx;
                         }
               in
                 match stanza.kind with
@@ -392,24 +413,27 @@ let process_presence xmpp env stanza hooks =
                           false
                       in
                         if enter then
-                          room_env.occupants <- Occupant.add from.lresource
-                            {jid = None;
-                             affiliation = AffiliationNone;
-                             role = RoleNone} room_env.occupants;
-                        process_presence_x xmpp env stanza from
+                            room_env.occupants <- Occupant.add from.lresource
+                              {jid = None;
+                               affiliation = AffiliationNone;
+                               role = RoleNone} room_env.occupants;
+                        process_presence_x ctx xmpp env stanza from
                           room_env enter;
+                        if enter then
+                          hook_muc_event ctx xmpp env from MUC_join;
                         if stanza.kind = Some Unavailable then
                           if from.lresource = room_env.mynick then
-                            groupchats :=
+                            ctx.groupchats <-
                               Groupchat.remove (from.lnode, from.ldomain)
-                                !groupchats
+                              ctx.groupchats
                           else
                             room_env.occupants <-
-                              Occupant.remove from.lresource room_env.occupants;
+                              Occupant.remove from.lresource
+                              room_env.occupants;
                         do_hook xmpp env stanza hooks
                   | _ ->
                       do_hook xmpp env stanza hooks
-
+                        
 let process_invite xmpp env jid_from jid_to reason password () =
   ()
 
@@ -460,7 +484,7 @@ let process_message_status xmpp env stanza status =
            ()
     ) status
              
-let process_message_user xmpp env stanza from data =
+let process_message_user ctx xmpp env stanza from data =
   let () =
     match stanza.kind with
       | None
@@ -468,12 +492,12 @@ let process_message_user xmpp env stanza from data =
           match data.User.decline with
             | None -> ()
             | Some (jid_from, jid_to, reason) ->
-                hook_muc_event xmpp env from
+                hook_muc_event ctx xmpp env from
                   (MUC_decline (jid_from, jid_to, reason))
         );
           List.iter
             (fun (jid_from, jid_to, reason) ->
-               hook_muc_event xmpp env from
+               hook_muc_event ctx xmpp env from
                  (MUC_invite (jid_from, jid_to, reason, data.User.password))
             ) data.User.invite
       | Some Groupchat ->
@@ -488,76 +512,114 @@ let process_message_user xmpp env stanza from data =
     else
       false
 
-let process_message xmpp env stanza hooks =
+let do_hook_with_muc_context ctx xmpp env stanza hooks =
   match stanza.jid_from with
     | None -> do_hook xmpp env stanza hooks
     | Some from ->
+        match stanza.kind with
+          | Some Chat -> (
+              match catch (get_room_env ctx) from with
+                | None -> do_hook xmpp env stanza hooks
+                | Some room_env ->
+                    match stanza.content.body with
+                      | None -> do_hook xmpp env stanza hooks
+                      | Some body ->
+                          do_hook xmpp env stanza
+                            (add_tmp_hook hooks "conversation"
+                               (process_conversation "" body ctx))
+            )
+          | Some Groupchat -> (
+              match catch (get_room_env ctx) from with
+                | None -> do_hook xmpp env stanza hooks
+                | Some room_env ->
+                    if from.lresource = room_env.mynick then ( (* echo *)
+                      room_env.can_send <- true;
+                      if not (Queue.is_empty room_env.queue) then
+                        let nick, send_message = Queue.take room_env.queue in
+                          if nick = "" ||
+                            Occupant.mem nick room_env.occupants then
+                              send_message xmpp ()
+                    )
+                    else
+                      match stanza.content.subject, stanza.content.body with
+                        | None, Some b ->
+                            if from.lresource <> "" then
+                              let nick, text = split_nick_body room_env b in
+                                if nick = "" then
+                                  do_hook xmpp env stanza
+                                    (add_tmp_hook hooks "conversation"
+                                       (process_conversation nick text ctx))
+                                else if nick = room_env.mynick then
+                                  do_hook xmpp env
+                                    {stanza with content =
+                                        {stanza.content with body = Some text}}
+                                    (add_tmp_hook hooks "conversation"
+                                       (process_conversation nick text ctx))
+                                else
+                                  process_conversation nick text
+                                    ctx xmpp env stanza [];
+                            else
+                              do_hook xmpp env stanza hooks
+                        | None, None ->
+                            do_hook xmpp env stanza hooks
+                        | Some s, _ ->
+                            do_hook xmpp env stanza hooks
+            )
+          | _ ->
+              do_hook xmpp env stanza hooks
+
+let process_message ctx xmpp env stanza hooks =
+  match stanza.jid_from with
+    | None -> do_hook xmpp env stanza hooks
+    | Some from ->        
         let env =
-          try
-            let room_env = get_room_env from in
-              {env_groupchat = true;
+          try            
+            let room_env = get_room_env ctx from in
+            let identity jid =
+              let item = Occupant.find jid.lresource room_env.occupants in
+                match item.jid with
+                  | None -> jid
+                  | Some j -> j
+            in
+              {env_identity = identity;
                env_lang = room_env.lang;
-               env_get_entity = get_entity;
-               env_message = make_msg;
+               env_get_entity = get_entity ctx;
+               env_message = make_msg ctx;
               }
           with Not_found -> env
         in
         let continue =
           match catch (get_element (ns_muc_user, "x")) stanza.x with
             | Some el ->
-                process_message_user xmpp env stanza from (User.decode el)
+                process_message_user ctx xmpp env stanza from (User.decode el)
             | None ->
                 true
         in
-        let continue =
-          if continue && from.lresource <> "" then
-            match stanza.kind with
-              | Some Chat
-              | Some Groupchat -> (
-                  match catch get_room_env from with
-                    | None -> true
-                    | Some room_env ->
-                        if from.lresource = room_env.mynick then
-                          false (* echo *)
-                        else
-                          match stanza.content.subject, stanza.content.body with
-                            | None, Some b ->
-                                let nick, text = split_nick_body room_env b in
-                                  if nick = "" then
-                                    true
-                                  else if nick = room_env.mynick then (
-                                    do_hook xmpp env
-                                      {stanza with content =
-                                          {stanza.content with body = Some text}}
-                                      hooks;
-                                    false
-                                  )
-                                  else
-                                    false
-                            | None, None ->
-                                true
-                            | Some s, _ ->
-                                true
-                )
-              | _ ->
-                  true
-          else
-            true
-        in
           if continue then
             do_hook xmpp env stanza hooks
+              
+let enter_room ctx xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
+    ?nick room =
+  let nick =
+    match nick with
+      | None -> (
+          match ctx.default_mynick with
+            | None -> xmpp.myjid.node
+            | Some v -> v
+        )
+      | Some v -> v
+  in
+    ctx.groupchats <- Groupchat.add (room.lnode, room.ldomain)
+      {mynick = nick;
+       can_send = true;
+       queue = Queue.create ();
+       lang = xmpp.xmllang;
+       occupants = Occupant.empty} ctx.groupchats;
+    send_presence xmpp ~jid_to:(replace_resource room nick)
+      ~x:[encode_muc ?maxchars ?maxstanzas ?seconds ?since ?password ()] ()
 
-let enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
-    nick room =
-  groupchats := Groupchat.add (room.lnode, room.ldomain)
-    {mynick = nick;
-     lang = xmpp.xmllang;
-     occupants = Occupant.empty} !groupchats;
-  send_presence xmpp ~jid_to:(replace_resource room nick)
-    ~x:[encode_muc ?maxchars ?maxstanzas ?seconds ?since ?password ()] ()
-
-let leave_room xmpp ?status room =
-  let mynick = (get_room_env room).mynick in
+let leave_room ctx xmpp ?status room =
+  let mynick = (get_room_env ctx room).mynick in
     send_presence xmpp ~jid_to:(replace_resource room mynick)
       ~kind:Unavailable ?status ()
     
@@ -574,19 +636,71 @@ let ban xmpp ?reason jid_room (jid:string) callback =
     (IQSet (Admin.encode_item ?reason ~affiliation:AffiliationOutcast ~jid ()))
     callback
 
-let set_topic xmpp jid_room subject =
-  XMPP.send_message xmpp ~jid_to:(bare_jid jid_room)
-    ~kind:Groupchat ~subject ()
-    
-    
-let plugin opts =
-  Hooks.add_message_hook 10 "muc" process_message;
-  Hooks.add_presence_hook 10 "muc" process_presence;
-  register_on_connect
-    (fun xmpp ->
-       enter_room xmpp ~maxstanzas:0
-         "stoat-2.0" (make_jid "sulci" "conference.jabber.ru" "")
-    )
+let set_topic muc_context xmpp jid_room subject =
+  let room_env = get_room_env muc_context jid_room in
+    if room_env.can_send then
+      XMPP.send_message xmpp ~jid_to:(bare_jid jid_room)
+        ~kind:Groupchat ~subject ()
+    else
+      let send_message xmpp () =
+        XMPP.send_message xmpp ~jid_to:(bare_jid jid_room)
+          ~kind:Groupchat ~subject ()
+      in 
+        Queue.add ("", send_message) room_env.queue;
+        room_env.can_send <- false
 
-let _ =
-  add_plugin "muc" plugin
+let add_for_muc_context proc =
+  ctx_hooks := proc :: !ctx_hooks
+    
+let get_value opts name1 name2 default =
+  try List.assoc name2 (List.assoc name1 opts)
+  with Not_found -> default
+
+let get_int ?exn opts name1 name2 default =
+  try let v = List.assoc name2 (List.assoc name1 opts) in
+    int_of_string v
+  with
+    | Not_found -> default
+    | Failure "int_of_string" ->
+        match exn with
+          | None -> default
+          | Some e -> raise e
+
+let plugin opts =
+  let max_public_message_length = get_int
+    ~exn:(Plugin.PluginError "'max_public_message_length' must be an integer")
+    opts "value" "max_public_message_length" 400 in
+  let file = get_value opts "db" "file" "sulci_muc.db" in
+  let default_mynick =
+    try Some (List.assoc "value" (List.assoc "nick" opts))
+    with Not_found -> None in
+    add_for_token
+      (fun _opts xmpp ->
+         let db = db_open file in
+         let ctx = {
+           max_public_message_length = max_public_message_length;
+           default_mynick = default_mynick;
+           db = db;
+           groupchats = Groupchat.empty;
+           conversation_procs = [];
+           muc_event_handlers = [];
+         } in
+           ignore (Sql.create_muc db);
+           Hooks.add_message_hook xmpp 10 "muc" (process_message ctx);
+           Hooks.add_message_hook xmpp 20 "muc_context"
+             (do_hook_with_muc_context ctx);
+           Hooks.add_presence_hook xmpp 10 "muc" (process_presence ctx);
+           List.iter (fun proc -> proc ctx xmpp) (List.rev !ctx_hooks);
+           register_on_connect xmpp
+             (fun xmpp ->
+                ignore (Sql.select_rooms db
+                          (fun room nick lang chatlog ->
+                             enter_room ctx xmpp ~maxstanzas:0 ~nick
+                               (jid_of_string room)
+                          )
+                       )
+             )
+      )
+
+let () =
+  Plugin.add_plugin "muc" plugin

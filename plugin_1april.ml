@@ -1,13 +1,10 @@
 (*
- * (c) 2008 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2008-2009 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
-open Xml
 open XMPP
-
-open Types
+open Jid
 open Hooks
-open Common
 
 type rate = {
   lastrate: float;
@@ -63,9 +60,6 @@ let log = open_out_gen [Open_append; Open_creat] 0o664 "1april.log"
 let ltime () =
   Strftime.strftime "%d/%m/%Y %T" ~tm:(Unix.localtime (Unix.gettimeofday ()))
     
-let str_of_jid user server resource = 
-  user ^ "@" ^ server ^ (if resource = "" then "" else "/" ^ resource)
-
 let get_activeless_group exgroup =
   Hashtbl.fold (fun gno group (g, min) ->
                   if gno <> exgroup && group.rate.lastrate < min then
@@ -83,7 +77,7 @@ let update_group group users =
                  Hashtbl.replace ht (user, server) {data with group = group}
             ) users
     
-let divide_group group out =
+let divide_group xmpp group =
   let g = Hashtbl.find groups group in
   let plen = UserGroup.cardinal g.participants in
     if plen > 1 then
@@ -103,7 +97,7 @@ let divide_group group out =
           (ltime ()) group group (List.length g1) newgroup (List.length g2);
         flush log
           
-let union_groups group1 group2 out =
+let union_groups xmpp group1 group2 =
   let g1 = Hashtbl.find groups group1 in
   let g2 = Hashtbl.find groups group2 in
     Hashtbl.replace groups group1
@@ -116,11 +110,11 @@ let union_groups group1 group2 out =
       group2 (UserGroup.cardinal g2.participants);
     flush log
       
-let add_group (group:int) ((u, s, r) as user) out =
+let add_group xmpp (group:int) ((u, s, r) as user) =
   if Hashtbl.length groups >= 2 then (
     let activeless, _ = get_activeless_group group in
     let (gno, _) = !active in
-      union_groups gno activeless out
+      union_groups xmpp gno activeless
   );
   try
     let g = Hashtbl.find groups group in
@@ -131,7 +125,7 @@ let add_group (group:int) ((u, s, r) as user) out =
       {rate = init_rate ();
        participants = UserGroup.add user UserGroup.empty}
       
-let remove_group (group:int) user out =
+let remove_group xmpp (group:int) user =
   let g = Hashtbl.find groups group in
   let participants = UserGroup.remove user g.participants in
     if UserGroup.is_empty participants then
@@ -139,161 +133,173 @@ let remove_group (group:int) user out =
     else
       Hashtbl.replace groups group {g with participants = participants}
         
-let add_user (jid:jid) prio out =
+let add_user xmpp (jid:jid) prio =
   try 
-    let data = Hashtbl.find ht (jid.luser, jid.lserver) in
+    let data = Hashtbl.find ht (jid.lnode, jid.ldomain) in
       if data.reso = jid.lresource then (
         if data.prio <> prio then (
-          Hashtbl.replace ht (jid.luser, jid.lserver) 
+          Hashtbl.replace ht (jid.lnode, jid.ldomain) 
             {data with prio = prio};
         )
       )
       else if prio > data.prio then
         let old = data.reso in
           Printf.fprintf log "%s Replaced user [%d] %s@%s: (%s) -> (%s)\n"
-            (ltime ()) data.group jid.user jid.server old jid.resource;
+            (ltime ()) data.group jid.node jid.domain old jid.resource;
           flush log;
-          Hashtbl.replace ht (jid.luser, jid.lserver)
+          Hashtbl.replace ht (jid.lnode, jid.ldomain)
             {data with reso = jid.lresource; prio = prio};
-          out (make_presence 
-                 ~to_:(str_of_jid jid.luser jid.lserver old)
-                 ~type_:`Unavailable ());
-          remove_group data.group (jid.luser, jid.lserver, old) out;
-          add_group data.group (jid.luser, jid.lserver, jid.lresource) out;
+          XMPP.send_presence xmpp
+            ~jid_to:(replace_resource jid old)
+            ~kind:Unavailable ();
+          remove_group xmpp data.group (jid.lnode, jid.ldomain, old);
+          add_group xmpp data.group (jid.lnode, jid.ldomain, jid.lresource);
   with Not_found ->
     let group, _ = !active in
       Printf.fprintf log "%s New participant: [%d] (%s@%s/%s)\n" 
-        (ltime ()) group jid.user jid.server jid.resource;
+        (ltime ()) group jid.node jid.domain jid.resource;
       flush log;
-      Hashtbl.add ht (jid.luser, jid.lserver) 
+      Hashtbl.add ht (jid.lnode, jid.ldomain) 
         { reso = jid.lresource; prio = prio;
           group = group };
-      add_group group (jid.luser, jid.lserver, jid.lresource) out
+      add_group xmpp group (jid.lnode, jid.ldomain, jid.lresource)
         
-let remove_user jid out =
+let remove_user xmpp jid =
   try
-    let data = Hashtbl.find ht (jid.luser, jid.lserver) in
+    let data = Hashtbl.find ht (jid.lnode, jid.ldomain) in
       if data.reso = jid.lresource then (
         Printf.fprintf log "%s Remove participant: [%d] (%s@%s/%s)\n" 
-          (ltime ()) data.group jid.luser jid.lserver jid.lresource;
+          (ltime ()) data.group jid.lnode jid.ldomain jid.lresource;
         flush log;
-        Hashtbl.remove ht (jid.luser, jid.lserver);
-        remove_group data.group (jid.luser, jid.lserver, jid.lresource) out;
-        out (make_presence 
-               ~to_:(str_of_jid jid.user jid.server jid.resource)
-               ~type_:`Unavailable ())
+        Hashtbl.remove ht (jid.lnode, jid.ldomain);
+        remove_group xmpp data.group (jid.lnode, jid.ldomain, jid.lresource);
+        XMPP.send_presence xmpp
+          ~jid_to:jid
+          ~kind:Unavailable ()
       )
   with Not_found ->
     ()
       
-let dispatch from body_s out =
+let dispatch xmpp from body =
   try
-    let data = Hashtbl.find ht (from.luser, from.lserver) in
+    let data = Hashtbl.find ht (from.lnode, from.ldomain) in
     let group = Hashtbl.find groups data.group in
     let newrate = update_rate group.rate 100 in
       Printf.fprintf log "%s Message [%d] (%g) (%s@%s/%s)\n%s\n\n"
         (ltime ()) data.group group.rate.lastrate 
-        from.user from.server from.resource body_s;
+        from.node from.domain from.resource body;
       flush log;
       Hashtbl.replace groups data.group {group with rate = newrate};
       if newrate.lastrate >= !maxrate then
-        divide_group data.group out;
-      let body = make_simple_cdata "body" body_s in
+        divide_group xmpp data.group;
       let gno, grate = !active in
         if newrate.lastrate > grate then
           active := (data.group, newrate.lastrate);
         let group = Hashtbl.find groups data.group in
           UserGroup.iter
-            (fun (luser, lserver, lresource) ->
-               if (luser, lserver, lresource) = 
-                 (from.luser, from.lserver, from.lresource) then
+            (fun (lnode, ldomain, lresource) ->
+               if (lnode, ldomain, lresource) = 
+                 (from.lnode, from.ldomain, from.lresource) then
                    ()
                else
-                 let jid = luser ^ "@" ^ lserver ^ "/" ^ lresource in
-                   out (Xmlelement ("message", 
-                                    ["to", jid; "type", "chat"],
-                                    [body]))
+                   XMPP.send_message xmpp
+                     ~jid_to:(make_jid lnode ldomain lresource)
+                     ~kind:Chat
+                     ~body ()
             ) group.participants
   with Not_found ->
     Printf.fprintf log "%s Message from not-logged in user (%s@%s/%s)\n"
-      (ltime ()) from.luser from.lserver from.lresource;
+      (ltime ()) from.lnode from.ldomain from.lresource;
     flush log
       
-let my_jid = 
-  let username = trim (get_cdata Config.config ~path:["jabber"; "user"]) in
-  let server = trim (get_cdata Config.config ~path:["jabber"; "server"]) in
-    (*
-      let resource = 
-      trim (get_cdata Config.config ~path:["jabber"; "resource"]) in
-    *)
-    username, server
-      
+let process_presence_error xmpp ?id ?jid_from ?jid_to ?lang error =
+  match jid_from with
+    | None -> ()
+    | Some from ->
+        Printf.fprintf log "%s Presence error (%s@%s/%s)\n"
+          (ltime ()) from.node from.domain from.resource;
+        flush log;
+        remove_user xmpp from
 
-let catch_1april event from xml out =
-  if (from.luser, from.lserver) = my_jid then
-    ()
-  else
-    match event with
-      | Presence ->
-          let t = safe_get_attr_s xml "type" in
-            (match t with
-               | "subscribe" ->
-                   Printf.fprintf log "%s Subscribe (%s@%s)\n" 
-                     (ltime ()) from.user from.server;
-                   flush log;
-                   out (make_presence 
-                          ~to_:(str_of_jid from.user from.server "")
-                          ~type_:`Subscribed ());
-                   out (make_presence
-                          ~to_:(str_of_jid from.user from.server "")
-                          ~type_:`Subscribe ());
-               | "unsubscribed" ->
-                   Printf.fprintf log "%s Unsubscribe (%s@%s)\n" 
-                     (ltime ()) from.user from.server;
-                   flush log;
-                   out (make_presence 
-                          ~to_:(str_of_jid from.user from.server "")
-                          ~type_:`Unsubscribed ())
-               | "" ->
-                   Printf.fprintf log 
-                     "%s Presence available (%s@%s/%s)\n"
-                     (ltime ()) from.user from.server from.resource;
-                   flush log;
-                   let prio = 
-                     try 
-                       int_of_string (get_cdata xml 
-                                        ~path:["priority"])
-                     with _ -> 0 in
-                     add_user from prio out
-               | "error"->
-                   Printf.fprintf log "%s Presence error (%s@%s/%s)\n"
-                     (ltime ()) from.user from.server from.resource;
-                   flush log;
-                   remove_user from out
-               | "unavailable" ->
-                   Printf.fprintf log 
-                     "%s Presence unavailable (%s@%s/%s)\n"
-                     (ltime ()) from.user from.server from.resource;
-                   flush log;
-                   remove_user from out
-               | _ ->
-                   ()
-            )
-      | Message ->
-          if safe_get_attr_s xml "type" = "error" then (
-            Printf.fprintf log "%s Presence error (%s@%s/%s)\n"
-              (ltime ()) from.user from.server from.resource;
-            flush log;
-            remove_user from out
-          ) else
-            let body = 
-              try get_cdata xml ~path:["body"]
-              with Not_found -> "" in
-              if body <> "" && String.length body < 1024 then
-                dispatch from body out
-      | _ ->
-          ()
+let process_presence xmpp env stanza hooks =
+  match stanza.jid_from with
+    | None -> do_hook xmpp env stanza hooks
+    | Some from ->
+        let () =
+          if from.lnode = xmpp.myjid.lnode &&
+            from.ldomain = xmpp.myjid.ldomain then
+              ()
+          else
+            match stanza.kind with
+              | Some Subscribe ->
+                  Printf.fprintf log "%s Subscribe (%s@%s)\n" 
+                    (ltime ()) from.node from.domain;
+                  flush log;
+                  XMPP.send_presence xmpp
+                    ~jid_to:(replace_resource from "")
+                    ~kind:Subscribed ();
+                  XMPP.send_presence xmpp
+                    ~jid_to:(replace_resource from "")
+                    ~kind:Subscribe ();
+              | Some Subscribed ->
+                  Printf.fprintf log "%s Unsubscribe (%s@%s)\n" 
+                    (ltime ()) from.node from.domain;
+                  flush log;
+                  XMPP.send_presence xmpp
+                    ~jid_to:(replace_resource from "")
+                    ~kind:Unsubscribed ()
+              | None ->
+                  Printf.fprintf log 
+                    "%s Presence available (%s@%s/%s)\n"
+                    (ltime ()) from.node from.domain from.resource;
+                  flush log;
+                  let prio =
+                    match stanza.content.XMPP.priority with
+                      | None -> 0
+                      | Some i -> i
+                  in
+                    add_user xmpp from prio
+              | Some Unavailable ->
+                  Printf.fprintf log 
+                    "%s Presence unavailable (%s@%s/%s)\n"
+                    (ltime ()) from.node from.domain from.resource;
+                  flush log;
+                  remove_user xmpp from
+              | _ ->
+                  ()
+        in
+          do_hook xmpp env stanza hooks
+
+let process_message_error xmpp ?id ?jid_from ?jid_to ?lang error =
+  match jid_from with
+    | None -> ()
+    | Some from ->
+        Printf.fprintf log "%s Presence error (%s@%s/%s)\n"
+          (ltime ()) from.node from.domain from.resource;
+        flush log;
+        remove_user xmpp from
+    
+let process_message xmpp env stanza hooks =
+  match stanza.jid_from with
+    | None -> do_hook xmpp env stanza hooks
+    | Some from ->
+        let () =
+          match stanza.kind, stanza.content.body with
+            | Some Chat, Some body ->
+                if body <> "" && String.length body < 1024 then
+                  dispatch xmpp from body
+            | _ ->
+                ()
+        in
+          do_hook xmpp env stanza hooks
             
-let _ =
-  Hooks.register_handle (Catch catch_1april)
+let plugin opts =
+  Hooks.add_for_token
+    (fun _opts xmpp ->
+       Hooks.add_message_hook xmpp 30 "1april" process_message;
+       Hooks.add_presence_hook xmpp 30 "1april" process_presence
+    )
+    
+let () =
+  Plugin.add_plugin "1april" plugin
     

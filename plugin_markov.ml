@@ -4,41 +4,43 @@
 
 open XMPP
 open Jid
-open Types
-open Config
-open Common
 open Hooks
-open Muc_types
 open Muc
 open Sqlite3
-open Sqlite_util
 
-let table = "words"
+module Sql = Markov_sql.Make(Sqlgg_sqlite3)
 
-type mevent = 
-  | MMessage of muc_event * jid * element * local_env * (element -> unit) 
-  | MStop 
-  | MCount of element * (element -> unit)
-  | MTop of element * (element -> unit)
+exception Result of string
+  
+module MarkovMap = Map.Make(GroupID)
 
-type t = {
+type context = {
+  dir : string;
+  max_words : int;
+  mutable markovrooms : m MarkovMap.t
+}
+and m = {
   queue: mevent Queue.t;
   mutex: Mutex.t;
   cond: Condition.t;
 }
-
-module MarkovMap = Map.Make(GID)
-let markovrooms = ref MarkovMap.empty
+and mevent = 
+  | MMessage of
+      context * muc_context * xmpp * env * message_type option * jid *
+        string * string
+  | MStop 
+  | MCount of context * xmpp * env * message_type option * jid
+  | MTop of context * xmpp * env * message_type option * jid
 
 let _ = Random.self_init ()
 
-let add_queue (m:t) (mevent:mevent) =
+let add_queue (m:m) (mevent:mevent) =
   Mutex.lock m.mutex;
   Queue.add mevent m.queue;
   Condition.signal m.cond;
   Mutex.unlock m.mutex
     
-let take_queue (m:t) =
+let take_queue (m:m) =
   Mutex.lock m.mutex;
   while Queue.is_empty m.queue do
     Condition.wait m.cond m.mutex;
@@ -47,248 +49,180 @@ let take_queue (m:t) =
     Mutex.unlock m.mutex;
     e
       
-let open_markovdb (lnode, ldomain) =
-  let path = 
-    try trim (Light_xml.get_attr_s Config.config 
-                ~path:["plugins"; "markov"] "dir")
-    with Not_found -> "./markov_db"
-  in
-    if not (Sys.file_exists path) then Unix.mkdir path 0o755;
-    let file = Filename.concat path (lnode ^ "@" ^ ldomain) in
-    let db = Sqlite3.db_open file in
-      create_table file db 
-        (Printf.sprintf
-           "SELECT name FROM SQLITE_MASTER WHERE type='table' AND name='%s'"
-           table)
-        (Printf.sprintf 
-           "CREATE TABLE %s (word1 varchar(256), word2 varchar(256), counter int);
-        CREATE INDEX word1word2 ON %s (word1, word2)"
-           table table);
-      file, db
+let open_markovdb ctx (lnode, ldomain) =
+  if not (Sys.file_exists ctx.dir) then Unix.mkdir ctx.dir 0o755;
+  let file = Filename.concat ctx.dir (lnode ^ "@" ^ ldomain) in
+  let db = Sqlite3.db_open file in
+    ignore (Sql.create_words db);
+    ignore (Sql.create_index_word1word2 db);
+    db
         
-let add file db words =
-  let rec cycle1 w1 lst =
+let add db words =
+  let rec aux_add w1 lst =
     match lst with
       | [] -> (
-          let sql1 = Printf.sprintf
-            "SELECT counter FROM %s WHERE word1=%s AND word2=''"
-            table (escape w1) in
-          let sql2 =
-            Printf.sprintf
-              "UPDATE %s SET counter=counter+1 WHERE word1=%s AND word2=''"
-              table (escape w1) in
-          let sql3 = 
-            Printf.sprintf
-              "INSERT INTO %s (word1, word2, counter) VALUES(%s, '', 1)"
-              table ( escape w1)
-          in
-            ignore (insert_or_update file db sql1 sql2 sql3)
+          match Sql.check_pair db ~word1:w1 ~word2:"" with
+            | None -> ignore (Sql.add_pair db ~word1:w1 ~word2:"" ~counter:1L)
+            | Some _ -> ignore (Sql.update_pair db ~word1:w1 ~word2:"")
         )
-      | w2 :: tail -> (
+      | w2 :: tail ->
           if w1 = w2 then
-            cycle1 w2 tail
+            ()
           else (
-            let sql1 = Printf.sprintf
-              "SELECT counter FROM %s WHERE word1=%s AND word2=%s"
-              table (escape w1) (escape w2) in
-            let sql2 = Printf.sprintf
-              "UPDATE %s SET counter=counter+1 WHERE word1=%s AND word2=%s"
-              table (escape w1) (escape w2) in
-            let sql3 = Printf.sprintf
-              "INSERT INTO %s (word1, word2, counter) VALUES(%s, %s, 1)"
-              table (escape w1) (escape w2) in
-              ignore (insert_or_update file db sql1 sql2 sql3);
-              cycle1 w2 tail
-          )
-        )
+            match Sql.check_pair db ~word1:w1 ~word2:w2 with
+              | None -> ignore (Sql.add_pair db ~word1:w1 ~word2:w2 ~counter:1L)
+              | Some _ -> ignore (Sql.update_pair db ~word1:w1 ~word2:w2)
+          );
+          aux_add w2 tail
   in
-    try
-      cycle1 "" words
-    with exn ->
-      log#error "Plugin_markov %s" (Printexc.to_string exn)
+    aux_add "" words
         
-let seek file db (w1:string) =
+let seek db w1 =
   let sum =
-    match get_one_row file db
-      (Printf.sprintf "SELECT sum(counter) FROM %s WHERE word1=%s"
-         table (escape w1)) with
-        | None -> 0
-        | Some r -> Int64.to_int (int64_of_data r.(0))
+    match Sql.get_sum db ~word1:w1 with
+      | None -> 0
+      | Some c -> Int64.to_int c
   in
     if sum = 0 then
-      w1, ""
+      ""
     else
-      let sql = Printf.sprintf 
-        "SELECT word1, word2, counter FROM %s WHERE word1=%s"
-        table (escape w1) in
-      let rec aux_seek lsum stmt =
-        match get_row stmt with
-          | Some row ->
-              let i = int_of_string (Data.to_string row.(2)) in
-                if lsum - i <= 0 then
-                  (Data.to_string row.(0),
-                   Data.to_string row.(1))
-                else
-                  aux_seek (lsum - i) stmt
-          | None ->
-              w1, ""
-      in        
+      let callback word2 counter lsum =
+        let i = Int64.to_int counter in
+          if lsum - i <= 0 then
+            raise (Result word2)
+          else
+            lsum - i
+      in
         try
-          let stmt = prepare db sql in
-          let w1, w2 = aux_seek (Random.int sum + 1) stmt in
-            if finalize stmt <> Rc.OK then
-              exit_with_rc file db sql;
-            w1, w2
-        with Sqlite3.Error _ ->
-          exit_with_rc file db sql
+          let _ = Sql.Fold.get_pair db ~word1:w1 callback (Random.int sum + 1) in
+            ""
+        with Result result -> result
             
-let chain_limit = ref
-  (try int_of_string (Light_xml.get_attr_s Config.config
-                        ~path:["plugin"; "markov"]
-                        "msg_limit")
-   with Not_found -> 20)
-  
-let generate file db word =
-  let rec cycle3 w i acc =
-    if i = !chain_limit then
+let generate ctx db word =
+  let rec aux_chain w i acc =
+    if i = ctx.max_words then
       let p = String.concat " " (List.rev acc) in
         p
     else
-      let _w1, w2 = seek file db w in
+      let w2 = seek db w in
         if w2 = "" then String.concat " " (List.rev acc)
-        else cycle3 w2 (i+1) (w2::acc)
+        else aux_chain w2 (i+1) (w2::acc)
   in
-    try
-      cycle3 word 0 []
-    with exn ->
-      log#error "Plugin_markov: generate a phrase: %s" (Printexc.to_string exn);
-      ""
+    aux_chain word 0 []
         
 let split_words body =
   Pcre.split ~pat:"[ \t\n]+" body
     
-let process_markov file db event from xml _env out =
-  match event with
-    | MUC_message (msg_type, nick, body) ->
-        let room_env = get_room_env from in
-          if from.lresource <> room_env.mynick then
-            let words = split_words body in
-              if words = [] then (
-                if (msg_type = `Groupchat && nick = room_env.mynick) ||
-                  msg_type <> `Groupchat then
-                    make_msg out xml "?"
-              ) else (
-                add file db words;
-                if (msg_type = `Groupchat && nick = room_env.mynick) ||
-                  msg_type <> `Groupchat then
-                    let chain = generate file db "" in
-                      make_msg out xml chain
-                else
-                  ()
-              )
-          else
+let process_markov ctx db muc_context xmpp env kind jid_from nick text =
+  let words = split_words text in
+  let room_env = get_room_env muc_context jid_from in
+    if words = [] then
+      match kind with
+        | Some Groupchat ->
+            if nick = room_env.mynick then
+              env.env_message xmpp kind jid_from "?"
+        | Some Chat ->
+            env.env_message xmpp kind jid_from "?"
+        | _ ->
             ()
-    | MUC_presence _
-    | MUC_join _
-    | MUC_leave _
-    | MUC_topic _
-    | MUC_change_nick _
-    | MUC_other
-    | MUC_history -> ()
-          
-let rec markov_thread (file, db, m) =
+    else (
+      add db words;
+      match kind with
+        | Some Groupchat ->
+            if nick = room_env.mynick then
+              let chain = generate ctx db "" in
+                env.env_message xmpp kind jid_from chain
+        | Some Chat ->
+            let chain = generate ctx db "" in
+              env.env_message xmpp kind jid_from chain
+        | _ ->
+            ()
+    )        
+
+let rec markov_thread (db, m) =
   (match take_queue m with
-     | MMessage (event, from, xml, env, out) ->
-         process_markov file db event from xml env out
-     | MCount (xml, out) ->
-         let sql = Printf.sprintf "SELECT COUNT(*) FROM %s" table in
+     | MMessage (ctx, muc_context, xmpp, env, kind, jid_from, nick, text) ->
+         process_markov ctx db muc_context xmpp env kind jid_from nick text
+     | MCount (ctx, xmpp, env, kind, jid_from) ->
          let result =
-           match get_one_row file db sql with
-             | None -> 9
-             | Some r -> Int64.to_int (int64_of_data r.(0))
+           match Sql.count db with
+             | None -> 0
+             | Some c -> Int64.to_int c
          in
-           make_msg out xml (string_of_int result)
-     | MTop (xml, out) -> (
-         let sql = Printf.sprintf
-           "SELECT word1, word2, counter FROM %s WHERE word1!='' AND word2!='' ORDER BY counter DESC LIMIT 10" table in
-         let rec aux_top acc stmt =
-           match get_row stmt with
-             | Some row ->
-                 let r =
-                   Printf.sprintf "\n%s | %s | %s"
-                     (Data.to_string row.(0))
-                     (Data.to_string row.(1))
-                     (Data.to_string row.(2)) in
-                   aux_top (r::acc) stmt
-             | None ->
-                 List.rev acc
+           env.env_message xmpp kind jid_from (string_of_int result)
+     | MTop (ctx, xmpp, env, kind, jid_from) ->
+         let callback word1 word2 counter acc =
+           let r =
+             Printf.sprintf "\n%s | %s | %d" word1 word2 (Int64.to_int counter)
+           in
+             r :: acc
          in
-           try
-             let stmt = prepare db sql in
-             let data = aux_top [] stmt in
-               make_msg out xml (String.concat "" data)
-           with
-             | Sqlite3.Error _ ->
-                 exit_with_rc file db sql
-             | exn ->
-                 log#error "Plugin_markov: !!!top: %s" (Printexc.to_string exn)
-       )
+         let top = Sql.Fold.get_top db callback [] in
+           env.env_message xmpp kind jid_from (String.concat "" (List.rev top))
      | MStop -> 
          ignore (db_close db);
          Thread.exit ()
   );
-  markov_thread (file, db, m)
+  markov_thread (db, m)
     
-let get_markov_queue room =
+let get_markov_queue ctx room =
   try
-    MarkovMap.find room !markovrooms
+    MarkovMap.find room ctx.markovrooms
   with Not_found ->
-    let file, db = open_markovdb room in
-    let m = {queue = Queue.create (); mutex = Mutex.create ();
-             cond = Condition.create ()} in
-      ignore (Thread.create markov_thread (file, db, m));
-      markovrooms := MarkovMap.add room m !markovrooms;
+    let db = open_markovdb ctx room in
+    let m = {queue = Queue.create ();
+             mutex = Mutex.create ();
+             cond = Condition.create ()}
+    in
+      ignore (Thread.create markov_thread (db, m));
+      ctx.markovrooms <- MarkovMap.add room m ctx.markovrooms;
       m
         
-let markov_chain event from xml env out =
-  match event with
-    | MUC_message _ ->
-        (try
-           let m = get_markov_queue (from.lnode, from.ldomain) in
-             add_queue m (MMessage (event, from, xml, env, out))
-         with _ -> ())
-    | MUC_leave (me, _, _, _) ->
-        if me then
-          (try
-             let m = get_markov_queue (from.lnode, from.ldomain) in
-               add_queue m MStop;
-               markovrooms := MarkovMap.remove (from.lnode, from.ldomain) 
-                 !markovrooms;
-           with _ -> ())
-        else
-          ()
-    | MUC_history
-    | MUC_presence _
-    | MUC_join _
-    | MUC_change_nick _
-    | MUC_topic _
-    | MUC_other ->
-        ()
+(*
+let close_room jid_from =
+  try
+    let m = get_markov_queue ctx (jid_from.lnode, jid_from.ldomain) in
+      add_queue m MStop;
+      markovrooms := MarkovMap.remove (from.lnode, from.ldomain) 
+        !markovrooms;
+  with _ -> ()
+*)
         
-let markov_count _text from xml _env out =
+let markov_chain ctx muc_context xmpp env kind jid_from nick text =
+  try
+    let m = get_markov_queue ctx (jid_from.lnode, jid_from.ldomain) in
+      add_queue m (MMessage (ctx, muc_context, xmpp, env, kind, jid_from, nick, text))
+  with _ -> ()
+        
+let markov_count ctx xmpp env kind jid_from _text =
   (try
-     let m = get_markov_queue (from.lnode, from.ldomain) in
-       add_queue m (MCount (xml, out))
+     let m = get_markov_queue ctx (jid_from.lnode, jid_from.ldomain) in
+       add_queue m (MCount (ctx, xmpp, env, kind, jid_from))
    with _ -> ())
         
-let markov_top _text from xml _env out =
+let markov_top ctx xmpp env kind jid_from _text =
   (try
-     let m = get_markov_queue (from.lnode, from.ldomain) in
-       add_queue m (MTop (xml, out))
+     let m = get_markov_queue ctx (jid_from.lnode, jid_from.ldomain) in
+       add_queue m (MTop (ctx, xmpp, env, kind, jid_from))
    with _ -> ())
-        
-let _ =
-  register_catcher markov_chain;
-  register_command "!!!count" markov_count;
-  register_command "!!!top" markov_top
+
+let plugin opts =
+  let dir =
+    try List.assoc "path" (List.assoc "dir" opts)
+    with Not_found -> "./markov_db" in
+  let max_words = get_int opts "max_words" "value" 20 in
+    Muc.add_for_muc_context
+      (fun muc_context xmpp ->
+         let ctx = {
+           dir = dir;
+           max_words = max_words;
+           markovrooms = MarkovMap.empty
+         } in
+           Muc.add_hook_conversation muc_context (markov_chain ctx);
+           Plugin_command.add_commands xmpp
+             [("markov_count", markov_count ctx);
+              ("markov_top", markov_top ctx)] opts
+      )
     
+let () =
+  Plugin.add_plugin "markov" plugin

@@ -5,120 +5,117 @@
 open Unix
 open Pcre
 open Netconversion
-open Light_xml
-open Common
 open Hooks
 open Plugin_command
 
-exception Recursive
+type m =
+  | This
+  | Next
+  | Back
 
-let load_idx () =
-  ()
-
-let dict = ref "myeller_file"
-let idx = dict ^ ".hash"
-let hash = 
-  let fhash = try open_in idx with Sys_error err ->
-    raise PluginError "Cannot open Mueller Dictonary's hash file: %s" err;
-  in
-  let rec aux_read acc =
-    let line = try Some (input_line fhash) with End_of_file -> None in
-      match line with
-        | None -> close_in fhash; List.rev acc
-        | Some l -> aux_read l :: acc
-  in 
-    Array.of_list (aux_read [])
-let hash_length = Array.length hash
-        
-let match_word line word =
-  let spword = word ^ "  " in
-  let len = String.length spword in
-  let rec cycle j =
-    if j = len then true
-    else if line.[j] = spword.[j] then
-      cycle (j+1)
-    else if Char.code line.[j] > Char.code spword.[j] then
-      false
-    else
-      raise Recursive
-  in
-    cycle 0
-
-let mueller_search stuff =
-  let fdict = 
-    try openfile dict [O_RDONLY] 0o644 
-    with Unix_error (err, _, _) ->
-      log#crit "plugin_mueller.ml: Cannot open %s: %s"
-        dict (Unix.error_message err);
-      Pervasives.exit 127
-  in
-  let rec cycle i =
-    if i = hash_length then 
-      raise Not_found
-    else
-      if String.sub stuff 0 2 = String.sub hash.(i) 0 2 then
-        let _ = lseek fdict 
-          (int_of_string (string_after hash.(i-1) 2)) SEEK_SET 
-        in
-        let in_fdict = in_channel_of_descr fdict in
-        let rec cycle2 () =
-          let line = input_line in_fdict in
-            try
-              if match_word line stuff then
-                line
-              else
-                raise Not_found
-            with Recursive -> 
-              cycle2 ()
-        in
-          cycle2 ()
+let match_item line item =
+  let len = String.length item in
+  let rec aux_match j =
+    if j = len then
+      if line.[j] = ' ' && line.[succ j] = ' ' then
+        This
       else
-        cycle (i+1)
+        Back
+    else if line.[j] = item.[j] then
+      aux_match (succ j)
+    else if Char.code line.[j] > Char.code item.[j] then
+      Back
+    else
+      Next
   in
-    cycle 0
-        
-let mueller xmpp env kind jid_from text =
+    aux_match 0
+
+let mueller_search dict idx stuff =
+  let shift =
+    if String.length stuff > 1 then
+      Hashtbl.find idx (String.sub stuff 0 2)
+    else
+      Hashtbl.find idx (stuff ^ " ")
+  in
+  let _ = lseek dict shift SEEK_SET in
+  let in_dict = in_channel_of_descr dict in
+  let rec aux_read () =
+    let line = input_line in_dict in
+      match match_item (String.lowercase line) stuff with
+        | This -> line
+        | Next ->
+            aux_read ()
+        | Back ->
+            raise Not_found
+  in
+    aux_read ()
+
+let format_response text =
+  let r = convert ~in_enc:`Enc_koi8r ~out_enc:`Enc_utf8 text in
+  let r1 = regexp "_([IXV]+)" in
+  let rsp1 = substitute_substrings ~rex:r1
+    ~subst:(fun a -> "\n" ^ get_substring a 1) r in
+  let r2 = regexp "([0-9]\\.)" in
+  let rsp2 = substitute_substrings ~rex:r2 
+    ~subst:(fun a -> "\n   " ^ get_substring a 1) rsp1 in
+  let r3 = regexp "([a-z]|[0-9]+|_[IVX]+)>" in
+  let rsp3 = substitute_substrings ~rex:r3 
+    ~subst:(fun a ->  "\n      " ^ get_substring a 1 ^ ")") rsp2 in
+  let r4 = regexp ~iflags:(cflags [`UTF8]) 
+    "([абвгдежзийклмно])>" in
+  let rsp4 = substitute_substrings ~rex:r4 
+    ~subst:(fun a -> "\n         " ^ get_substring a 1 ^ ")") rsp3 in
+    rsp4
+
+let mueller dict idx xmpp env kind jid_from text =
   if text = "" then
     env.env_message xmpp kind jid_from "гы! Что бум переводить?"
   else
     let reply = 
       try
-        let resp = mueller_search text in
-        let r = convert ~in_enc:`Enc_koi8r 
-          ~out_enc:`Enc_utf8 resp in
-        let r1 = regexp "(.+)  \\[.+\\](.+)$" in
-        let rsp1 = 
-          try
-            let r = exec ~rex:r1 r in
-              "\n" ^ (get_substring r 1) ^ ": " ^
-                (get_substring r 2)
-          with Not_found -> "\n" ^ r in
-        let r2 = regexp "_([IXV]+)" in
-        let rsp2 = substitute_substrings ~rex:r2
-          ~subst:(fun a -> "\n" ^ get_substring a 1) rsp1 in
-        let r3 = regexp "([0-9]\\.)" in
-        let rsp3 = substitute_substrings ~rex:r3 
-          ~subst:(fun a -> "\n   " ^ get_substring a 1) rsp2 in
-        let r4 = regexp "([a-z]|[0-9]+|_[IVX]+)>" in
-        let rsp4 = substitute_substrings ~rex:r4 
-          ~subst:(fun a ->  "\n      " ^ 
-                    get_substring a 1 ^ ")") rsp3 in
-        let r5 = regexp ~iflags:(cflags [`UTF8]) 
-          "([абвгдежзийклмно])>" in
-        let rsp5 = substitute_substrings ~rex:r5 
-          ~subst:(fun a -> "\n         " ^ 
-                    get_substring a 1 ^ ")") rsp4 in
-          rsp5
+        let resp = mueller_search dict idx (String.lowercase text) in
+          format_response resp
       with Not_found -> "Не нашёл :("
     in
       env.env_message xmpp kind jid_from reply
-in
-  register_command "mueller" mueller
     
+let rec read_file f shift saved_part acc =
+  let line = try Some (input_line f) with End_of_file -> None in
+    match line with
+      | None -> List.rev acc
+      | Some l ->
+          let part = String.lowercase (String.sub l 0 2) in
+          let newshift = shift + String.length l + 1 in
+            if part = saved_part then
+              read_file f newshift saved_part acc
+            else
+              read_file f newshift part ((part, shift) :: acc)
+
 let plugin opts =
-  let file = "mueller_file" in
-    if not (Sys.file_exists f) then
-      raise PluginError "Mueller dictonary %s does not exist" file;
+  let file =
+    try List.assoc "path" (List.assoc "file" opts)
+    with Not_found ->
+      raise
+        (Plugin.PluginError
+  "Please specify <file path='/path/Mueller.koi'/> element in configuration file"
+        ) in
+  let hdict = open_in_bin file in
+  let idxs = read_file hdict 0 "  " [] in
+  let idx = Hashtbl.create (List.length idxs) in
+  let () =
+    close_in hdict;
+    List.iter (fun (part, shift) -> Hashtbl.add idx part shift) idxs;
+  in
+    add_for_token
+      (fun _opts xmpp ->
+         let dict = 
+           try openfile file [O_RDONLY] 0o644 
+           with Unix_error (err, _, _) ->
+             raise (Plugin.PluginError ("Cannot open " ^ file))
+         in
+           Plugin_command.add_commands xmpp
+             [("mueller", mueller dict idx)] opts
+      )
     
-let _ =
-  add_plugin "mueller" plugin
+let () =
+  Plugin.add_plugin "mueller" plugin
