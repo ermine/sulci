@@ -116,7 +116,7 @@ let process_message xmpp env stanza hooks =
   match stanza.jid_from, stanza.content.subject, stanza.content.body with
     | Some from, None, Some text ->
         let ctx = get_context xmpp in
-          if do_command ctx xmpp env stanza.kind from text then
+          if do_command ctx xmpp env stanza.content.message_type from text then
             do_hook xmpp env stanza hooks
     | _ ->
         do_hook xmpp env stanza hooks

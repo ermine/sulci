@@ -17,14 +17,14 @@ and session_data = {
   mutable max_message_length : int;
   mutable on_connect : (xmpp -> unit) list;
   mutable on_disconnect : (unit -> unit) list;
-  mutable presence_hooks : (presence_type, presence_content) hook list;
-  mutable message_hooks : (message_type, message_content) hook list;
+  mutable presence_hooks : presence_content hook list;
+  mutable message_hooks : message_content hook list;
   skey : string
 }
-and ('a, 'b) hook = {
+and 'a hook = {
   priority : int;
   name : string;
-  proc : xmpp -> env -> ('a, 'b) stanza -> ('a, 'b) hook list -> unit
+  proc : xmpp -> env -> 'a stanza -> 'a hook list -> unit
 }
 and env = {
   env_identity : jid -> jid;

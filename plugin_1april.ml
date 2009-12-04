@@ -230,7 +230,7 @@ let process_presence xmpp env stanza hooks =
             from.ldomain = xmpp.myjid.ldomain then
               ()
           else
-            match stanza.kind with
+            match stanza.content.presence_type with
               | Some Subscribe ->
                   Printf.fprintf log "%s Subscribe (%s@%s)\n" 
                     (ltime ()) from.node from.domain;
@@ -284,7 +284,7 @@ let process_message xmpp env stanza hooks =
     | None -> do_hook xmpp env stanza hooks
     | Some from ->
         let () =
-          match stanza.kind, stanza.content.body with
+          match stanza.content.message_type, stanza.content.body with
             | Some Chat, Some body ->
                 if body <> "" && String.length body < 1024 then
                   dispatch xmpp from body

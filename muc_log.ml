@@ -216,7 +216,8 @@ let process_message ctx muc_context xmpp env stanza hooks =
   match stanza.jid_from with
     | None -> do_hook xmpp env stanza hooks
     | Some from ->
-        if is_joined muc_context from && stanza.kind = Some Groupchat then
+        if is_joined muc_context from &&
+          stanza.content.message_type = Some Groupchat then
           muc_log_message ctx from env stanza;
         do_hook xmpp env stanza hooks
 

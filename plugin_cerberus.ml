@@ -326,7 +326,7 @@ let process_presence ctx muc_context xmpp env stanza hooks =
           with Not_found -> false
         in
           if to_check then
-            match stanza.kind with
+            match stanza.content.presence_type with
               | None ->
                   let res =
                     check ctx muc_context xmpp env from
@@ -353,7 +353,7 @@ let process_message ctx muc_context xmpp env stanza hooks =
           with Not_found -> false
         in
           if to_check then
-            match stanza.content.subject, stanza.kind with
+            match stanza.content.subject, stanza.content.message_type with
               | Some subject, Some Groupchat ->
                   if check ctx muc_context xmpp env from
                     "subject" subject then (

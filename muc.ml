@@ -86,7 +86,9 @@ let process_conversation nick text ctx xmpp env stanza hooks =
     match stanza.jid_from with
       | None -> ()
       | Some from ->
-          List.iter (fun proc -> proc ctx xmpp env stanza.kind from nick text)
+          List.iter (fun proc ->
+                       proc ctx xmpp env
+                         stanza.content.message_type from nick text)
             ctx.conversation_procs;
   in
     do_hook xmpp env stanza hooks
@@ -239,7 +241,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
     match data.User.item with
       | None -> ()
       | Some item ->
-          if stanza.kind = None then
+          if stanza.content.presence_type = None then
             let occupant =
               Occupant.find from.lresource room_env.occupants in
               (match item.User.jid with
@@ -256,7 +258,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
     match data.User.destroy with
       | None -> false
       | Some (venue, reason) ->
-          if stanza.kind = Some Unavailable then (
+          if stanza.content.presence_type = Some Unavailable then (
             hook_muc_event ctx xmpp env from
               (MUC_destroy (venue, data.User.password, reason));
             true
@@ -295,7 +297,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
        | 301 ->
            (* context Removal from room *)
            (* Inform user that he or she has been banned from the room *)
-           if stanza.kind = Some Unavailable then
+           if stanza.content.presence_type = Some Unavailable then
              let reason = get_reason data.User.item in
                hook_muc_event ctx xmpp env from (MUC_ban reason);
                true
@@ -304,7 +306,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
        | 303 -> (
            (* context Exiting a room *)
            (* Inform all occupants of new room nickname *)
-           if stanza.kind = Some Unavailable then
+           if stanza.content.presence_type = Some Unavailable then
              match data.User.item with
                | None -> removal
                | Some i ->
@@ -326,7 +328,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
        | 307 -> (
            (* context Removal from room *)
            (* Inform user that he or she has been kicked from the room *)
-           if stanza.kind = Some Unavailable then
+           if stanza.content.presence_type = Some Unavailable then
              let reason = get_reason data.User.item in
                hook_muc_event ctx xmpp env from (MUC_kick reason);
                true
@@ -337,7 +339,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
            (* context Removal from room *)
            (* Inform user that he or she is being removed from
               the room because of an affiliation change *)
-           if stanza.kind = Some Unavailable then
+           if stanza.content.presence_type = Some Unavailable then
              let reason = get_reason data.User.item in
                hook_muc_event ctx xmpp env from (MUC_affiliation reason);
                true
@@ -349,7 +351,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
            (* Inform user that he or she is being removed from the room
               because the room has been changed to
               members-only and the user is not a member *)
-           if stanza.kind = Some Unavailable then
+           if stanza.content.presence_type = Some Unavailable then
              let reason = get_reason data.User.item in
                hook_muc_event ctx xmpp env from (MUC_members_only reason);
                true
@@ -360,7 +362,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
            (* context Removal from room *)
            (* Inform user that he or she is being removed from the room
               because of a system shutdown *)
-           if stanza.kind = Some Unavailable then
+           if stanza.content.presence_type = Some Unavailable then
              let reason = get_reason data.User.item in
                hook_muc_event ctx xmpp env from (MUC_system_shutdown reason);
                true
@@ -369,7 +371,7 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
        | _ ->
            removal
     ) removal data.User.status in
-    if stanza.kind = Some Unavailable && not removal then
+    if stanza.content.presence_type = Some Unavailable && not removal then
       hook_muc_event ctx xmpp env from (MUC_leave stanza.content.status)
 
 let process_presence_x ctx xmpp env stanza from room_env enter =
@@ -401,11 +403,11 @@ let process_presence ctx xmpp env stanza hooks =
                          env_message = make_msg ctx;
                         }
               in
-                match stanza.kind with
+                match stanza.content.presence_type with
                   | None
                   | Some Unavailable ->
                       let enter =
-                        if stanza.kind = None &&
+                        if stanza.content.presence_type = None &&
                           not (Occupant.mem from.lresource
                                  room_env.occupants) then
                             true
@@ -421,7 +423,7 @@ let process_presence ctx xmpp env stanza hooks =
                           room_env enter;
                         if enter then
                           hook_muc_event ctx xmpp env from MUC_join;
-                        if stanza.kind = Some Unavailable then
+                        if stanza.content.presence_type = Some Unavailable then
                           if from.lresource = room_env.mynick then
                             ctx.groupchats <-
                               Groupchat.remove (from.lnode, from.ldomain)
@@ -486,7 +488,7 @@ let process_message_status xmpp env stanza status =
              
 let process_message_user ctx xmpp env stanza from data =
   let () =
-    match stanza.kind with
+    match stanza.content.message_type with
       | None
       | Some Normal -> (
           match data.User.decline with
@@ -516,7 +518,7 @@ let do_hook_with_muc_context ctx xmpp env stanza hooks =
   match stanza.jid_from with
     | None -> do_hook xmpp env stanza hooks
     | Some from ->
-        match stanza.kind with
+        match stanza.content.message_type with
           | Some Chat -> (
               match catch (get_room_env ctx) from with
                 | None -> do_hook xmpp env stanza hooks
@@ -622,6 +624,9 @@ let leave_room ctx xmpp ?status room =
   let mynick = (get_room_env ctx room).mynick in
     send_presence xmpp ~jid_to:(replace_resource room mynick)
       ~kind:Unavailable ?status ()
+    
+let change_nick xmpp jid_room newnick =
+  XMPP.send_presence xmpp ~jid_to:(replace_resource jid_room newnick) ()
     
 let invite xmpp ?reason jid_room who =
   XMPP.send_message xmpp ~jid_to:(bare_jid jid_room)
