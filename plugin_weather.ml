@@ -1,5 +1,4 @@
-162
-  (*
+(*
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
@@ -65,11 +64,18 @@ let remove_zero str =
 
 let parse_temperature str =
   let rec temper = parser
-    | [< f = get_digits 0; '' '; ''F'; '' '; ''('; c = get_digits 0; '' ';
+    | [< f = get_number; '' '; ''F'; '' '; ''('; c = get_number; '' ';
          ''C'; >] ->
         Some (f, c)
     | [< rest >] ->
         None
+  and get_number = parser
+    | [< ''-'; t = get_digits 0; rest >] ->
+        (-t)
+    | [< t = get_digits 0; rest >] ->
+        t
+    | [< >] ->
+        0
   and get_digits acc = parser
     | [< ' ('0'..'9') as c; rest >] ->
         let i = int_of_char c - 48 in
@@ -78,7 +84,7 @@ let parse_temperature str =
         acc
   in
     temper (Stream.of_string str)
-  
+
 let parse_weather content =
   match split_lines content with
     | line1 :: line2 :: rest ->

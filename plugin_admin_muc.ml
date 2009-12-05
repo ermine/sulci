@@ -91,11 +91,14 @@ let invite muc_context xmpp env kind jid_from text =
   with exn ->
     env.env_message xmpp kind jid_from "hmm?"
   
-let nick muc_context xmpp env kind jid_from text =
+let change_nick muc_context xmpp env kind jid_from text =
   if text = "" then
     env.env_message xmpp kind jid_from "which nick?"
   else
-    Muc.change_nick xmpp jid_from text
+    if is_joined muc_context jid_from then
+      Muc.change_nick xmpp jid_from text
+    else
+      env.env_message xmpp kind jid_from "it is not a room"
     
 let plugin opts =
   Muc.add_for_muc_context
