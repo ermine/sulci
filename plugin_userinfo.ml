@@ -10,10 +10,10 @@ let idle =
   let print_idle env = function
     | None -> "hz"
     | Some el ->
-        match Xep_last.decode el with
+        match XEP_last.decode el with
           | None -> "hz"
           | Some t ->
-              Lang.expand_time ~lang:env.env_lang "idle" t.Xep_last.seconds
+              Lang.expand_time ~lang:env.env_lang "idle" t.XEP_last.seconds
   in
   let me xmpp env kind jid_from _text =
     env.env_message xmpp kind jid_from
@@ -32,37 +32,37 @@ let idle =
       | EntityHost _ ->
           raise BadEntity
   in
-    simple_query_entity ~me success ~payload:(Xep_last.make_iq_get ())
+    simple_query_entity ~me success ~payload:(XEP_last.make_iq_get ())
       
 let uptime =
   let success env text _entity = function
     | None -> "hz"
     | Some el ->
-        match Xep_last.decode el with
+        match XEP_last.decode el with
           | None -> "hz"
           | Some t ->
               let last = Lang.expand_time ~lang:env.env_lang
-                "uptime" t.Xep_last.seconds in
+                "uptime" t.XEP_last.seconds in
                 Lang.get_msg env.env_lang "plugin_userinfo_uptime" [text; last]
   in
-    simple_query_entity success ~payload:(Xep_last.make_iq_get ())
+    simple_query_entity success ~payload:(XEP_last.make_iq_get ())
       
 let version =
   let print_version env msgid arg = function
     | None -> "hz"
     | Some el ->
-        match Xep_version.decode el with
+        match XEP_version.decode el with
           | None -> "hz"
           | Some t ->
               let client =
-                if t.Xep_version.name = "" then "[unknown]"
-                else t.Xep_version.name in
+                if t.XEP_version.name = "" then "[unknown]"
+                else t.XEP_version.name in
               let version =
-                if t.Xep_version.version = "" then "[unknown]"
-                else t.Xep_version.version in
+                if t.XEP_version.version = "" then "[unknown]"
+                else t.XEP_version.version in
               let os =
-                if t.Xep_version.os = "" then "[unknown]"
-                else t.Xep_version.os in
+                if t.XEP_version.os = "" then "[unknown]"
+                else t.XEP_version.os in
                 Lang.get_msg env.env_lang msgid (arg @ [client; version; os])
   in
   let me xmpp env kind jid_from _text =
@@ -80,7 +80,7 @@ let version =
       | EntityUser _ ->
           print_version env "plugin_userinfo_version_somebody" [text] el
   in
-    simple_query_entity ~me success ~payload:(Xep_version.make_iq_get ())
+    simple_query_entity ~me success ~payload:(XEP_version.make_iq_get ())
       
 open Netdate
       
@@ -88,10 +88,10 @@ let time =
   let print_time env msgid arg = function
     | None -> "hz"
     | Some el ->
-        let t = Xep_time.decode el in
+        let t = XEP_time.decode el in
         let resp =
-          if t.Xep_time.display = "" then
-            let netdate = Scanf.sscanf t.Xep_time.utc
+          if t.XEP_time.display = "" then
+            let netdate = Scanf.sscanf t.XEP_time.utc
               "%4d%2d%2dT%2d:%2d:%d" 
               (fun year month day hour min sec -> 
                  { year = year;
@@ -106,7 +106,7 @@ let time =
             let f = Netdate.since_epoch netdate in
               Netdate.mk_mail_date f
           else
-            t.Xep_time.display
+            t.XEP_time.display
         in
           Lang.get_msg env.env_lang msgid (arg @ [resp])
   in
@@ -129,28 +129,28 @@ let time =
       | EntityUser _ ->
           print_time env "plugin_userinfo_time_somebody" [text] el
   in
-    simple_query_entity ~me success ~payload:(Xep_time.make_iq_get ())
+    simple_query_entity ~me success ~payload:(XEP_time.make_iq_get ())
       
 let stats =
   let success env text _entity = function
     | None -> "hz"
     | Some el ->
-        let stats = Xep_stats.decode el in
+        let stats = XEP_stats.decode el in
         let usersonline =
           try
-            let t = List.find (fun t -> t.Xep_stats.name = "users/online") stats
-            in t.Xep_stats.value
+            let t = List.find (fun t -> t.XEP_stats.name = "users/online") stats
+            in t.XEP_stats.value
           with Not_found -> "n/a" in
         let userstotal =
           try
-            let t = List.find (fun t -> t.Xep_stats.name = "users/total") stats
-            in t.Xep_stats.value
+            let t = List.find (fun t -> t.XEP_stats.name = "users/total") stats
+            in t.XEP_stats.value
           with Not_found -> "n/a" in
           Printf.sprintf "Stats for %s\nUsers Total: %s\nUsers Online: %s"
             text userstotal usersonline
   in
     simple_query_entity success
-      ~payload:(Xep_stats.make_iq_get ["users/online";
+      ~payload:(XEP_stats.make_iq_get ["users/online";
                                        "users/total"])
       
 let plugin opts =

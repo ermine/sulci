@@ -4,8 +4,8 @@
 
 open StanzaError
 open XMPP
-open Jid
-open Xep_version
+open JID
+open XEP_version
 open Hooks
 open Plugin_command
 
@@ -25,7 +25,7 @@ let ping =
   in
     fun xmpp env kind jid_from text ->
       Iq.simple_query_entity ~error_exceptions:[ERR_FEATURE_NOT_IMPLEMENTED]
-        (success (Unix.gettimeofday ())) ~payload:(Xep_version.make_iq_get ())
+        (success (Unix.gettimeofday ())) ~payload:(XEP_version.make_iq_get ())
         xmpp env kind jid_from text
 
     

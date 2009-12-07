@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Jid
+open JID
 open Muc
 
 let status muc_context xmpp kind jid_from text =

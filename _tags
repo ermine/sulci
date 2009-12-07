@@ -1,9 +1,9 @@
 <*>: -warn_error_A, debug
-<*.ml>: use_xml, use_xMPP, use_logger, use_pcre
+<*.ml>: use_xml, use_XMPP, use_logger, use_pcre
 <lang.ml>: use_strftime
 <hooks.ml>: use_scheduler
 <sulci.{ml,byte,native}>: use_lang, use_plugins
-<sulci.{byte,native}>: thread, use_unix, use_dynlink, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm, use_mltls, use_xml, use_treap, use_xMPP, use_strftime, use_logger, use_scheduler, use_ini_config, use_conversion, use_brainfuck, use_dehtml, use_json-wheel
+<sulci.{byte,native}>: thread, use_unix, use_dynlink, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm, use_mltls, use_xml, use_treap, use_XMPP, use_strftime, use_logger, use_scheduler, use_ini_config, use_conversion, use_brainfuck, use_dehtml, use_json-wheel
 
 <sqlgg_sqlite3.ml>: use_sqlite3
 "find_url.ml": camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
@@ -23,12 +23,12 @@
 "plugin_globalstats.ml": use_scheduler
 "plugin_google.ml": camlp4of, use_dehtml, use_netstring, use_json-wheel, use_json_static.syntax
 "plugin_hostip.ml": use_netstring
-"plugin_markov.ml": thread, use_sqlite3
+"plugin_markov_sqlite3.ml": thread, use_sqlite3
 "plugin_mueller.ml": use_netstring
 "plugin_seen.ml": use_sqlite3
 "plugin_talkers.ml": use_sqlite3
 "plugin_translate.ml": use_netstring
-"plugin_userinfo.ml": use_netstring, use_strftime, use_xMPP
+"plugin_userinfo.ml": use_netstring, use_strftime
 "plugin_vocabulary.ml": use_sqlite3
 "plugin_weather.ml": camlp4o
 "plugin_yandex.ml": use_netstring, use_dehtml

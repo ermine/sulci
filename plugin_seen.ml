@@ -4,7 +4,7 @@
  *)
 
 open XMPP
-open Jid
+open JID
 open Hooks
 open Muc
 open Sqlite3

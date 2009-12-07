@@ -3,7 +3,7 @@
 *)
 
 open XMPP
-open Jid
+open JID
 open Muc
 open Hooks
 open Plugin_vocabulary

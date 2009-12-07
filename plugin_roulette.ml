@@ -4,10 +4,10 @@
 
 open StanzaError
 open XMPP
-open Jid
+open JID
 open Hooks
 open Muc
-open Xep_muc
+open XEP_muc
   
 let r = Random.self_init ()
 

@@ -7,7 +7,7 @@ open XMPP
 open Hooks
 open Plugin_scheduler
 
-module S = Xep_stats
+module S = XEP_stats
 
 let find name alist =
   try
@@ -49,7 +49,7 @@ let stats_sum serverlist result xmpp =
           close_in sin;
           close_out sout
     in
-      XMPP.make_iq_request xmpp ~jid_to:(Jid.make_jid "" server "")
+      XMPP.make_iq_request xmpp ~jid_to:(JID.make_jid "" server "")
         (IQGet (S.make_iq_get ["users/total"; "users/online"])) proc
   in
   let server = input_line sin in

@@ -3,7 +3,7 @@
  *)
 
 open XMPP
-open Jid
+open JID
 open Common
 open Hooks
 open Acl

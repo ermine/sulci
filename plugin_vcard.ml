@@ -2,7 +2,7 @@
  * (c) 2005-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Xep_vcard
+open XEP_vcard
 open Hooks
 open Plugin_command
 
@@ -28,9 +28,9 @@ let result_vcard vcard =
 let vsearch =
   let success _env _text _entity = function
     | None -> "no info"
-    | Some el -> result_vcard (Xep_vcard.decode el)
+    | Some el -> result_vcard (XEP_vcard.decode el)
   in
-    Iq.simple_query_entity success ~payload:(Xep_vcard.make_iq_get ())
+    Iq.simple_query_entity success ~payload:(XEP_vcard.make_iq_get ())
      
 let plugin opts =
   add_for_token

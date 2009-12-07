@@ -3,7 +3,7 @@
  *)
 
 open XMPP
-open Jid
+open JID
 open Hooks
 open Muc
 open Sqlite3
@@ -13,6 +13,8 @@ module Sql = Markov_sql.Make(Sqlgg_sqlite3)
 exception Result of string
   
 module MarkovMap = Map.Make(GroupID)
+
+let () = Random.self_init ()
 
 type context = {
   dir : string;
@@ -32,7 +34,6 @@ and mevent =
   | MCount of context * xmpp * env * message_type option * jid
   | MTop of context * xmpp * env * message_type option * jid
 
-let _ = Random.self_init ()
 
 let add_queue (m:m) (mevent:mevent) =
   Mutex.lock m.mutex;

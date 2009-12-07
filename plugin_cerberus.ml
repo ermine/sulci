@@ -3,10 +3,10 @@
  *)
 
 open XMPP
-open Jid
+open JID
 open Hooks
 open Muc
-open Xep_muc
+open XEP_muc
 
 let regexp ca          = 0x430 | 0x410 | 'a' | 'A'
 let regexp cb          = 0x431 | 0x411
