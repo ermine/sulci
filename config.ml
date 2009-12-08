@@ -4,7 +4,7 @@
 
 open Arg
 open Light_xml
-open Jid
+open JID
 open Hooks
 
 type account = {

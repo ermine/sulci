@@ -74,15 +74,16 @@ let cmd_talkers db muc_context xmpp env kind jid_from text =
       let tabs = max / 8 + 1 in
       let tab = String.make tabs '\t' in
       let data =
-        List.fold_left (fun acc (len, nick, words, me, sentences) ->
-                          let m = tabs - (len / 8) in
-                            (Printf.sprintf "%s%s%Ld\t%Ld\t%Ld\t%.2g"
-                               nick
-                               (String.sub tab 0 m)
-                               words me sentences
-                               (Int64.to_float (Int64.div words sentences))
-                            ) :: acc
-                       ) [] (List.rev result) in
+        List.fold_left
+          (fun acc (len, nick, words, me, sentences) ->
+             let m = tabs - (len / 8) in
+               (Printf.sprintf "%s%s%Ld\t%Ld\t%Ld\t%.2g"
+                  nick
+                  (String.sub tab 0 m)
+                  words me sentences
+                  ((Int64.to_float words) /. (Int64.to_float sentences))
+               ) :: acc
+          ) [] (List.rev result) in
       let header = Printf.sprintf "%s%s%s\t%s\t%s\t%s"
         nick_title
         (let tabs = max / 8 + 1 in String.make tabs '\t')

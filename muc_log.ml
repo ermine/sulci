@@ -5,7 +5,7 @@
 open Unix
 open Pcre
 open XMPP
-open Jid
+open JID
 open Hooks
 open Muc
 open Plugin_scheduler

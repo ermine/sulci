@@ -78,7 +78,7 @@ let _ = dispatch begin function
       extern "xml";
       extern "mltls";
       extern "treap";
-      extern ~cma:"xMPP" "xmpp";
+      extern ~cma:"XMPP" "xmpp";
       extern "strftime";
       extern "logger";
       extern "scheduler";

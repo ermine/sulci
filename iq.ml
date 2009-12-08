@@ -3,7 +3,7 @@
  *)
 
 open XMPP
-open Jid
+open JID
 open StanzaError
 open Common
 open Hooks
@@ -117,13 +117,13 @@ let os = (let f = Unix.open_process_in "uname -sr" in
             ignore (Unix.close_process_in f); answer)
   
 let features xmpp =
-  XMPP.register_iq_request_handler xmpp Xep_version.ns_version
+  XMPP.register_iq_request_handler xmpp XEP_version.ns_version
     (fun ev _jid_from _jid_to _lang () ->
        match ev with
          | IQGet _el ->
-             let el = Xep_version.encode {Xep_version.name = Version.name;
-                                          Xep_version.version = Version.version;
-                                          Xep_version.os = os} in
+             let el = XEP_version.encode {XEP_version.name = Version.name;
+                                          XEP_version.version = Version.version;
+                                          XEP_version.os = os} in
                IQResult (Some el)
          | IQSet _el ->
              raise BadRequest

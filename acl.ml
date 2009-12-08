@@ -2,7 +2,7 @@
  * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Jid
+open JID
 open Hooks
   
 let acls : ((jid * string) list) ref = ref []

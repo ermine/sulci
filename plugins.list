@@ -13,7 +13,7 @@ plugin_dict
 plugin_globalstats
 plugin_google
 plugin_hostip
-plugin_markov
+plugin_markov_sqlite3
 plugin_misc
 plugin_mueller
 plugin_ping

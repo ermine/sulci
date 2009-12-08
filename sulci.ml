@@ -5,7 +5,7 @@
 open Transport
 open StreamError
 open XMPP
-open Jid
+open JID
 open Hooks
 open Config
   

@@ -4,8 +4,8 @@
 
 open Xml
 open XMPP
-open Jid
-open Xep_muc
+open JID
+open XEP_muc
 open Common
 open Hooks
 open Sqlite3
@@ -13,7 +13,7 @@ module Sql = Muc_sql.Make(Sqlgg_sqlite3)
 
 type occupant = {
   (* nick : string; *)
-  mutable jid : Jid.jid option;
+  mutable jid : JID.jid option;
   mutable affiliation : affiliation;
   mutable role : role
 }
@@ -107,7 +107,7 @@ let load_rooms xmpp =
   let rec iter_room stmt =
     match get_row stmt with
       | Some row ->
-          let room = Jid.jid_of_string (Data.to_string row.(0)) in
+          let room = JID.jid_of_string (Data.to_string row.(0)) in
           let mynick = Data.to_string row.(1) in
           let lang = Data.to_string row.(2) in
           let chatlog =
@@ -150,7 +150,7 @@ let get_entity ctx text jid_from =
           EntityUser (text, {jid_from with resource = text; lresource = text})
       else
         let jid = try jid_of_string text with _ -> raise BadEntity in
-          if Jid.equal jid jid_from then
+          if JID.equal jid jid_from then
             EntityYou jid
           else if jid.lnode = "" then (
             (try dnsprep jid.ldomain

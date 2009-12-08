@@ -86,6 +86,9 @@ let parse_weather content =
     Printf.sprintf "%s (%s) -- %s %s влажность: %s давление: %s"
       city country temperature w_type dampness pressure
 
+(* todo:
+   "http://export.yandex.ru/weather-ng/forecasts/" + citycod + ".xml"
+*)
 let weather xmpp env kind jid_from text =
   if text = "" then
     env.env_message xmpp kind jid_from
