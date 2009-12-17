@@ -71,10 +71,14 @@
   </plugin>
 
   <plugin name='admin' path='./plugins/plugin_admin'>
+   <command id='sh' access='botmaster'/>
+  </plugin>
+
+  <plugin name='admin_muc' path='./plugins/plugin_admin_muc'>
    <command id='invite' access='botmaster'/>
    <command id='join' access='botmaster'/>
    <command id='leave' access='botmaster'/>
-   <command id='sh' access='botmaster'/>
+   <command id='nick' access='botmaster'/>
   </plugin>
 
   <plugin name='brainfuck' path='./plugins/plugin_brainfuck'>
@@ -125,7 +129,7 @@
    <command id='hostip'/>
   </plugin>
 
-  <plugin name='markov' path='./plugins/plugin_markov'>
+  <plugin name='markov' path='./plugins/plugin_markov_sqlite3'>
    <dir path='./markov_db'/>
    <max_words value='20' />
    <command id='markov_count' name='!!!count'/>

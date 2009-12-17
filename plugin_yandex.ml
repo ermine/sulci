@@ -86,9 +86,50 @@ let parse_weather content =
     Printf.sprintf "%s (%s) -- %s %s влажность: %s давление: %s"
       city country temperature w_type dampness pressure
 
+let city_htbl = Hashtbl.create 5
+  
+let parse_cities content =
+  let parsed = Light_xml.parse_document content in
+    List.iter (fun el ->
+                 let country = get_attr_s el "name" in
+                 let cities =
+                   List.fold_left (fun acc city ->
+                                     let id = get_attr_s city "id" in
+                                     let city_name = get_cdata city in
+                                       (city_name, id) :: acc
+                                  ) [] (get_subels ~tag:"city" el) in
+                 let htbl = Hashtbl.create (List.length cities) in
+                   List.iter (fun (city, id) -> Hashtbl.add htbl city id) cities;
+                   Hashtbl.add city_htbl country htbl
+              ) (get_subels ~tag:"country" parsed)
+
+let load_cities () =
+  let callback data =
+    match data with
+      | OK (_media, _charset, content) -> (
+          try parse_cities content
+          with exn ->
+            log#error "plugin_yandex[load_cities]: unable to fetch cities: %s"
+              (Printexc.to_string exn)
+        )
+      | Exception exn ->
+          log#error "plugin_yandex[load_cities]: unable to fetch cities: %s"
+            (Printexc.to_string exn)
+  in
+  let url = "http://export.yandex.ru/weather/cities.xml" in
+    Http_suck.http_get url callback
+
+let get_code country city =
+  try
+    let htbl = Hashtbl.find city_htbl country in
+    let id = Hashtbl.find htbl city in
+      Some id
+  with Not_found -> None
+      
 (* todo:
    "http://export.yandex.ru/weather-ng/forecasts/" + citycod + ".xml"
 *)
+
 let weather xmpp env kind jid_from text =
   if text = "" then
     env.env_message xmpp kind jid_from
@@ -113,10 +154,25 @@ let weather xmpp env kind jid_from text =
       in
         env.env_message xmpp kind jid_from resp
     in
-    let url = "http://export.yandex.ru/weather/?city=" ^ text in
-      Http_suck.http_get url callback
+    let country, city =
+      try
+        let comma = String.index text ',' in
+        let city = String.sub text 0 comma in
+        let country =
+          trim (String.sub text (comma+1) (String.length text - comma - 1)) in
+          country, city
+      with _ ->
+        "Россия", text
+    in
+      match get_code country city with
+        | Some code ->
+            let url = "http://export.yandex.ru/weather/?city=" ^ code in
+              Http_suck.http_get url callback
+        | None ->
+            env.env_message xmpp kind jid_from "No such city"
   
 let plugin opts =
+  load_cities ();
   add_for_token
     (fun _opts xmpp ->
        add_commands xmpp [("blogs", blogs);

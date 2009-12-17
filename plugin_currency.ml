@@ -74,7 +74,7 @@ let load_curr () =
               (Printexc.to_string exn)
         )
       | Exception _exn ->
-          ()
+          log#error "plugin_currency: Unable to fetch currency data"
   in
     Http_suck.http_get url callback
       
