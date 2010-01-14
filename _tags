@@ -3,7 +3,7 @@
 <lang.ml>: use_strftime
 <hooks.ml>: use_scheduler
 <sulci.{ml,byte,native}>: use_lang, use_plugins
-<sulci.{byte,native}>: thread, use_unix, use_dynlink, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm, use_mltls, use_xml, use_treap, use_XMPP, use_strftime, use_logger, use_scheduler, use_ini_config, use_conversion, use_brainfuck, use_dehtml, use_json-wheel, use_base64
+<sulci.{byte,native}>: thread, use_unix, use_dynlink, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm, use_mltls, use_xml, use_treap, use_XMPP, use_strftime, use_logger, use_scheduler, use_conversion, use_brainfuck, use_dehtml, use_json-wheel, use_base64
 
 <sqlgg_sqlite3.ml>: use_sqlite3
 "find_url.ml": camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A

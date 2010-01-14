@@ -83,7 +83,6 @@ let _ = dispatch begin function
       extern "strftime";
       extern "logger";
       extern "scheduler";
-      extern "ini_config";
       extern "conversion";
       extern "brainfuck";
       extern "dehtml";
