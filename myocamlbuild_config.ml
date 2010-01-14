@@ -80,10 +80,13 @@ let make_binding ?include_dir ?lib_dir ~lib ?headers name =
     );
                
   (match include_dir with
-     | None -> ()
+     | None ->
+         flag ["c"; "compile"; ("include_" ^ name ^ "_clib")] &
+           S[A"-ccopt"; A"-ggdb"]
+
      | Some dir ->
          flag ["c"; "compile"; ("include_" ^ name ^ "_clib")] &
-           S[A"-ccopt"; A dir]
+           S[A"-ccopt"; A"-ggdb"; A"-ccopt"; A dir]
   );
 
   flag ["link"; "ocaml"; "library"; ("use_" ^ name ^ "_clib")] &

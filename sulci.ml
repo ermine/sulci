@@ -65,7 +65,7 @@ let run account =
       try
         if times >= 0 then
           Transport.connect s host port;
-        XMPP.open_stream xmpp ~use_tls:false account.password session;
+        XMPP.open_stream xmpp ~use_tls:account.use_tls account.password session;
         let rec loop () =
           XMPP.parse xmpp;
           loop ()
@@ -90,7 +90,7 @@ let run account =
                | _ ->
                    ()
             )
-        | Sasl.AuthError reason ->
+        | Sasl.Error reason ->
             log#crit "Authorization failed: %s" reason;
             Pervasives.exit 127
         | End_of_file ->
@@ -127,6 +127,7 @@ let main accounts plugins () =
     run account
 
 let _ =
+  print_endline "here";
   let daemon, (accounts, plugins) = Config.get_config () in
     if accounts <> [] then
       if daemon then (

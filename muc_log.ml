@@ -223,6 +223,8 @@ let process_message ctx muc_context xmpp env stanza hooks =
 
 let plugin opts =
   let basedir = get_value opts "dir" "chatlogs" "chatlogs" in
+    if not (Sys.file_exists basedir) then
+      raise (Plugin.PluginError "%d does not exist");
     Muc.add_for_muc_context
       (fun muc_context xmpp ->
          let ctx = {
