@@ -1,10 +1,10 @@
 (*
- * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Hooks
 
-exception PluginError of string
+exception Error of string
 
 let pluginlist :
     ((string * ((string * (string * string) list) list -> unit)) list) ref

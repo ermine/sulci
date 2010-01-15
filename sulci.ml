@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Transport
@@ -127,7 +127,6 @@ let main accounts plugins () =
     run account
 
 let _ =
-  print_endline "here";
   let daemon, (accounts, plugins) = Config.get_config () in
     if accounts <> [] then
       if daemon then (

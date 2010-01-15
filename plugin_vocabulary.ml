@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2009  Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010  Anastasia Gornostaeva. <ermine@ermine.pp.ru>
 *)
 
 open XMPP
@@ -223,11 +223,11 @@ let wtfremove xmpp env kind jid_from text =
 
 let plugin opts =
   let file =
-    try List.assoc "path" (List.assoc "db" opts)
+    try List.assoc "file" (List.assoc "db" opts)
     with Not_found ->
       raise
-        (Plugin.PluginError
-         "Please specify <db path='/path/wtf.db'/> element in configuration file"
+        (Plugin.Error
+        "Please specify <db file='/path/wtf.db'/> element in configuration file"
         ) in
     add_for_token
       (fun _opts xmpp ->

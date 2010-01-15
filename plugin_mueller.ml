@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Unix
@@ -93,12 +93,14 @@ let rec read_file f shift saved_part acc =
 
 let plugin opts =
   let file =
-    try List.assoc "path" (List.assoc "file" opts)
+    try List.assoc "file" (List.assoc "db" opts)
     with Not_found ->
-      raise
-        (Plugin.PluginError
-  "Please specify <file path='/path/Mueller.koi'/> element in configuration file"
-        ) in
+      raise (Plugin.Error
+  "Please specify <db file='/path/Mueller.koi'/> element in configuration file"
+            ) in
+  let () =
+    if not (Sys.file_exists file) then
+      raise (Plugin.Error (Printf.sprintf "%s does not exists" file)) in
   let hdict = open_in_bin file in
   let idxs = read_file hdict 0 "  " [] in
   let idx = Hashtbl.create (List.length idxs) in
@@ -111,7 +113,7 @@ let plugin opts =
          let dict = 
            try openfile file [O_RDONLY] 0o644 
            with Unix_error (err, _, _) ->
-             raise (Plugin.PluginError ("Cannot open " ^ file))
+             raise (Plugin.Error ("Cannot open " ^ file))
          in
            Plugin_command.add_commands xmpp
              [("mueller", mueller dict idx)] opts

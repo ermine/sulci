@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Unix
@@ -137,7 +137,7 @@ let plugin opts =
   let (hour, min) =
     try Scanf.sscanf t "%d:%d" (fun hoir min -> (hoir, min))
     with Scanf.Scan_failure str ->
-      raise (Plugin.PluginError
+      raise (Plugin.Error
                (Printf.sprintf "Invalid option refresh: %s" str))
   in
   let _ = Scheduler.add_task timerQ load_curr

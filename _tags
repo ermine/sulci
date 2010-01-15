@@ -8,7 +8,6 @@
 <sqlgg_sqlite3.ml>: use_sqlite3
 "find_url.ml": camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
 "http_suck.ml": thread, use_equeue, use_netclient, use_netstring
-<sqlite_util.ml>: use_sqlite3
 
 <*_ulex.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
 "conv_xml.ml": use_conversion

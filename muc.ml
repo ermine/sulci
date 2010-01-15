@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Xml
@@ -673,7 +673,7 @@ let get_int ?exn opts name1 name2 default =
 
 let plugin opts =
   let max_public_message_length = get_int
-    ~exn:(Plugin.PluginError "'max_public_message_length' must be an integer")
+    ~exn:(Plugin.Error "'max_public_message_length' must be an integer")
     opts "value" "max_public_message_length" 400 in
   let file = get_value opts "db" "file" "sulci_muc.db" in
   let default_mynick =

@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Dbm
@@ -23,16 +23,16 @@ let tld db xmpp env kind jid_from text =
 
 let plugin opts =
   let tld_file =
-    try List.assoc "path" (List.assoc "db" opts)
+    try List.assoc "file" (List.assoc "db" opts)
     with Not_found ->
       raise
-        (Plugin.PluginError
-           "Please specify <db path=/path/tlds'/> element in configuration file")
+        (Plugin.Error
+           "Please specify <db file=/path/tlds'/> element in configuration file")
   in
   let db =
     try opendbm tld_file [Dbm_rdonly] 0o666
     with Dbm_error err ->
-      raise (Plugin.PluginError
+      raise (Plugin.Error
                (Printf. sprintf "Cannot open db file %s: %s" tld_file err))
   in
     add_for_token

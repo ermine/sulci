@@ -1,8 +1,6 @@
 open Ocamlbuild_plugin
 open Myocamlbuild_config
 
-let install_dir = "/tmp/sulci20"
-
 let _ =
   let f = Unix.open_process_in "git describe --always" in
   let answer = input_line f in
@@ -138,34 +136,31 @@ let _ = dispatch begin function
                      A src; Sh">"; A dst])
         );
 
-      rule "install sulci"
-        ~prod:"install"
-        ~deps:["sulci.native";
-               "sulci.conf.example";
-               "decoders";
-               "conversion/data/aliases.ini";
-               "lang_msgs";
-               "tlds/tlds.db"]
-        (fun _ _ ->
-           Seq [Cmd (S[A"cp"; Px "sulci.native";
-                       P(install_dir / "sulci")]);
-                Cmd (S[A"cp"; P"sulci.conf.example";
-                       P install_dir]);
-                Cmd (S[A"mkdir"; A"-p"; P (install_dir / "lang")]);
-                Cmd (S[A"cp"; Sh"lang/*.htbl";
-                       P (install_dir / "lang")]);
-(*                
-                Cmd (S[A"mkdir"; A"-p"; P  conversion_decoder_dir]);
-                Cmd (S[A"cp"; Sh"conversion/data/decoders/*.dec";
-                       P conversion_decoder_dir]);
-                Cmd (S[A"cp"; P"conversion/data/aliases.ini";
-                       P conversion_aliases_ini]);
-                Cmd (S[A"mkdir"; A"-p"; P (install_dir / "tlds")]);
-                Cmd (S[A"cp"; P"tlds/tlds.db";
-                       P (install_dir / "tlds")])
-*)                  
-               ]
-        )
+      let sulci_exe =
+        List.fold_left (fun acc (file, flag) ->
+                          if flag then file :: acc else acc
+                       ) [] ["sulci.byte", bytecode;
+                             "sulci.native", nativecode] in
+          
+        rule "install sulci"
+          ~prod:"install"
+          ~deps:(sulci_exe @ ["sulci.conf.example";
+                             "lang_msgs";
+                             "tlds/tlds.db"])
+          (fun _ _ ->
+             let install_dir = get_install_dir () in
+               Seq [Cmd (S[A"cp"; S(List.map (fun f -> Px f) sulci_exe);
+                           P(install_dir)]);
+                    Cmd (S[A"cp"; P"sulci.conf.example";
+                           P install_dir]);
+                    Cmd (S[A"mkdir"; A"-p"; P (install_dir / "lang")]);
+                    Cmd (S[A"cp"; Sh"lang/*.htbl";
+                           P (install_dir / "lang")]);
+                    Cmd (S[A"mkdir"; A"-p"; P (install_dir / "tlds")]);
+                    Cmd (S[A"cp"; P"tlds/tlds.db";
+                           P (install_dir / "tlds")])
+                   ]
+          )
 
 
   | _ ->

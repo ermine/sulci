@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Unix
@@ -224,7 +224,7 @@ let process_message ctx muc_context xmpp env stanza hooks =
 let plugin opts =
   let basedir = get_value opts "dir" "chatlogs" "chatlogs" in
     if not (Sys.file_exists basedir) then
-      raise (Plugin.PluginError "%d does not exist");
+      raise (Plugin.Error (Printf.sprintf "%s does not exist" basedir));
     Muc.add_for_muc_context
       (fun muc_context xmpp ->
          let ctx = {
