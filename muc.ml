@@ -214,7 +214,7 @@ let make_msg ctx xmpp kind jid_from ?response_tail response =
             false, resp ^ tail
         in
         let body =
-          if Pcre.pmatch ~pat:"/me" || jid_from.resource = "" response then respo
+          if Pcre.pmatch ~pat:"/me" response || jid_from.resource = "" then respo
           else jid_from.resource ^ ": " ^ respo
         in
         let room_env = get_room_env ctx jid_from in
