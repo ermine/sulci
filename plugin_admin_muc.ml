@@ -8,7 +8,6 @@ open Hooks
 open Muc
 
 let msg muc_context xmpp env kind jid_from text =
-  print_endline "muc msg";
   try
     let s = String.index text ' ' in
     let jid_to = jid_of_string (String.sub text 0 s) in
