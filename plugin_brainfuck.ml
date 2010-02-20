@@ -8,6 +8,8 @@ open Plugin_command
 let encode str =
   let buf = Buffer.create (String.length str) in
     String.iter (function
+                   | ('\009'| '\x0A') as ch -> Buffer.add_char buf ch
+                   | '\x0D' -> ()
                    | '\032'..'\126' as ch -> Buffer.add_char buf ch
                    | ch -> Buffer.add_string buf
                        (Printf.sprintf "\\x%02X" (Char.code ch))
