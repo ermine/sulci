@@ -86,21 +86,27 @@ let parse_weather content =
     Printf.sprintf "%s (%s) -- %s %s влажность: %s давление: %s"
       city country temperature w_type dampness pressure
 
-let city_htbl = Hashtbl.create 5
+let city_htbl = Hashtbl.create 100
   
 let parse_cities content =
   let parsed = Light_xml.parse_document content in
     List.iter (fun el ->
-                 let country = get_attr_s el "name" in
+                 let country = Stringprep.lowercase (get_attr_s el "name") in
                  let cities =
                    List.fold_left (fun acc city ->
                                      let id = get_attr_s city "id" in
-                                     let city_name = get_cdata city in
+                                     let city_name =
+                                       Stringprep.lowercase (get_cdata city) in
                                        (city_name, id) :: acc
                                   ) [] (get_subels ~tag:"city" el) in
-                 let htbl = Hashtbl.create (List.length cities) in
-                   List.iter (fun (city, id) -> Hashtbl.add htbl city id) cities;
-                   Hashtbl.add city_htbl country htbl
+                   List.iter (fun (city, id) ->
+                                if Hashtbl.mem city_htbl city then
+                                  let countries = Hashtbl.find city_htbl city in
+                                    Hashtbl.replace city_htbl city
+                                      ((country, id) :: countries)
+                                else
+                                  Hashtbl.add city_htbl city [country, id]
+                             ) cities
               ) (get_subels ~tag:"country" parsed)
 
 let load_cities () =
@@ -121,11 +127,16 @@ let load_cities () =
 
 let get_code country city =
   try
-    let htbl = Hashtbl.find city_htbl country in
-    let id = Hashtbl.find htbl city in
-      Some id
-  with Not_found -> None
-      
+    let countries = Hashtbl.find city_htbl (Stringprep.lowercase city) in
+      match country with
+        | None ->
+            let (_, id) = List.hd countries in
+              Some id
+        | Some c ->
+            let id = List.assoc c countries in
+              Some id
+  with Not_found -> None                  
+
 (* todo:
    "http://export.yandex.ru/weather-ng/forecasts/" + citycod + ".xml"
 *)
@@ -160,9 +171,9 @@ let weather xmpp env kind jid_from text =
         let city = String.sub text 0 comma in
         let country =
           trim (String.sub text (comma+1) (String.length text - comma - 1)) in
-          country, city
+          Some country, city
       with _ ->
-        "Россия", text
+        None, text
     in
       match get_code country city with
         | Some code ->
