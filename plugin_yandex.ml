@@ -133,7 +133,7 @@ let get_code country city =
             let (_, id) = List.hd countries in
               Some id
         | Some c ->
-            let id = List.assoc c countries in
+            let id = List.assoc (Stringprep.lowercase c) countries in
               Some id
   with Not_found -> None                  
 
