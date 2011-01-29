@@ -1,0 +1,42 @@
+OASISFormat:          0.2
+Name:                 sulci
+Version:              2.0
+Synopsis:             An Jabber/XMPP bot
+Authors:              Anastasia Gornostaeva
+License:              BSD3
+LicenseFile:          LICENCE
+Copyrights:           (C) 2004-2011 Anastasia Gornostaeva
+Plugins:              DevFiles (0.2), META (0.2), StdFiles (0.2)
+BuildTools:           ocamlbuild
+FilesAB:              version.ml.src.ab, sulci.conf.ab
+PreInstallCommand:    $ocamlbuild data_files
+
+Executable langcompile
+  Path:           lang/
+  Install:        false
+  CompiledObject: best
+  MainIs:         langcompile.ml
+
+Executable createtld
+  Path:           tlds/
+  Install:        false
+  CompiledObject: best
+  MainIs:         createtlds.ml
+  BuildDepends:   dbm
+
+Executable sulci
+  Path:           .
+  Install:        true
+  CompiledObject: best
+  MainIs:         sulci.ml
+  BuildDepends:   threads, brainfuck, logger, dehtml, scheduler, strftime, 
+     xml, xmpp, text, dynlink, sqlite3, ulex, pcre, netclient, dbm, json-static
+  DataFiles:      _build/tlds/tlds.db ($datadir/$pkg_name)/tlds,
+     _build/lang/*.htbl ($datadir/$pkg_name/lang), 
+     sulci.conf ($sysconfdir)
+
+SourceRepository github
+  Type:         git
+  Location:     git://github.com/ermine/sulci.git
+  Browser:      https://github.com/ermine/sulci
+  

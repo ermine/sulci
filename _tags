@@ -1,35 +1,48 @@
-<*>: -warn_error_A, debug
-<*.ml>: use_xml, use_XMPP, use_logger, use_pcre
-<lang.ml>: use_strftime
-<hooks.ml>: use_scheduler
 <sulci.{ml,byte,native}>: use_lang, use_plugins
-<sulci.{byte,native}>: thread, use_unix, use_dynlink, use_cryptokit, use_pcre, use_ulex, use_netsys, use_sqlite3, use_netstring, use_netclient, use_dbm, use_mltls, use_xml, use_treap, use_XMPP, use_strftime, use_logger, use_scheduler, use_conversion, use_brainfuck, use_dehtml, use_json-wheel, use_base64
 
-<sqlgg_sqlite3.ml>: use_sqlite3
-"find_url.ml": camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
-"http_suck.ml": thread, use_equeue, use_netclient, use_netstring
+"find_url.ml": syntax_camlp4o, use_ulex.syntax
+<*_ulex.ml>: syntax_camlp4o, use_ulex.syntax
+"plugin_cerberus.ml": syntax_camlp4o, use_ulex.xyntax
+"plugin_weather.ml": syntax_camlp4o
+"plugin_google.ml": syntax_camlp4o, use_json_static.syntax
 
-<*_ulex.ml>: camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
-"conv_xml.ml": use_conversion
-"plugin_scheduler.ml": use_scheduler
-"muc.ml": use_sqlite3
-"muc_log.ml": use_strftime, use_scheduler
-"plugin_brainfuck.ml": thread, use_brainfuck
-"plugin_calc.ml": use_ulex
-"plugin_cerberus.ml": camlp4o, use_ulex.syntax, use_ulex, -warn_A, -warn_error_A
-"plugin_currency.ml": use_scheduler
-"plugin_dict.ml": thread
-"plugin_globalstats.ml": use_scheduler
-"plugin_google.ml": camlp4of, use_dehtml, use_netstring, use_json-wheel, use_json_static.syntax
-"plugin_hostip.ml": use_netstring
-"plugin_markov_sqlite3.ml": thread, use_sqlite3
-"plugin_mueller.ml": use_netstring
-"plugin_seen.ml": use_sqlite3
-"plugin_talkers.ml": use_sqlite3
-"plugin_translate.ml": use_netstring
-"plugin_userinfo.ml": use_netstring, use_strftime
-"plugin_vocabulary.ml": use_sqlite3
-"plugin_weather.ml": camlp4o
-"plugin_yandex.ml": use_netstring, use_dehtml
-
-"plugin_1april.ml": use_strftime
+# OASIS_START
+# DO NOT EDIT (digest: 20fc3f9674653c1456edeb5b1ee8d5e9)
+# Executable sulci
+<sulci.{native,byte}>: pkg_xmpp
+<sulci.{native,byte}>: pkg_xml
+<sulci.{native,byte}>: pkg_ulex
+<sulci.{native,byte}>: pkg_threads
+<sulci.{native,byte}>: pkg_text
+<sulci.{native,byte}>: pkg_strftime
+<sulci.{native,byte}>: pkg_sqlite3
+<sulci.{native,byte}>: pkg_scheduler
+<sulci.{native,byte}>: pkg_pcre
+<sulci.{native,byte}>: pkg_netclient
+<sulci.{native,byte}>: pkg_logger
+<sulci.{native,byte}>: pkg_json-static
+<sulci.{native,byte}>: pkg_dynlink
+<sulci.{native,byte}>: pkg_dehtml
+<sulci.{native,byte}>: pkg_dbm
+<sulci.{native,byte}>: pkg_brainfuck
+<*.ml{,i}>: pkg_xmpp
+<*.ml{,i}>: pkg_xml
+<*.ml{,i}>: pkg_ulex
+<*.ml{,i}>: pkg_threads
+<*.ml{,i}>: pkg_text
+<*.ml{,i}>: pkg_strftime
+<*.ml{,i}>: pkg_sqlite3
+<*.ml{,i}>: pkg_scheduler
+<*.ml{,i}>: pkg_pcre
+<*.ml{,i}>: pkg_netclient
+<*.ml{,i}>: pkg_logger
+<*.ml{,i}>: pkg_json-static
+<*.ml{,i}>: pkg_dynlink
+<*.ml{,i}>: pkg_dehtml
+<*.ml{,i}>: pkg_dbm
+<*.ml{,i}>: pkg_brainfuck
+# Executable langcompile
+# Executable createtld
+<tlds/createtlds.{native,byte}>: pkg_dbm
+<tlds/*.ml{,i}>: pkg_dbm
+# OASIS_STOP

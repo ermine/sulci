@@ -3,4 +3,4 @@
  *)
 
 let name = "Sulci"
-let version = "2.0-git-VERSION"
+let version = "$(pkg_version)-git-VERSION"

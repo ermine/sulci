@@ -101,7 +101,6 @@ let add_tmp_hook hooks name hook =
 let do_hook xmpp env stanza hooks =
   if hooks <> [] then
     let hook = List.hd hooks in
-      print_endline ("hook " ^ hook.name);
       hook.proc xmpp env stanza (List.tl hooks)
 
 let message_error xmpp ?id ?jid_from ?jid_to ?lang error =

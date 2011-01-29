@@ -1,26 +1,23 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2011 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
-open Conversion
+open Text
 open Hooks
 
 let unknown_encoding_handler encoding =
-  let decoder = Conversion.make_decoder encoding in
+  let decoder = Encoding.decoder encoding in
     fun str i ->
-      match decoder str i with
-        | Cs.Shift j -> Xmlencoding.Shift j
-        | Cs.Invalid -> Xmlencoding.Invalid
-        | Cs.TooFew -> Xmlencoding.TooFew
-        | Cs.Result (j, ucs4) -> Xmlencoding.Result (j, ucs4)
-
+      match Encoding.decode decoder str i (String.length str - i) with
+        | Encoding.Dec_ok (ucs4, j) -> Xmlencoding.Result ((i+j), ucs4)
+        | Encoding.Dec_need_more -> Xmlencoding.TooFew
+        | Encoding.Dec_error -> Xmlencoding.Invalid
+            
 let parse_document  content =
   Light_xml.parse_document ~unknown_encoding_handler content
 
-let plugin opts =
-  let decoder_dir = List.assoc "path" (List.assoc "decoder_dir" opts) in
-  let encoder_dir = List.assoc "path" (List.assoc "encoder_dir" opts) in
-    Conversion.init ~decoder_dir ~encoder_dir ()
+let plugin _opts =
+  ()
 
 let _ =
   Plugin.add_plugin "conversion" plugin

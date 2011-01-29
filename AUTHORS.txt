@@ -1,0 +1,5 @@
+(* OASIS_START *)
+(* DO NOT EDIT (digest: 2020e695e360db50aec7a95c18e03e6c) *)
+Authors of sulci
+Anastasia Gornostaeva
+(* OASIS_STOP *)

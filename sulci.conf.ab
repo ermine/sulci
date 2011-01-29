@@ -1,0 +1,209 @@
+<sulci>
+ <account jid='username@server'>
+  <!-- <ip>127.0.0.1</ip> -->
+  <!-- <ip>localhost</ip> -->
+  <!-- <port>5222</port> -->
+  <resource>Ocaml</resource>
+  <password>secret</password>
+
+  <!-- Uncomment this to use STARTTLS
+    <starttls/>
+  -->
+
+  <!-- Uncomment this to use COMPRESS
+  <compress/>
+  -->
+
+  <rawxml_log file='$(datadir)/$(pkg_name)/log1.log'/>
+
+  <!-- Reconnect interval in seconds. If count=0 do it infinitely -->
+  <!-- If you use NOT OWN jabber server, it is strongly recommended do not
+       do times more than 3.
+  <reconnect interval='10' times='3' />
+  -->
+  <!-- Max length of an outcoming stanza. By default 4000 Unicode symbols
+  <max_stanza_length value='4000'/>
+  -->
+  <!-- Max length of an outcoming message body. By default 512 Unicode symbols
+       Long messages will be splitted
+  <max_message_length value='512'/>
+  -->
+ </account>
+ 
+ <!-- Report log -->
+ <log>
+  <level value='debug'/>
+  <!--
+  <syslog facility='local0'/>
+  -->
+  <!--
+  <stderr/>
+  -->
+  <!--
+  <piped_log cmd='cmd'/>
+  -->
+  <file path='$(datadir)/$(pkg_name)/report.log'/>
+ </log>
+
+ <lang dir='$(datadir)/$(pkg_name)/lang' default='ru'/>
+
+ <acl jid='ermine@jabber.ru' class='botmaster'/>
+ 
+ <plugins>
+
+  <plugin name='muc' path='$(datadir)/$(pkg_name)/plugins/muc'>
+   <max_public_message_length value='400'/>
+   <db file='$(datadir)/$(pkg_name)/sulci_muc.db'/>
+   <acl role='moderator' class='moderator'/>
+   <acl affiliation='owner' class='owner'/>
+  </plugin>
+
+  <plugin name='scheduler' path='$(datadir)/$(pkg_name)/plugins/plugin_scheduler'/>
+
+  <plugin name='muc_log' path='$(datadir)/$(pkg_name)/plugins/muc_log'>
+     <dir path='./chatlogs'/>
+  </plugin>
+
+  <plugin name='http' path='$(datadir)/$(pkg_name)/plugins/http_suck'/>
+  
+  <plugin name='commands' path='$(datadir)/$(pkg_name)/plugins/plugin_command'>
+   <prefix value='.'/>
+  </plugin>
+
+  <plugin name='conversion' path='$(datadir)/$(pkg_name)/plugins/conv_xml' />
+
+  <plugin name='admin' path='$(datadir)/$(pkg_name)/plugins/plugin_admin'>
+   <command id='msg' access='botmaster'/>
+   <command id='quit' access='botmaster'/>
+   <command id='lang_update' access='botmaster'/>
+   <command id='lang_msgid' access='botmaster'/>
+   <command id='sh' access='botmaster'/>
+  </plugin>
+
+  <plugin name='admin_muc' path='$(datadir)/$(pkg_name)/plugins/plugin_admin_muc'>
+   <command id='invite' access='botmaster'/>
+   <command id='join' access='botmaster'/>
+   <command id='leave' access='botmaster'/>
+   <command id='nick' access='botmaster'/>
+  </plugin>
+
+  <plugin name='brainfuck' path='$(datadir)/$(pkg_name)/plugins/plugin_brainfuck'>
+   <command id='bf'/>
+  </plugin>
+
+  <plugin name='calc' path='$(datadir)/$(pkg_name)/plugins/plugin_calc'>
+   <command id='calc'/>
+   <command id='rpn'/>
+  </plugin>
+
+  <plugin name='cerberus' path='$(datadir)/$(pkg_name)/plugins/plugin_cerberus'>
+   <kick value='true'/>
+   <notify jid='jid@jabber.server'/>
+  </plugin>
+
+  <plugin name='currency' path='$(datadir)/$(pkg_name)/plugins/plugin_currency'>
+   <scheduler time='11:00'/>
+   <command id='curr'/>
+  </plugin>
+
+  <plugin name='dict' path='$(datadir)/$(pkg_name)/plugins/plugin_dict'>
+   <!-- <server port=2628 host='localhost'/> -->
+   <server host='dict.org'/>
+   <command id='dict'/>
+  </plugin>
+
+  <!-- it was used on http://ejabberd.jabber.ru/ to display total 
+       registered users and users online using ejabberd -->
+  <!--
+  <plugin name='globalstats' path='$(datadir)/$(pkg_name)/plugins/plugin_globalstats'>
+   <serverlist file='servers.list'/>
+   <result file='servers.res'/>
+   <interval value='3600'/>
+  </plugin>
+  -->
+
+  <plugin name='google' path='$(datadir)/$(pkg_name)/plugins/plugin_google'>
+   <command id='google'/>
+   <command id='translate' name='gtr'/>
+  </plugin>
+
+  <plugin name='hostip' path='$(datadir)/$(pkg_name)/plugins/plugin_hostip'>
+   <command id='hostip'/>
+  </plugin>
+
+  <plugin name='markov' path='$(datadir)/$(pkg_name)/plugins/plugin_markov_sqlite3'>
+   <dir path='./markov_db'/>
+   <max_words value='20' />
+   <command id='markov_count' name='!!!count'/>
+   <command id='markov_top' name='!!!top'/>
+  </plugin>
+
+  <plugin name='misc' path='$(datadir)/$(pkg_name)/plugins/plugin_misc'>
+   <command id='dns'/>
+ </plugin>
+
+  <plugin name='mueller' path='$(datadir)/$(pkg_name)/plugins/plugin_mueller'>
+   <db file='$(datadir)/mueller/Mueller24.koi'/>
+   <command id='mueller'/>
+  </plugin>
+
+  <plugin name='ping' path='$(datadir)/$(pkg_name)/plugins/plugin_ping'>
+   <command id='ping'/>
+  </plugin>
+
+  <plugin name='roulette' path='$(datadir)/$(pkg_name)/plugins/plugin_roulette'>
+   <command id='roulette' name='tryme'/>
+  </plugin>
+
+  <plugin name='seen' path='$(datadir)/$(pkg_name)/plugins/plugin_seen'>
+   <db file='$(datadir)/$(pkg_name)/sulci_users.db'/>
+   <command id='seen'/>
+  </plugin>
+
+  <plugin name='talkers' path='$(datadir)/$(pkg_name)/plugins/plugin_talkers'>
+   <db file='$(datadir)/$(pkg_name)/talkers.db'/>
+   <command id='talkers'/>
+  </plugin>
+
+  <plugin name='tld' path='$(datadir)/$(pkg_name)/plugins/plugin_tld'>
+   <db file='$(datadir)/$(pkg_name)/tlds'/>
+   <command id='tld'/>
+  </plugin>
+
+  <plugin name='userinfo' path='$(datadir)/$(pkg_name)/plugins/plugin_userinfo'>
+   <command id='version'/>
+   <command id='idle'/>
+   <command id='uptime'/>
+   <command id='time'/>
+   <command id='stats'/>
+  </plugin>
+
+  <plugin name='translate' path='$(datadir)/$(pkg_name)/plugins/plugin_translate'>
+   <command id='tr'/>
+  </plugin>
+
+  <plugin name='vcard' path='$(datadir)/$(pkg_name)/plugins/plugin_vcard'>
+   <command id='vcard'/>
+  </plugin>
+
+  <plugin name='vocabulary' path='$(datadir)/$(pkg_name)/plugins/plugin_vocabulary'>
+   <db file='$(datadir)/$(pkg_name)/vocabulary.db'/>
+   <command id='wtf'/>
+   <command id='dfn'/>
+   <command id='wtfremove' access='moderator'/>
+  </plugin>
+
+  <plugin name='weather' path='$(datadir)/$(pkg_name)/plugins/plugin_weather'>
+   <command id='wz'/>
+  </plugin>
+
+  <plugin name='vocabulary_muc' path='$(datadir)/$(pkg_name)/plugins/plugin_vocabulary_muc'>
+   <command id='dfn'/>
+  </plugin>
+
+  <plugin name='yandex' path='$(datadir)/$(pkg_name)/plugins/plugin_yandex'>
+   <command id='blogs'/>
+  </plugin>
+
+ </plugins>
+</sulci>
