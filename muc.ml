@@ -617,13 +617,12 @@ let enter_room ctx xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
        queue = Queue.create ();
        lang = xmpp.xmllang;
        occupants = Occupant.empty} ctx.groupchats;
-    send_presence xmpp ~jid_to:(replace_resource room nick)
-      ~x:[encode_muc ?maxchars ?maxstanzas ?seconds ?since ?password ()] ()
+    XEP_muc.enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
+      ~nick room
 
-let leave_room ctx xmpp ?status room =
-  let mynick = (get_room_env ctx room).mynick in
-    send_presence xmpp ~jid_to:(replace_resource room mynick)
-      ~kind:Unavailable ?status ()
+let leave_room ctx xmpp ?reason room =
+  let nick = (get_room_env ctx room).mynick in
+    XEP_muc.leave_room  xmpp ?reason ~nick room
     
 let change_nick xmpp jid_room newnick =
   XMPP.send_presence xmpp ~jid_to:(replace_resource jid_room newnick) ()

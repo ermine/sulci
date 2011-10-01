@@ -49,10 +49,10 @@ let leave muc_context xmpp env kind jid_from text =
   try
     let r = Pcre.exec ~rex:leave_rex text in
     let room_s = Pcre.get_substring r 1
-    and status = try Some (Pcre.get_substring r 3) with Not_found -> None in
+    and reason = try Some (Pcre.get_substring r 3) with Not_found -> None in
     let room = JID.of_string room_s in
       if is_joined muc_context room then (
-        Muc.leave_room muc_context xmpp ?status room;
+        Muc.leave_room muc_context xmpp ?reason room;
         if not (jid_from.lnode = room.lnode &&
             jid_from.ldomain = room.ldomain) then
           env.env_message xmpp kind jid_from "done";
