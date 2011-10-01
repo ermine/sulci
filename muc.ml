@@ -107,7 +107,7 @@ let load_rooms xmpp =
   let rec iter_room stmt =
     match get_row stmt with
       | Some row ->
-          let room = JID.jid_of_string (Data.to_string row.(0)) in
+          let room = JID.JID.of_string (Data.to_string row.(0)) in
           let mynick = Data.to_string row.(1) in
           let lang = Data.to_string row.(2) in
           let chatlog =
@@ -149,7 +149,7 @@ let get_entity ctx text jid_from =
         else
           EntityUser (text, {jid_from with resource = text; lresource = text})
       else
-        let jid = try jid_of_string text with _ -> raise BadEntity in
+        let jid = try JID.of_string text with _ -> raise BadEntity in
           if JID.equal jid jid_from then
             EntityYou jid
           else if jid.lnode = "" then (
@@ -701,7 +701,7 @@ let plugin opts =
                 ignore (Sql.select_rooms db
                           (fun room nick lang chatlog ->
                              enter_room ctx xmpp ~maxstanzas:0 ~nick
-                               (jid_of_string room)
+                               (JID.of_string room)
                           )
                        )
              )

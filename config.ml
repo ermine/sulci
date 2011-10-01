@@ -133,7 +133,7 @@ let setup_logger els =
     
 let fill_acl attrs =
   let v = need (List.assoc "jid") attrs "acl MUST have jid attribute" in
-  let jid = need jid_of_string v "acl/jid MUST be user@server value" in
+  let jid = need JID.of_string v "acl/jid MUST be user@server value" in
   let classname = need (List.assoc "class") attrs
     "acl MUST have class attribute" in
     Acl.acls := (jid, classname) :: !Acl.acls
@@ -169,7 +169,7 @@ let read_config = function
                    | "account" ->
                        let value = need (List.assoc "jid") attrs
                          "account/jid attribute MUST present" in
-                       let jid = need jid_of_string value
+                       let jid = need JID.of_string value
                          "account/jid MUST be user@server value" in
                        let account = parse_account jid els in
                          (account :: accounts, plugins)

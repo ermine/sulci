@@ -11,7 +11,7 @@ open Plugin_command
 let msg xmpp env kind jid_from text =
   try
     let s = String.index text ' ' in
-    let jid_to = jid_of_string (String.sub text 0 s) in
+    let jid_to = JID.of_string (String.sub text 0 s) in
     let body = string_after text (s+1) in
       env.env_message xmpp (Some Chat) jid_to body;
       env.env_message xmpp kind jid_from "done"

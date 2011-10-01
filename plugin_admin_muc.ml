@@ -10,7 +10,7 @@ open Muc
 let msg muc_context xmpp env kind jid_from text =
   try
     let s = String.index text ' ' in
-    let jid_to = jid_of_string (String.sub text 0 s) in
+    let jid_to = JID.of_string (String.sub text 0 s) in
     let body = Common.string_after text (s+1) in
       if is_joined muc_context jid_to && is_bare jid_to then
         env.env_message xmpp (Some Groupchat) jid_to body
@@ -25,7 +25,7 @@ let join_rex = Pcre.regexp "([^\\s]+)(\\s+(.*))?"
 let join muc_context xmpp env kind jid_from text =
   try
     let r = Pcre.exec ~rex:join_rex text in
-    let room = jid_of_string (Pcre.get_substring r 1) in
+    let room = JID.of_string (Pcre.get_substring r 1) in
       if is_joined muc_context room then
         env.env_message xmpp kind jid_from "again?"
       else        
@@ -50,7 +50,7 @@ let leave muc_context xmpp env kind jid_from text =
     let r = Pcre.exec ~rex:leave_rex text in
     let room_s = Pcre.get_substring r 1
     and status = try Some (Pcre.get_substring r 3) with Not_found -> None in
-    let room = jid_of_string room_s in
+    let room = JID.of_string room_s in
       if is_joined muc_context room then (
         Muc.leave_room muc_context xmpp ?status room;
         if not (jid_from.lnode = room.lnode &&
@@ -70,10 +70,10 @@ let invite muc_context xmpp env kind jid_from text =
     let who = Pcre.get_substring r 1
     and room_dst = try Pcre.get_substring r 3 with Not_found -> "" in
       if room_dst = "" && is_joined muc_context jid_from then
-        let jid_who = jid_of_string who in
+        let jid_who = JID.of_string who in
           Muc.invite xmpp jid_from jid_who
       else
-        let room_jid = jid_of_string room_dst in
+        let room_jid = JID.of_string room_dst in
           if room_jid.lresource = "" && is_joined muc_context room_jid then
             let room_env = get_room_env muc_context jid_from in
               try
@@ -83,7 +83,7 @@ let invite muc_context xmpp env kind jid_from text =
                   | None ->
                       raise Not_found
               with Not_found ->
-                let jid_who = jid_of_string who in
+                let jid_who = JID.of_string who in
                   Muc.invite xmpp room_jid jid_who
           else
             raise Not_found

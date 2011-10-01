@@ -73,7 +73,7 @@ let get_entity text jid_from =
   if text = "" then
     EntityYou jid_from
   else
-    let jid = try jid_of_string text with _ -> raise BadEntity in
+    let jid = try JID.of_string text with _ -> raise BadEntity in
       if jid.lnode = "" then (
         (try dnsprep jid.ldomain;
          with _ -> raise BadEntity);

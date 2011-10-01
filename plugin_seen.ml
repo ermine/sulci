@@ -24,9 +24,9 @@ let add_greet db xmpp env kind jid_from text =
   if text <> "" then
     try
       let res = Pcre.exec ~rex:cmd_greet ~pos:0 text in
-      let jid = jid_of_string (Pcre.get_substring res 1) in
+      let jid = JID.of_string (Pcre.get_substring res 1) in
       let jid = string_of_jid (bare_jid jid) in
-      let room = jid_of_string (Pcre.get_substring res 2) in
+      let room = JID.of_string (Pcre.get_substring res 2) in
       let room = string_of_jid (bare_jid room) in
       let greet = Pcre.get_substring res 3 in
         match Sql.check_greet db ~jid ~room with
