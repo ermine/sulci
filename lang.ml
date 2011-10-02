@@ -8,13 +8,7 @@ let ext = ".htbl"
 let deflang = ref "ru"
 let dir = ref "./lang"
 
-module Id =
-struct
-  type t = string
-  let compare = compare
-end
-  
-module LangMap = Map.Make(Id)
+module LangMap = Map.Make(String)
 let langmsgs =  ref (LangMap.empty:(string, string) Hashtbl.t LangMap.t)
 
 type langtime_t = {
@@ -22,7 +16,7 @@ type langtime_t = {
   float_seconds: string -> float -> string
 }
 
-module LangTime = Map.Make(Id)
+module LangTime = Map.Make(String)
 let langtime = ref LangTime.empty
 
 let _ =

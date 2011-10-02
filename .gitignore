@@ -4,3 +4,4 @@ setup.data
 *.native
 *.docdir
 _build
+sulci.conf

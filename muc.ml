@@ -18,12 +18,7 @@ type occupant = {
   mutable role : role
 }
 
-module OccupantNick =
-struct
-  type t = string
-  let compare x y = if x = y then 0 else if x < y then 1 else -1
-end
-module Occupant = Map.Make(OccupantNick)
+module Occupant = Map.Make(String)
 
 type room_env = {
   mutable mynick : string;
