@@ -55,12 +55,12 @@ let run_for_token opts xmpp =
 
 let add_presence_hook xmpp priority name proc =
   xmpp.data.presence_hooks <-
-    List.fast_sort (fun h1 h2 -> compare h1.priority h2.priority)
+    List.fast_sort (fun h1 h2 -> Pervasives.compare h1.priority h2.priority)
     ({priority = priority; name = name; proc = proc} :: xmpp.data.presence_hooks)
 
 let add_message_hook xmpp priority name proc =
   xmpp.data.message_hooks <-
-    List.fast_sort (fun h1 h2 -> compare h1.priority h2.priority)
+    List.fast_sort (fun h1 h2 -> Pervasives.compare h1.priority h2.priority)
     ({priority = priority; name = name; proc = proc} :: xmpp.data.message_hooks)
 
 let register_on_connect xmpp proc =

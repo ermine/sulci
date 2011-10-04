@@ -128,7 +128,7 @@ let list_commands xmpp env kind jid_from text =
     if clist = [] then
       "no commands yet"
     else
-      String.concat " " (List.fast_sort compare clist)
+      String.concat " " (List.fast_sort Pervasives.compare clist)
   in
     env.env_message xmpp kind jid_from rsp
 

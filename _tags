@@ -7,40 +7,40 @@
 "plugin_google.ml": syntax_camlp4o, use_json_static.syntax
 
 # OASIS_START
-# DO NOT EDIT (digest: 20fc3f9674653c1456edeb5b1ee8d5e9)
+# DO NOT EDIT (digest: 50d6a175e47b03d53d58e711833f8ecb)
 # Executable sulci
-<sulci.{native,byte}>: pkg_xmpp
-<sulci.{native,byte}>: pkg_xml
 <sulci.{native,byte}>: pkg_ulex
 <sulci.{native,byte}>: pkg_threads
 <sulci.{native,byte}>: pkg_text
-<sulci.{native,byte}>: pkg_strftime
 <sulci.{native,byte}>: pkg_sqlite3
-<sulci.{native,byte}>: pkg_scheduler
 <sulci.{native,byte}>: pkg_pcre
 <sulci.{native,byte}>: pkg_netclient
-<sulci.{native,byte}>: pkg_logger
 <sulci.{native,byte}>: pkg_json-static
+<sulci.{native,byte}>: pkg_erm_xmpp
+<sulci.{native,byte}>: pkg_erm_xml
+<sulci.{native,byte}>: pkg_erm_strftime
+<sulci.{native,byte}>: pkg_erm_scheduler
+<sulci.{native,byte}>: pkg_erm_logger
+<sulci.{native,byte}>: pkg_erm_dehtml
+<sulci.{native,byte}>: pkg_erm_brainfuck
 <sulci.{native,byte}>: pkg_dynlink
-<sulci.{native,byte}>: pkg_dehtml
 <sulci.{native,byte}>: pkg_dbm
-<sulci.{native,byte}>: pkg_brainfuck
-<*.ml{,i}>: pkg_xmpp
-<*.ml{,i}>: pkg_xml
 <*.ml{,i}>: pkg_ulex
 <*.ml{,i}>: pkg_threads
 <*.ml{,i}>: pkg_text
-<*.ml{,i}>: pkg_strftime
 <*.ml{,i}>: pkg_sqlite3
-<*.ml{,i}>: pkg_scheduler
 <*.ml{,i}>: pkg_pcre
 <*.ml{,i}>: pkg_netclient
-<*.ml{,i}>: pkg_logger
 <*.ml{,i}>: pkg_json-static
+<*.ml{,i}>: pkg_erm_xmpp
+<*.ml{,i}>: pkg_erm_xml
+<*.ml{,i}>: pkg_erm_strftime
+<*.ml{,i}>: pkg_erm_scheduler
+<*.ml{,i}>: pkg_erm_logger
+<*.ml{,i}>: pkg_erm_dehtml
+<*.ml{,i}>: pkg_erm_brainfuck
 <*.ml{,i}>: pkg_dynlink
-<*.ml{,i}>: pkg_dehtml
 <*.ml{,i}>: pkg_dbm
-<*.ml{,i}>: pkg_brainfuck
 # Executable langcompile
 # Executable createtld
 <tlds/createtlds.{native,byte}>: pkg_dbm

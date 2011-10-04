@@ -31,7 +31,7 @@ type room_env = {
 module GroupID =
 struct
   type t = string * string
-  let compare = compare
+  let compare = Pervasives.compare
 end
 module Groupchat = Map.Make(GroupID)
 
