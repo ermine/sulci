@@ -8,7 +8,7 @@ open JID
 open Hooks
 
 type account = {
-  jid : jid;
+  jid : JID.t;
   ip : string;
   port : int option;
   password : string;

@@ -13,7 +13,7 @@ module Sql = Muc_sql.Make(Sqlgg_sqlite3)
 
 type occupant = {
   (* nick : string; *)
-  mutable jid : JID.jid option;
+  mutable jid : JID.t option;
   mutable affiliation : affiliation;
   mutable role : role
 }
@@ -42,15 +42,15 @@ type muc_event =
   | MUC_join
   | MUC_leave of reason option
   | MUC_nick of string * reason option
-  | MUC_destroy of jid option * password option * reason option
+  | MUC_destroy of JID.t option * password option * reason option
   | MUC_ban of reason option
   | MUC_kick of reason option
   | MUC_room_created
   | MUC_affiliation of reason option
   | MUC_members_only of reason option
   | MUC_system_shutdown of reason option
-  | MUC_decline of jid option * jid option * reason option
-  | MUC_invite of jid option * jid option * reason option * password option
+  | MUC_decline of JID.t option * JID.t option * reason option
+  | MUC_invite of JID.t option * JID.t option * reason option * password option
 
 type muc_context = {
   max_public_message_length : int;
@@ -59,9 +59,9 @@ type muc_context = {
   mutable groupchats : room_env Groupchat.t;
   mutable conversation_procs :
     (muc_context -> xmpp -> env -> message_type option ->
-       jid -> string -> string -> unit) list;
+     JID.t -> string -> string -> unit) list;
   mutable muc_event_handlers :
-    (muc_context -> xmpp -> env -> jid -> muc_event -> unit) list;
+    (muc_context -> xmpp -> env -> JID.t -> muc_event -> unit) list;
 }
 
 let ctx_hooks : (muc_context -> xmpp -> unit) list ref = ref []

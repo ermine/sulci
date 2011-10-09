@@ -28,11 +28,11 @@ and m = {
 }
 and mevent = 
   | MMessage of
-      context * muc_context * xmpp * env * message_type option * jid *
+      context * muc_context * xmpp * env * message_type option * JID.t *
         string * string
   | MStop 
-  | MCount of context * xmpp * env * message_type option * jid
-  | MTop of context * xmpp * env * message_type option * jid
+  | MCount of context * xmpp * env * message_type option * JID.t
+  | MTop of context * xmpp * env * message_type option * JID.t
 
 
 let add_queue (m:m) (mevent:mevent) =

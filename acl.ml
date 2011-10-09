@@ -5,7 +5,7 @@
 open JID
 open Hooks
   
-let acls : ((jid * string) list) ref = ref []
+let acls : ((JID.t * string) list) ref = ref []
 
 let check_access jid classname =
   if classname = "" then

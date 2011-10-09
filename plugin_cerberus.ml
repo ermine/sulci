@@ -260,7 +260,7 @@ type action =
 type context = {
   topics : (string * string, string) Hashtbl.t;
   action : action;
-  notify : jid list
+  notify : JID.t list
 }
 
 let report ctx room_env xmpp env jid_from place word phrase =

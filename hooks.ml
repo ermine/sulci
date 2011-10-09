@@ -27,17 +27,17 @@ and 'a hook = {
   proc : xmpp -> env -> 'a stanza -> 'a hook list -> unit
 }
 and env = {
-  env_identity : jid -> jid;
+  env_identity : JID.t -> JID.t;
   env_lang: string;
-  env_get_entity: string -> JID.jid -> entity;
-  env_message : xmpp -> message_type option -> jid -> ?response_tail:string ->
+  env_get_entity: string -> JID.t -> entity;
+  env_message : xmpp -> message_type option -> JID.t -> ?response_tail:string ->
                                                string -> unit;
 }
 and entity =
-  | EntityMe of JID.jid
-  | EntityYou of JID.jid
-  | EntityUser of string * JID.jid
-  | EntityHost of JID.jid
+  | EntityMe of JID.t
+  | EntityYou of JID.t
+  | EntityUser of string * JID.t
+  | EntityHost of JID.t
 
 let catch f x = try Some (f x) with Not_found -> None
 

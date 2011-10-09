@@ -9,7 +9,7 @@ open Hooks
 open Acl
 
 type command = {
-  callback : xmpp -> env -> message_type option -> jid -> string -> unit;
+  callback : xmpp -> env -> message_type option -> JID.t -> string -> unit;
   access : string
 }
 
