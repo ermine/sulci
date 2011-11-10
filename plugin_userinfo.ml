@@ -49,21 +49,22 @@ let uptime =
       
 let version =
   let print_version env msgid arg = function
-    | None -> "hz"
-    | Some el ->
-        match XEP_version.decode el with
-          | None -> "hz"
-          | Some t ->
-              let client =
-                if t.XEP_version.name = "" then "[unknown]"
-                else t.XEP_version.name in
-              let version =
-                if t.XEP_version.version = "" then "[unknown]"
-                else t.XEP_version.version in
-              let os =
-                if t.XEP_version.os = "" then "[unknown]"
-                else t.XEP_version.os in
-                Lang.get_msg env.env_lang msgid (arg @ [client; version; os])
+    | Some (Xml.Xmlelement ((ns_version, "query"), attrs, els))  -> (
+      match XEP_version.decode attrs els with
+        | None -> "hz"
+        | Some t ->
+          let client =
+            if t.XEP_version.name = "" then "[unknown]"
+            else t.XEP_version.name in
+          let version =
+            if t.XEP_version.version = "" then "[unknown]"
+            else t.XEP_version.version in
+          let os =
+            if t.XEP_version.os = "" then "[unknown]"
+            else t.XEP_version.os in
+            Lang.get_msg env.env_lang msgid (arg @ [client; version; os])
+    )
+    | _ -> "hz"
   in
   let me xmpp env kind jid_from _text =
     env.env_message xmpp kind jid_from
