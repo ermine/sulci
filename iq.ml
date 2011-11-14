@@ -78,55 +78,80 @@ let process_error error env entity =
     | UNKNOWN_CONDITION other ->
         other
             
-            
 let simple_query_entity ?me ?(error_exceptions=[]) success
     ~payload xmpp env kind jid_from text =
   let entity =
-    try Some (env.env_get_entity text jid_from) with _ -> None in
+    try Some (env.env_get_entity text jid_from)
+    with _ -> None in
     match entity with
       | None ->
-          env.env_message xmpp kind jid_from
-            (Lang.get_msg env.env_lang "invalid_entity" [])
+        env.env_message xmpp kind jid_from
+          (Lang.get_msg env.env_lang "invalid_entity" [])
       | Some e ->
-          match e, me with
-            | EntityMe _, Some f ->
-                f xmpp env kind jid_from text
-            | EntityMe jid, _
-            | EntityYou jid, _
-            | EntityUser (_, jid), _
-            | EntityHost jid, _ ->
-                let proc ev _jidfrom _jidto _lang () =
-                  match ev with
-                    | IQResult el ->
-                        env.env_message xmpp kind jid_from
-                          (success env text e el)
-                    | IQError err -> (
-                        if List.mem err.err_condition error_exceptions then
-                          env.env_message xmpp kind jid_from
-                            (success env text e None)
-                        else
-                          env.env_message xmpp kind jid_from
-                            (process_error err env e)
-                      )
-                in
-                  XMPP.make_iq_request xmpp ~jid_to:jid (IQGet payload) proc
+        match e, me with
+          | EntityMe _, Some f ->
+            f xmpp env kind jid_from text
+          | EntityMe jid, _
+          | EntityYou jid, _
+          | EntityUser (_, jid), _
+          | EntityHost jid, _ ->
+            let proc ev _jidfrom _jidto _lang () =
+              match ev with
+                | IQResult el ->
+                  env.env_message xmpp kind jid_from
+                    (success env text e el)
+                | IQError err -> (
+                  if List.mem err.err_condition error_exceptions then
+                    env.env_message xmpp kind jid_from
+                      (success env text e None)
+                  else
+                    env.env_message xmpp kind jid_from
+                      (process_error err env e)
+                )
+            in
+              XMPP.make_iq_request xmpp ~jid_to:jid (IQGet payload) proc
         
-
+let simple_query_entity2 ?me ?(error_exceptions=[]) success get
+    xmpp env kind jidfrom text =
+  let entity =
+    try Some (env.env_get_entity text jidfrom)
+    with _ -> None in
+    match entity with
+      | None ->
+        env.env_message xmpp kind jidfrom
+          (Lang.get_msg env.env_lang "invalid_entity" [])
+      | Some entity ->
+        match entity, me with
+          | EntityMe _, Some f ->
+            f xmpp env kind jidfrom text
+          | EntityMe jid, _
+          | EntityYou jid, _
+          | EntityUser (_, jid), _
+          | EntityHost jid, _ ->
+            let proc ?jid_from ?jid_to ?lang answer =
+              env.env_message xmpp kind jidfrom (success env text entity answer)
+            in
+            let error_callback err =
+              if List.mem err.err_condition error_exceptions then
+                env.env_message xmpp kind jidfrom (success env text entity None)
+              else
+                env.env_message xmpp kind jidfrom (process_error err env entity)
+            in
+              get xmpp ?jid_from:None ?jid_to:(Some jid) ?lang:None
+                ?error_callback:(Some error_callback) proc
+                
+    
+  
 let os = (let f = Unix.open_process_in "uname -sr" in
           let answer = input_line f in
             ignore (Unix.close_process_in f); answer)
   
 let features xmpp =
   XMPP.register_iq_request_handler xmpp XEP_version.ns_version
-    (fun ev _jid_from _jid_to _lang () ->
-       match ev with
-         | IQGet _el ->
-             let el = XEP_version.encode {XEP_version.name = Version.name;
-                                          XEP_version.version = Version.version;
-                                          XEP_version.os = os} in
-               IQResult (Some el)
-         | IQSet _el ->
-             raise BadRequest
+    XEP_version.(
+      iq_request ~get:(fun ?jid_from ?jid_to ?lang () -> {
+        name = Version.name;
+        version = Version.version;
+        os = os
+      })
     )
-    
-    
