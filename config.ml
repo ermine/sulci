@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2004-2010 Anastasia Gornostaeva
  *)
 
 open Arg
@@ -202,7 +202,7 @@ let read_config = function
 
 let version () =
   Printf.printf 
-    "%s %s (c) 2004-2010, Anastasia Gornostaeva <ermine@ermine.pp.ru>\n"
+    "%s %s (c) 2004-2011, Anastasia Gornostaeva\n"
     Version.name
     Version.version;
   Pervasives.exit 0
