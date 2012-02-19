@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
 open Hooks
@@ -47,17 +47,19 @@ let uptime =
   in
     simple_query_entity success ~payload:(XEP_last.make_iq_get ())
       
+let unknown = "[noname]"
+
 let version =
   let print_version env msgid arg = function
     | Some t ->
       let client =
-        if t.XEP_version.name = "" then "[unknown]"
+        if t.XEP_version.name = "" then unknown
         else t.XEP_version.name in
       let version =
-        if t.XEP_version.version = "" then "[unknown]"
+        if t.XEP_version.version = "" then unknown
         else t.XEP_version.version in
       let os =
-        if t.XEP_version.os = "" then "[unknown]"
+        if t.XEP_version.os = "" then unknown
         else t.XEP_version.os in
         Lang.get_msg env.env_lang msgid (arg @ [client; version; os])
     | _ -> "hz"
