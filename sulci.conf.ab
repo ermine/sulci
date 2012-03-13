@@ -50,6 +50,9 @@
  <acl jid='ermine@jabber.ru' class='botmaster'/>
  
  <plugins>
+  <plugin name='commands' path='$(datadir)/$(pkg_name)/plugins/plugin_command'>
+   <prefix value='.'/>
+  </plugin>
 
   <plugin name='muc' path='$(datadir)/$(pkg_name)/plugins/muc'>
    <max_public_message_length value='400'/>
@@ -66,10 +69,6 @@
 
   <plugin name='http' path='$(datadir)/$(pkg_name)/plugins/http_suck'/>
   
-  <plugin name='commands' path='$(datadir)/$(pkg_name)/plugins/plugin_command'>
-   <prefix value='.'/>
-  </plugin>
-
   <plugin name='conversion' path='$(datadir)/$(pkg_name)/plugins/conv_xml' />
 
   <plugin name='admin' path='$(datadir)/$(pkg_name)/plugins/plugin_admin'>
