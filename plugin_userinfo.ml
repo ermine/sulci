@@ -100,7 +100,8 @@ let time =
                    minute = min;
                    second = sec;
                    zone = 0;
-                   week_day = 0
+                   week_day = 0;
+                   nanos = 0
                  }) in
             let f = Netdate.since_epoch netdate in
               Netdate.mk_mail_date f
