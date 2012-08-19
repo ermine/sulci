@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 0934b2467affeb042576d21e07db9ade) *)
+(* DO NOT EDIT (digest: fb03d830a2563d92b3a2e6c84bcdb06a) *)
 This is the INSTALL file for the sulci distribution.
 
 This package uses OASIS to generate its build system. See section OASIS for
@@ -9,7 +9,7 @@ Dependencies
 ============
 
 In order to compile this package, you will need:
-* ocaml
+* ocaml (>= 3.12)
 * findlib
 * erm_brainfuck for executable sulci
 * erm_logger for executable sulci
@@ -28,7 +28,7 @@ In order to compile this package, you will need:
 Installing
 ==========
 
-1. Uncompress source directory and got to the root of the package
+1. Uncompress the source archive and go to the root of the package
 2. Run 'ocaml setup.ml -configure'
 3. Run 'ocaml setup.ml -build'
 4. Run 'ocaml setup.ml -install'
@@ -42,8 +42,8 @@ Uninstalling
 OASIS
 =====
 
-OASIS is a software that helps to write setup.ml using a simple '_oasis'
-configuration file. The generated setup only depends on standard OCaml
-installation, no additional library is required.
+OASIS is a program that generates a setup.ml file using a simple '_oasis'
+configuration file. The generated setup only depends on the standard OCaml
+installation: no additional library is required.
 
 (* OASIS_STOP *)

@@ -122,7 +122,7 @@ let load_cities () =
           log#error "plugin_yandex[load_cities]: unable to fetch cities: %s"
             (Printexc.to_string exn)
   in
-  let url = "http://export.yandex.ru/weather/cities.xml" in
+  let url = "http://export.yandex.ru/weather/" in
     Http_suck.http_get url callback
 
 let get_code country city =

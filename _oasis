@@ -10,6 +10,8 @@ Plugins:              DevFiles (0.2), META (0.2), StdFiles (0.2)
 BuildTools:           ocamlbuild
 FilesAB:              version.ml.ab, sulci.conf.ab
 PreInstallCommand:    $ocamlbuild data_files
+OCamlVersion:        >= 3.12
+
 
 Executable langcompile
   Path:           lang/
