@@ -1,12 +1,12 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
-open XMPP
 open JID
 open Common
 open Hooks
 open Plugin_command
+open XMPPClient
 
 let msg xmpp env kind jid_from text =
   try
@@ -21,8 +21,8 @@ let msg xmpp env kind jid_from text =
 let quit xmpp env kind jid_from text =
   env.env_message xmpp kind jid_from
     (Lang.get_msg env.env_lang "plugin_admin_quit_bye" []);
-  XMPP.send_presence xmpp ~kind:Unavailable ~status:text ();
-  XMPP.close_stream xmpp;
+  XMPPClient.send_presence xmpp ~kind:Unavailable ~status:text ();
+  XMPPClient.close_stream xmpp;
   Pervasives.exit 0
       
 let lang_update xmpp env kind jid_from text =

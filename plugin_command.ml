@@ -1,12 +1,12 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
-open XMPP
 open JID
 open Common
 open Hooks
 open Acl
+open XMPPClient
 
 type command = {
   callback : xmpp -> env -> message_type option -> JID.t -> string -> unit;
@@ -20,53 +20,53 @@ type command_context = {
 
 let storage = Hashtbl.create 2
 
-let get_context xmpp =
-  Hashtbl.find storage xmpp.data.skey
+let get_context user_data =
+  Hashtbl.find storage user_data.skey
     (* try .. with -> error *)
 
-let add_command xmpp id (command:string) proc access =
+let add_command user_data id (command:string) proc access =
   log#info "Registered a command id: %s name: %s access: %s" id command access;
-  let ctx = get_context xmpp in
+  let ctx = get_context user_data in
     Hashtbl.replace ctx.commands command {callback = proc; access = access}
 
 let parse_command_params params =
   let (id, name, access) =
     List.fold_left (fun (id, name, access) (p, v) ->
-                      match p with
-                        | "id" ->
-                            if v = "" then (
-                              log#notice "command/id is empty";
-                              (id, name, access)
-                            )
-                            else
-                              (v, name, access)
-                        | "name" ->
-                            if v = "" then (
-                              log#notice "command/name is empty";
-                              (id, name, access)
-                            )
-                            else
-                              (id, v, access)
-                        | "access" ->
-                            if v = "" then (
-                              log#notice "command/access is empty";
-                              (id, name, access)
-                            )
-                            else
-                              (id, name, v)
-                        | other ->
-                            log#notice "Unknown command parameter: %S" other;
-                            (id, name, access)
-                   ) ("", "", "") params in
+      match p with
+        | "id" ->
+          if v = "" then (
+            log#notice "command/id is empty";
+            (id, name, access)
+          )
+          else
+            (v, name, access)
+        | "name" ->
+          if v = "" then (
+            log#notice "command/name is empty";
+            (id, name, access)
+          )
+          else
+            (id, v, access)
+        | "access" ->
+          if v = "" then (
+            log#notice "command/access is empty";
+            (id, name, access)
+          )
+          else
+            (id, name, v)
+        | other ->
+          log#notice "Unknown command parameter: %S" other;
+          (id, name, access)
+    ) ("", "", "") params in
     (id, name, access)
 
 let parse_opts cmds opts =
   let cmd_opts =
     List.fold_left (fun acc -> function
-                      | "command", params ->
-                          parse_command_params params :: acc
-                      | _ -> acc
-                   ) [] opts in
+      | "command", params ->
+        parse_command_params params :: acc
+      | _ -> acc
+    ) [] opts in
   let res =
     List.fold_left (fun acc (id, proc) ->
                       let id', name, access =
@@ -77,11 +77,11 @@ let parse_opts cmds opts =
                    ) [] cmds
   in List.rev res
       
-let add_commands xmpp cmds opts =
+let add_commands user_data cmds opts =
   let data = parse_opts cmds opts in
     List.iter (fun (id, name, access, proc) ->
-                 add_command xmpp id name proc access
-              ) data
+      add_command user_data id name proc access
+    ) data
 
 let do_command ctx xmpp env kind jid_from text =
   if text <> "" && (ctx.prefix = "" || is_prefix ctx.prefix text) then
@@ -115,14 +115,14 @@ let do_command ctx xmpp env kind jid_from text =
 let process_message xmpp env stanza hooks =
   match stanza.jid_from, stanza.content.subject, stanza.content.body with
     | Some from, None, Some text ->
-        let ctx = get_context xmpp in
+        let ctx = get_context xmpp.user_data in
           if do_command ctx xmpp env stanza.content.message_type from text then
             do_hook xmpp env stanza hooks
     | _ ->
         do_hook xmpp env stanza hooks
 
 let list_commands xmpp env kind jid_from text =
-  let ctx = get_context xmpp in
+  let ctx = get_context xmpp.user_data in
   let clist = Hashtbl.fold (fun id _ acc -> id :: acc) ctx.commands [] in
   let rsp =
     if clist = [] then
@@ -133,7 +133,7 @@ let list_commands xmpp env kind jid_from text =
     env.env_message xmpp kind jid_from rsp
 
 let help xmpp env kind jid_from text =
-  let _ctx = get_context xmpp in
+  let _ctx = get_context xmpp.user_data in
     env.env_message xmpp kind jid_from "no help yet"
 
 let plugin opts =
@@ -143,13 +143,13 @@ let plugin opts =
   in
   let spec = parse_opts [("help", help); ("commands", list_commands)] opts in
     add_for_token
-      (fun _opts xmpp ->
+      (fun _opts user_data ->
          let ctx =
            {prefix = prefix;
             commands = Hashtbl.create 10};
          in
-           Hashtbl.add storage xmpp.data.skey ctx;
-           add_message_hook xmpp 70 "commands" process_message;
+           Hashtbl.add storage user_data.skey ctx;
+           add_message_hook user_data 70 "commands" process_message;
            List.iter (fun (id, name, access, proc) ->
                         Hashtbl.add ctx.commands name
                           {callback = proc; access = access}

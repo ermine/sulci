@@ -1,13 +1,13 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
-open XMPP
 open JID
 open Hooks
 open Muc
-open Sqlite3
+open XMPPClient
 
+open Sqlite3
 module Sql = Markov_sql.Make(Sqlgg_sqlite3)
 
 exception Result of string

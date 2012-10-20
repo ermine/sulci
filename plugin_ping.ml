@@ -1,13 +1,15 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
 open StanzaError
-open XMPP
 open JID
 open XEP_version
 open Hooks
 open Plugin_command
+open XMPPClient
+
+module V = XEP_version.Make(XMPPClient)
 
 let ping xmpp env kind jid_from text =
   let success starttime env text entity _result =
@@ -24,7 +26,7 @@ let ping xmpp env kind jid_from text =
             [text; diff]
   in
     Iq.simple_query_entity2 ~error_exceptions:[ERR_FEATURE_NOT_IMPLEMENTED]
-      (success (Unix.gettimeofday ())) XEP_version.get
+      (success (Unix.gettimeofday ())) V.get
       xmpp env kind jid_from text 
 
     

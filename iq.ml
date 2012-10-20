@@ -1,12 +1,13 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
-open XMPP
 open JID
 open StanzaError
 open Common
 open Hooks
+
+open XMPPClient
 
 let get_host = function
   | EntityMe jid
@@ -109,7 +110,7 @@ let simple_query_entity ?me ?(error_exceptions=[]) success
                       (process_error err env e)
                 )
             in
-              XMPP.make_iq_request xmpp ~jid_to:jid (IQGet payload) proc
+              XMPPClient.make_iq_request xmpp ~jid_to:jid (IQGet payload) proc
         
 let simple_query_entity2 ?me ?(error_exceptions=[]) success get
     xmpp env kind jidfrom text =
@@ -147,11 +148,12 @@ let os = (let f = Unix.open_process_in "uname -sr" in
             ignore (Unix.close_process_in f); answer)
   
 let features xmpp =
-  XMPP.register_iq_request_handler xmpp XEP_version.ns_version
-    XEP_version.(
-      iq_request ~get:(fun ?jid_from ?jid_to ?lang () -> {
-        name = Version.name;
-        version = Version.version;
-        os = os
-      })
-    )
+  let module XV = XEP_version.Make(XMPPClient) in
+    XMPPClient.register_iq_request_handler xmpp XV.ns_version
+      XV.(
+        iq_request ~get:(fun ?jid_from ?jid_to ?lang () -> {
+          name = Version.name;
+          version = Version.version;
+          os = os
+        })
+      )

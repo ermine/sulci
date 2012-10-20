@@ -1,14 +1,16 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
 open StanzaError
-open XMPP
 open JID
 open Hooks
 open Muc
-open XEP_muc
-  
+open XMPPClient
+
+module MUC = XEP_muc.Make(XMPPClient)
+open MUC  
+
 let r = Random.self_init ()
 
 let roulette muc_context xmpp env kind jid_from text =

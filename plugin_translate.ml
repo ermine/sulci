@@ -1,5 +1,5 @@
 (*
- * (c) 2005-2010 Anastasia Gornostaeva
+ * (c) 2005-2012 Anastasia Gornostaeva
  *)
 
 (*
@@ -79,7 +79,7 @@ let do_request language xmpp env kind jid_from text =
     let resp = match data with
       | OK (_media, _charset, content) -> (
           try
-            let wml = parse_document content in
+            let wml = Light_xml.parse_string content in
               match process_doc (get_subels wml) with
                 | None -> Lang.get_msg env.env_lang
                     "plugin_translate_not_parsed" []

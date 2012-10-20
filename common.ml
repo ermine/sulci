@@ -156,3 +156,6 @@ exception DNSPrepError
 let dnsprep str =
   if String.contains str '.' then ()
   else raise DNSPrepError
+
+let opt_try f x = try Some (f x) with Not_found -> None
+    

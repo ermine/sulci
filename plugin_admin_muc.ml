@@ -1,11 +1,11 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
-open XMPP
 open JID
 open Hooks
 open Muc
+open XMPPClient
 
 let msg muc_context xmpp env kind jid_from text =
   try

@@ -70,7 +70,7 @@ let traffic xmpp env kind jid_from text =
 let try_assoc name fields = try List.assoc name fields with Not_found -> "n/a"
   
 let parse_weather content =
-  let parsed = parse_document content in
+  let parsed = Light_xml.parse_string content in
   let fields =
     List.fold_left (fun acc -> function
                       | Xmlelement (tag, _, _) as el ->
@@ -89,7 +89,7 @@ let parse_weather content =
 let city_htbl = Hashtbl.create 100
   
 let parse_cities content =
-  let parsed = Light_xml.parse_document content in
+  let parsed = Light_xml.parse_string content in
     List.iter (fun el ->
                  let country = Stringprep.lowercase (get_attr_s el "name") in
                  let cities =
@@ -113,11 +113,11 @@ let load_cities () =
   let callback data =
     match data with
       | OK (_media, _charset, content) -> (
-          try parse_cities content
-          with exn ->
-            log#error "plugin_yandex[load_cities]: unable to fetch cities: %s"
-              (Printexc.to_string exn)
-        )
+        try parse_cities content
+        with exn ->
+          log#error "plugin_yandex[load_cities]: unable to fetch cities: %s"
+            (Printexc.to_string exn)
+      )
       | Exception exn ->
           log#error "plugin_yandex[load_cities]: unable to fetch cities: %s"
             (Printexc.to_string exn)

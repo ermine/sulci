@@ -1,3 +1,5 @@
+true: debug
+
 <sulci.{ml,byte,native}>: use_lang, use_plugins
 
 "find_url.ml": syntax_camlp4o, use_ulex.syntax
@@ -7,7 +9,7 @@
 "plugin_google.ml": syntax_camlp4o, use_json_static.syntax
 
 # OASIS_START
-# DO NOT EDIT (digest: b3f19dd8c4dab941633c859a09fd6c2f)
+# DO NOT EDIT (digest: d1ea6a4e9b5345293d4145a326acfbb9)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -42,6 +44,7 @@
 <sulci.{native,byte}>: pkg_netclient
 <sulci.{native,byte}>: pkg_dbm
 <sulci.{native,byte}>: pkg_json-static
+<sulci.{native,byte}>: pkg_erm_treap
 <*.ml{,i}>: pkg_threads
 <*.ml{,i}>: pkg_erm_brainfuck
 <*.ml{,i}>: pkg_erm_logger
@@ -58,4 +61,5 @@
 <*.ml{,i}>: pkg_netclient
 <*.ml{,i}>: pkg_dbm
 <*.ml{,i}>: pkg_json-static
+<*.ml{,i}>: pkg_erm_treap
 # OASIS_STOP

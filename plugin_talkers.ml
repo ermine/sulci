@@ -1,14 +1,14 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
-open XMPP
 open JID
 open Common
 open Hooks
 open Muc
-open Sqlite3
+open XMPPClient
 
+open Sqlite3
 module Sql = Talkers_sql.Make(Sqlgg_sqlite3)
 
 let split_words text =

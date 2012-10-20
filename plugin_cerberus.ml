@@ -1,12 +1,13 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
-open XMPP
 open JID
 open Hooks
 open Muc
-open XEP_muc
+open XMPPClient
+module MUC = XEP_muc.Make(XMPPClient)
+open MUC
 
 let regexp ca          = 0x430 | 0x410 | 'a' | 'A'
 let regexp cb          = 0x431 | 0x411

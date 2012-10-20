@@ -3,7 +3,6 @@
  *)
 
 open JID
-open Hooks
   
 let acls : ((JID.t * string) list) ref = ref []
 

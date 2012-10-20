@@ -1,13 +1,16 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
 open Xml
-open XMPP
 open JID
-open XEP_muc
 open Common
 open Hooks
+
+open XMPPClient
+module MUC = XEP_muc.Make(XMPPClient)
+open MUC
+
 open Sqlite3
 module Sql = Muc_sql.Make(Sqlgg_sqlite3)
 
@@ -64,7 +67,7 @@ type muc_context = {
     (muc_context -> xmpp -> env -> JID.t -> muc_event -> unit) list;
 }
 
-let ctx_hooks : (muc_context -> xmpp -> unit) list ref = ref []
+let ctx_hooks : (muc_context -> user_data -> unit) list ref = ref []
 
 let add_muc_event_handler muc_context handler =
   muc_context.muc_event_handlers <- handler :: muc_context.muc_event_handlers
@@ -155,10 +158,10 @@ let get_entity ctx text jid_from =
             EntityUser (text, jid)
 
 let check_access xmpp jid classname =
-  match catch (get_room_env xmpp) jid with
+  match opt_try (get_room_env xmpp) jid with
     | None -> Acl.check_access jid classname
     | Some room_env ->
-        match catch (Occupant.find jid.lresource) room_env.occupants with
+        match opt_try (Occupant.find jid.lresource) room_env.occupants with
           | None -> Acl.check_access jid classname
           | Some occupant ->
               match occupant.jid with
@@ -214,11 +217,12 @@ let make_msg ctx xmpp kind jid_from ?response_tail response =
         in
         let room_env = get_room_env ctx jid_from in
           if room_env.can_send then (
-            XMPP.send_message xmpp ~jid_to:(bare_jid jid_from) ?kind ~body ();
+            XMPPClient.send_message xmpp
+              ~jid_to:(bare_jid jid_from) ?kind ~body ();
             room_env.can_send <- false
           ) else (
             let send_message xmpp () =
-              XMPP.send_message xmpp
+              XMPPClient.send_message xmpp
                 ~jid_to:(bare_jid jid_from) ~body ?kind () in
               Queue.add (jid_from.lresource, send_message) room_env.queue
           );
@@ -383,7 +387,7 @@ let process_presence ctx xmpp env stanza hooks =
   match stanza.jid_from with
     | None -> do_hook xmpp env stanza hooks
     | Some from ->
-        match catch (get_room_env ctx) from with
+        match opt_try (get_room_env ctx) from with
           | None -> do_hook xmpp env stanza hooks
           | Some room_env ->
               let identity jid =
@@ -515,7 +519,7 @@ let do_hook_with_muc_context ctx xmpp env stanza hooks =
     | Some from ->
         match stanza.content.message_type with
           | Some Chat -> (
-              match catch (get_room_env ctx) from with
+              match opt_try (get_room_env ctx) from with
                 | None -> do_hook xmpp env stanza hooks
                 | Some room_env ->
                     match stanza.content.body with
@@ -526,7 +530,7 @@ let do_hook_with_muc_context ctx xmpp env stanza hooks =
                                (process_conversation "" body ctx))
             )
           | Some Groupchat -> (
-              match catch (get_room_env ctx) from with
+              match opt_try (get_room_env ctx) from with
                 | None -> do_hook xmpp env stanza hooks
                 | Some room_env ->
                     if from.lresource = room_env.mynick then ( (* echo *)
@@ -586,7 +590,7 @@ let process_message ctx xmpp env stanza hooks =
           with Not_found -> env
         in
         let continue =
-          match catch (get_element (ns_muc_user, "x")) stanza.x with
+          match opt_try (get_element (ns_muc_user, "x")) stanza.x with
             | Some el ->
                 process_message_user ctx xmpp env stanza from (User.decode el)
             | None ->
@@ -610,39 +614,39 @@ let enter_room ctx xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
       {mynick = nick;
        can_send = true;
        queue = Queue.create ();
-       lang = xmpp.xmllang;
+       lang = xmpp.user_data.deflang;
        occupants = Occupant.empty} ctx.groupchats;
-    XEP_muc.enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
+    MUC.enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
       ~nick room
 
 let leave_room ctx xmpp ?reason room =
   let nick = (get_room_env ctx room).mynick in
-    XEP_muc.leave_room  xmpp ?reason ~nick room
+    MUC.leave_room  xmpp ?reason ~nick room
     
 let change_nick xmpp jid_room newnick =
-  XMPP.send_presence xmpp ~jid_to:(replace_resource jid_room newnick) ()
+  XMPPClient.send_presence xmpp ~jid_to:(replace_resource jid_room newnick) ()
     
 let invite xmpp ?reason jid_room who =
-  XMPP.send_message xmpp ~jid_to:(bare_jid jid_room)
+  XMPPClient.send_message xmpp ~jid_to:(bare_jid jid_room)
     ~x:[User.encode_invite ~jid_to:who ?reason ()] ()
 
 let kick xmpp ?reason jid_room nick callback =
-  XMPP.make_iq_request xmpp ~jid_to:(bare_jid jid_room)
+  XMPPClient.make_iq_request xmpp ~jid_to:(bare_jid jid_room)
     (IQSet (Admin.encode_item ~nick ~role:RoleNone ?reason ())) callback
     
 let ban xmpp ?reason jid_room (jid:string) callback =
-  XMPP.make_iq_request xmpp ~jid_to:(bare_jid jid_room)
+  XMPPClient.make_iq_request xmpp ~jid_to:(bare_jid jid_room)
     (IQSet (Admin.encode_item ?reason ~affiliation:AffiliationOutcast ~jid ()))
     callback
 
 let set_topic muc_context xmpp jid_room subject =
   let room_env = get_room_env muc_context jid_room in
     if room_env.can_send then
-      XMPP.send_message xmpp ~jid_to:(bare_jid jid_room)
+      XMPPClient.send_message xmpp ~jid_to:(bare_jid jid_room)
         ~kind:Groupchat ~subject ()
     else
       let send_message xmpp () =
-        XMPP.send_message xmpp ~jid_to:(bare_jid jid_room)
+        XMPPClient.send_message xmpp ~jid_to:(bare_jid jid_room)
           ~kind:Groupchat ~subject ()
       in 
         Queue.add ("", send_message) room_env.queue;
@@ -674,7 +678,7 @@ let plugin opts =
     try Some (List.assoc "value" (List.assoc "nick" opts))
     with Not_found -> None in
     add_for_token
-      (fun _opts xmpp ->
+      (fun _opts user_data ->
          let db = db_open file in
          let ctx = {
            max_public_message_length = max_public_message_length;
@@ -685,12 +689,12 @@ let plugin opts =
            muc_event_handlers = [];
          } in
            ignore (Sql.create_muc db);
-           Hooks.add_message_hook xmpp 10 "muc" (process_message ctx);
-           Hooks.add_message_hook xmpp 20 "muc_context"
+           Hooks.add_message_hook user_data 10 "muc" (process_message ctx);
+           Hooks.add_message_hook user_data 20 "muc_context"
              (do_hook_with_muc_context ctx);
-           Hooks.add_presence_hook xmpp 10 "muc" (process_presence ctx);
-           List.iter (fun proc -> proc ctx xmpp) (List.rev !ctx_hooks);
-           register_on_connect xmpp
+           Hooks.add_presence_hook user_data 10 "muc" (process_presence ctx);
+           List.iter (fun proc -> proc ctx user_data) (List.rev !ctx_hooks);
+           register_on_connect user_data
              (fun xmpp ->
                 ignore (Sql.select_rooms db
                           (fun room nick lang chatlog ->

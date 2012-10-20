@@ -1,15 +1,12 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
 *)
 
 open Common
 
 let ext = ".htbl"
-let deflang = ref "ru"
-let dir = ref "./lang"
 
 module LangMap = Map.Make(String)
-let langmsgs =  ref (LangMap.empty:(string, string) Hashtbl.t LangMap.t)
 
 type langtime_t = {
   expand_time: string -> int -> int -> int -> int -> int -> int -> string;
@@ -17,12 +14,17 @@ type langtime_t = {
 }
 
 module LangTime = Map.Make(String)
-let langtime = ref LangTime.empty
 
-let _ =
+let langmsgs : (string, string) Hashtbl.t LangMap.t ref = ref LangMap.empty
+let langtime : langtime_t LangTime.t ref = ref LangTime.empty
+
+let langdir = ref ""
+let deflang = ref "ru"
+
+let load_htbl cfg lang =
   let htbl = Marshal.from_channel 
-    (open_in_bin (Filename.concat !dir (!deflang ^ ext))) in
-    langmsgs := LangMap.add !deflang htbl !langmsgs
+    (open_in_bin (Filename.concat !langdir (lang ^ ext))) in
+    langmsgs := LangMap.add lang htbl !langmsgs
       
 let find_htbl lang =
   try
@@ -30,7 +32,7 @@ let find_htbl lang =
   with Not_found ->
     try
       let htbl =  Marshal.from_channel 
-        (open_in_bin (Filename.concat !dir (lang ^ ext))) in
+        (open_in_bin (Filename.concat !langdir (lang ^ ext))) in
         langmsgs := LangMap.add lang htbl !langmsgs;
         htbl
     with _ ->
@@ -72,10 +74,6 @@ let process str args =
   let res = aux_subst []  str args in
     String.concat "" res
       
-let get_lang = function
-  | None -> !deflang
-  | Some v -> v
-      
 let get_msg lang msgid args =
   let htbl = find_htbl lang in
   let str =  try Hashtbl.find htbl msgid with _ ->
@@ -93,7 +91,7 @@ let get_msg lang msgid args =
 let update lang =
   try
     let htbl = Marshal.from_channel 
-      (open_in_bin (Filename.concat !dir (lang ^ ext))) in
+      (open_in_bin (Filename.concat !langdir (lang ^ ext))) in
       langmsgs := LangMap.add lang htbl !langmsgs;
       "Updated"
   with exn ->
@@ -128,6 +126,6 @@ let update_msgid (lang:string) (msgid:string) (str:string option) =
            else
              Hashtbl.add htbl msgid data;
     );
-    let mout = open_out_bin (Filename.concat !dir (lang ^ ext)) in
+    let mout = open_out_bin (Filename.concat !langdir (lang ^ ext)) in
       Marshal.to_channel mout htbl []
        

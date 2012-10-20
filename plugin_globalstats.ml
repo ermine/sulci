@@ -1,13 +1,13 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
 open Unix
-open XMPP
 open Hooks
 open Plugin_scheduler
+open XMPPClient
 
-module S = XEP_stats
+module S = XEP_stats.Make(XMPPClient)
 
 let find name alist =
   try
@@ -49,14 +49,14 @@ let stats_sum serverlist result xmpp =
           close_in sin;
           close_out sout
     in
-      XMPP.make_iq_request xmpp ~jid_to:(JID.make_jid "" server "")
+      XMPPClient.make_iq_request xmpp ~jid_to:(JID.make_jid "" server "")
         (IQGet (S.make_iq_get ["users/total"; "users/online"])) proc
   in
   let server = input_line sin in
     each_server server
       
-let poll serverlist result xmpp () =
-  try stats_sum serverlist result xmpp with exn ->
+let poll serverlist result user_data () =
+  try stats_sum serverlist result user_data with exn ->
     log#error "Plugin_globalstats: %s" (Printexc.to_string exn)
 
 let get_next interval () =
@@ -65,18 +65,22 @@ let get_next interval () =
     next
 
 let plugin opts =
+  print_endline "global";
   let serverlist = List.assoc "file" (List.assoc "serverlist" opts) in
   let result = List.assoc "file" (List.assoc "result" opts) in
   let interval =
     let v = List.assoc "value" (List.assoc "interval" opts) in
       int_of_string v
-    in
-      add_for_token
-        (fun _opts xmpp ->
-           let _ = Scheduler.add_task timerQ (poll serverlist result xmpp)
-             (get_next interval ()) (get_next interval) in
-             ()
-        )
+  in
+    add_for_token
+      (fun _opts user_data ->
+        register_on_connect user_data
+          (fun xmpp ->
+            let _ = Scheduler.add_task timerQ (poll serverlist result xmpp)
+              (get_next interval ()) (get_next interval) in
+              ()
+          )
+      )
 
 let () =
   Plugin.add_plugin "globalstats" plugin

@@ -1,6 +1,6 @@
 OASISFormat:          0.2
 Name:                 sulci
-Version:              2.0
+Version:              3.0
 Synopsis:             An Jabber/XMPP bot
 Authors:              Anastasia Gornostaeva
 License:              BSD3
@@ -34,8 +34,8 @@ Executable sulci
   BuildDepends:   threads, erm_brainfuck, erm_logger, erm_dehtml, 
                   erm_scheduler, erm_strftime, erm_xml, erm_xmpp, 
                   text, dynlink, sqlite3, ulex, pcre, netclient, dbm, 
-                   json-static
-  DataFiles:      _build/tlds/tlds.db ($datadir/$pkg_name)/tlds,
+                   json-static, erm_treap
+  DataFiles:      _build/tlds/tlds.db ($datadir/$pkg_name/tlds),
      _build/lang/*.htbl ($datadir/$pkg_name/lang), 
      sulci.conf ($sysconfdir)
 

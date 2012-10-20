@@ -1,14 +1,14 @@
 (*
- * (c) 2004-2010 Anastasia Gornostaeva
+ * (c) 2004-2012 Anastasia Gornostaeva
  *)
 
 open Unix
 open Pcre
-open XMPP
 open JID
 open Hooks
 open Muc
 open Plugin_scheduler
+open XMPPClient
   
 module LogMap = Map.Make(GroupID)
 

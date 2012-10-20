@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: fb03d830a2563d92b3a2e6c84bcdb06a) *)
+(* DO NOT EDIT (digest: dbce27df4f075cc086074901a643f371) *)
 This is the INSTALL file for the sulci distribution.
 
 This package uses OASIS to generate its build system. See section OASIS for
@@ -24,6 +24,7 @@ In order to compile this package, you will need:
 * pcre for executable sulci
 * netclient for executable sulci
 * json-static for executable sulci
+* erm_treap for executable sulci
 
 Installing
 ==========
