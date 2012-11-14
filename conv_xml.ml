@@ -47,14 +47,15 @@ end
 
 open Xmllexer
 
+module LS = LocatedStream (UnitMonad) (StringStream)
 module M = Xmllexer_generic.Make
-  (LocatedStream (UnitMonad) (StringStream))
+  (LS)
   (Encoding)
   (XmlStanza (UnitMonad))
-  
+
 let parse_document  content =
   let strm = StringStream.of_string content in
-  let strm = M.S.make_stream strm in
+  let strm = LS.make_stream strm in
   let next_token = M.make_lexer strm in
     Light_xml.parse next_token
 

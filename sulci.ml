@@ -35,7 +35,7 @@ struct
     output_string s.outc str;
     flush s.outc
 
-  let close s = close_in s.inc; close_out s.outc
+  let close s = close_in s.inc
 
 end
 
@@ -67,6 +67,8 @@ struct
     output_string L.logfile "\n";
     flush L.logfile;
     T.write s str
+
+  let close = T.close
 end
 
 open XMPPClient
@@ -136,22 +138,25 @@ let run account =
         let socket_module =
           if account.rawxml_log = "" then
             (module Socket_module : XMPPClient.Socket)
-          else (
+          else
             let module Socket_module =
                 struct
                   include LogTraffic(Socket_module)
                     (struct let logfile = open_out account.rawxml_log end)
                 end in
               (module Socket_module : XMPPClient.Socket)
-          )
         in
           try
-            print_endline "here";
-            XMPPClient.open_stream
+            XMPPClient.setup_session
               ~user_data
               ~myjid
               ~plain_socket:socket_module
-              ~password:account.password session;
+              ~password:account.password session >>= fun session_data ->
+            XMPPClient.parse session_data >>=
+              (fun () ->
+                let module S = (val session_data.socket : Socket) in
+                  S.close S.socket
+              )
           with
 
         (*      
