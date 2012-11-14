@@ -1,4 +1,4 @@
-OASISFormat:          0.2
+OASISFormat:          0.3
 Name:                 sulci
 Version:              3.0
 Synopsis:             An Jabber/XMPP bot
@@ -6,7 +6,7 @@ Authors:              Anastasia Gornostaeva
 License:              BSD3
 LicenseFile:          LICENCE
 Copyrights:           (C) 2004-2011 Anastasia Gornostaeva
-Plugins:              DevFiles (0.2), META (0.2), StdFiles (0.2)
+Plugins:              DevFiles (0.3), META (0.3), StdFiles (0.3)
 BuildTools:           ocamlbuild
 FilesAB:              version.ml.ab, sulci.conf.ab
 PreInstallCommand:    $ocamlbuild data_files
