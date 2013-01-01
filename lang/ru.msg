@@ -1,5 +1,5 @@
 error_server_feature_not_implemented   Сервер %s не поддерживает эту фичу
-error_client_feature_not_implemented   У %s'клиент не поддерживает эту фичу
+error_client_feature_not_implemented   У %s клиент не поддерживает эту фичу
 error_remote_server_timeout    Сервер %s отвалился по таймауту
 error_remote_server_not_found  %s не существует!
 error_server_service_unavailable   Запрошенный сервис у %s сдох.
