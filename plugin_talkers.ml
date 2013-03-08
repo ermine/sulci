@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2012 Anastasia Gornostaeva
+ * (c) 2004-2013 Anastasia Gornostaeva
  *)
 
 open JID
@@ -54,7 +54,7 @@ let muc_talkers db muc_context xmpp env kind jid_from nick text =
           
 let cmd_talkers db muc_context xmpp env kind jid_from text =
   let room = string_of_jid (bare_jid jid_from) in
-  let nick = Stringprep.resourceprep text in
+  let nick = JID.resourceprep text in
   let accu nick words me sentences (max_len, result) =
     let len = length_utf8 nick in
       (max max_len len, (len, nick, words, me, sentences) :: result)
