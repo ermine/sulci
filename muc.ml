@@ -600,7 +600,7 @@ let process_message ctx xmpp env stanza hooks =
             do_hook xmpp env stanza hooks
               
 let enter_room ctx xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
-    ?nick room =
+    ?lang ?nick room =
   let nick =
     match nick with
       | None -> (
@@ -614,7 +614,7 @@ let enter_room ctx xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
       {mynick = nick;
        can_send = true;
        queue = Queue.create ();
-       lang = xmpp.user_data.deflang;
+       lang = (match lang with | None -> xmpp.user_data.deflang | Some v -> v);
        occupants = Occupant.empty} ctx.groupchats;
     MUC.enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
       ~nick room
@@ -698,7 +698,7 @@ let plugin opts =
              (fun xmpp ->
                 ignore (Sql.select_rooms db
                           (fun room nick lang chatlog ->
-                             enter_room ctx xmpp ~maxstanzas:0 ~nick
+                            enter_room ctx xmpp ~maxstanzas:0 ~lang ~nick
                                (JID.of_string room)
                           )
                        )
