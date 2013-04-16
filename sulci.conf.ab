@@ -68,7 +68,7 @@
    <command id='quit' access='botmaster'/>
    <command id='lang_update' access='botmaster'/>
    <command id='lang_msgid' access='botmaster'/>
-   <command id='sh' access='botmaster'/>
+   <command id='sh' access='botmaster' enabled='false'/>
   </plugin>
 
   <plugin name='brainfuck' path='$(datadir)/$(pkg_name)/plugins/plugin_brainfuck'>
