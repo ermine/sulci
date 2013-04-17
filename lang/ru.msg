@@ -8,6 +8,8 @@ error_client_service_unavailable   Запрошенный сервис у %s о�
 error_recipient_unavailable        %s временно недоступен
 error_not_allowed                  Никто не разрешил запрашивать информацию у %s
 error_any_error                    Не удалось запросить информацию у %s.
+error_me_any_error                     ХЗ
+error_you_any_error                Твой клиент - баклан!
 
 invalid_entity                     А? Кого?
 

@@ -9,6 +9,8 @@ error_client_service_unavailable    Currently %s's service is unavailable
 error_recipient_unavailable         %s is temporaly unavailable 
 error_not_allowed                 Nobody allows me to ask %s
 error_any_error                   Failed to ask %s.
+error_me_any_error                    Dunno
+error_you_any_error               Failed to ask your client
 
 invalid_entity                 What? Whom?
 

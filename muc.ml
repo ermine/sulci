@@ -696,9 +696,10 @@ let plugin opts =
            List.iter (fun proc -> proc ctx user_data) (List.rev !ctx_hooks);
            register_on_connect user_data
              (fun xmpp ->
-                ignore (Sql.select_rooms db
-                          (fun room nick lang chatlog ->
-                            enter_room ctx xmpp ~maxstanzas:0 ~lang ~nick
+               ignore (Sql.select_rooms db
+                         (fun room nick lang chatlog ->
+                           let lang = if lang = "" then None else Some lang in
+                             enter_room ctx xmpp ~maxstanzas:0 ?lang ~nick
                                (JID.of_string room)
                           )
                        )

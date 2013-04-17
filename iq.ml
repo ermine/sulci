@@ -19,43 +19,43 @@ let get_host = function
 let process_error error env entity =
   match error.err_condition with
     | ERR_FEATURE_NOT_IMPLEMENTED -> (
-        match entity with
-          | EntityHost host ->
-              Lang.get_msg env.env_lang "error_server_feature_not_implemented"
-                [host.ldomain]
-          | EntityMe _ ->
-              Lang.get_msg env.env_lang
-                "error_my_client_feature_not_implemented" []
-          | EntityYou jid ->
-              Lang.get_msg env.env_lang
-                "error_your_client_feature_not_implemented" []
-          | EntityUser (text, jid) ->
-              Lang.get_msg env.env_lang "error_client_feature_not_implemented"
-                [text]
-      )
+      match entity with
+        | EntityHost host ->
+          Lang.get_msg env.env_lang "error_server_feature_not_implemented"
+            [host.ldomain]
+        | EntityMe _ ->
+          Lang.get_msg env.env_lang
+            "error_my_client_feature_not_implemented" []
+        | EntityYou jid ->
+          Lang.get_msg env.env_lang
+            "error_your_client_feature_not_implemented" []
+        | EntityUser (text, jid) ->
+          Lang.get_msg env.env_lang "error_client_feature_not_implemented"
+            [text]
+    )
     | ERR_REMOTE_SERVER_TIMEOUT ->
-        Lang.get_msg env.env_lang "error_remote_server_timeout" [get_host entity]
+      Lang.get_msg env.env_lang "error_remote_server_timeout" [get_host entity]
     | ERR_REMOTE_SERVER_NOT_FOUND ->
-        Lang.get_msg env.env_lang "error_remote_server_not_found"
-          [get_host entity]
+      Lang.get_msg env.env_lang "error_remote_server_not_found"
+        [get_host entity]
     | ERR_SERVICE_UNAVAILABLE ->
-        (match entity with
-           | EntityHost host ->
-               Lang.get_msg env.env_lang "error_server_service_unavailable" 
-                 [host.domain]
-           | EntityYou _jid ->
-               Lang.get_msg env.env_lang"error_your_service_unavailable" []
-           | EntityMe jid ->
-               Lang.get_msg env.env_lang "error_my_service_unavailable" []
-           | EntityUser (text, jid) ->
-               Lang.get_msg env.env_lang "error_client_service_unavailable" 
-                 [text]
-        )
+      (match entity with
+        | EntityHost host ->
+          Lang.get_msg env.env_lang "error_server_service_unavailable" 
+            [host.domain]
+        | EntityYou _jid ->
+          Lang.get_msg env.env_lang"error_your_service_unavailable" []
+        | EntityMe jid ->
+          Lang.get_msg env.env_lang "error_my_service_unavailable" []
+        | EntityUser (text, jid) ->
+          Lang.get_msg env.env_lang "error_client_service_unavailable" 
+            [text]
+      )
     | ERR_RECIPIENT_UNAVAILABLE ->
-        Lang.get_msg env.env_lang "error_recipient_unavailable" []
+      Lang.get_msg env.env_lang "error_recipient_unavailable" []
     | ERR_NOT_ALLOWED ->
-        Lang.get_msg env.env_lang "error_not_allowed" []
-          
+      Lang.get_msg env.env_lang "error_not_allowed" []
+        
     | ERR_BAD_REQUEST
     | ERR_CONFLICT
     | ERR_FORBIDDEN
@@ -73,7 +73,15 @@ let process_error error env entity =
     | ERR_UNDEFINED_CONDITION
     | ERR_UNEXPECTED_REQUEST ->
         if error.err_text = "" then
-          Lang.get_msg env.env_lang "error_any_error" []
+          match entity with
+            | EntityHost host ->
+              Lang.get_msg env.env_lang "error_any_error" [host.ldomain]
+            | EntityMe _ ->
+              Lang.get_msg env.env_lang "error_me_any_error" []
+            | EntityYou jid ->
+              Lang.get_msg env.env_lang "error_you_any_error" []
+            | EntityUser (text, jid) ->
+              Lang.get_msg env.env_lang "error_any_error" [text]
         else
           error.err_text
     | UNKNOWN_CONDITION other ->
