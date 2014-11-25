@@ -75,25 +75,27 @@ let process str args =
     String.concat "" res
       
 let get_msg lang msgid args =
-  let htbl = find_htbl lang in
-  let str =  try Hashtbl.find htbl msgid with _ ->
-    try
-      let hashtbl = LangMap.find !deflang !langmsgs in
+  try
+    let htbl = find_htbl lang in
+    let str =
+      try Hashtbl.find htbl msgid with _ ->
+        let hashtbl = LangMap.find !deflang !langmsgs in
         Hashtbl.find hashtbl msgid
-    with Not_found ->
-      (*
-      log#error "lang not found: [%s]\n" msgid;
-      *)
-      "[not found in lang pack: " ^ msgid ^ "]"
-  in
+    in
     process str args
+  with Not_found ->
+    (*
+    log#error "lang not found: [%s]\n" msgid;
+     *)
+    "[not found in lang pack: " ^ msgid ^ "]"
+                
       
 let update lang =
   try
     let htbl = Marshal.from_channel 
-      (open_in_bin (Filename.concat !langdir (lang ^ ext))) in
-      langmsgs := LangMap.add lang htbl !langmsgs;
-      "Updated"
+                 (open_in_bin (Filename.concat !langdir (lang ^ ext))) in
+    langmsgs := LangMap.add lang htbl !langmsgs;
+    "Updated"
   with exn ->
     Printexc.to_string exn
       
