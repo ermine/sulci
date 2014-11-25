@@ -65,7 +65,6 @@ let get_next interval () =
     next
 
 let plugin opts =
-  print_endline "global";
   let serverlist = List.assoc "file" (List.assoc "serverlist" opts) in
   let result = List.assoc "file" (List.assoc "result" opts) in
   let interval =

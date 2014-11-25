@@ -632,7 +632,7 @@ let invite xmpp ?reason jid_room who =
 
 let kick xmpp ?reason jid_room nick callback =
   XMPPClient.make_iq_request xmpp ~jid_to:(bare_jid jid_room)
-    (IQSet (Admin.encode [Admin.make_item ~nick ~role:RoleNone ?reason ()])) callback
+    (IQSet (Admin.encode [Admin.encode_item ~nick ~role:RoleNone ?reason ()])) callback
     
 let ban xmpp ?reason jid_room (jid:string) callback =
   XMPPClient.make_iq_request xmpp ~jid_to:(bare_jid jid_room)
