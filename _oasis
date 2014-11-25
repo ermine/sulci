@@ -3,12 +3,12 @@ Name:                 sulci
 Version:              3.0
 Synopsis:             An Jabber/XMPP bot
 Authors:              Anastasia Gornostaeva
-License:              BSD3
+License:              BSD-3-clause
 LicenseFile:          LICENCE
 Copyrights:           (C) 2004-2011 Anastasia Gornostaeva
 Plugins:              DevFiles (0.3), META (0.3), StdFiles (0.3)
 BuildTools:           ocamlbuild
-FilesAB:              version.ml.ab, sulci.conf.ab
+FilesAB:              version.ml.ab, sulci.conf.example.ab
 PreInstallCommand:    $ocamlbuild data_files
 OCamlVersion:        >= 3.12
 
@@ -37,7 +37,7 @@ Executable sulci
                    json-static, erm_treap
   DataFiles:      _build/tlds/tlds.db ($datadir/$pkg_name/tlds),
      _build/lang/*.htbl ($datadir/$pkg_name/lang), 
-     sulci.conf ($sysconfdir)
+     sulci.conf.example ($sysconfdir)
 
 SourceRepository github
   Type:         git

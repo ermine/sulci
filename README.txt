@@ -1,13 +1,20 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 44f998f4ebefa623fd1aa5e769cda599) *)
-This is the README file for the sulci distribution.
+(* DO NOT EDIT (digest: 4364b540e896aafcfa5191b32f5e7af0) *)
+
+sulci - An Jabber/XMPP bot
+==========================
+
+See the file [INSTALL.txt](INSTALL.txt) for building and installation
+instructions.
+
+Copyright and license
+---------------------
 
 (C) 2004-2011 Anastasia Gornostaeva
 
-An Jabber/XMPP bot
+sulci is distributed under the terms of the Berkeley software distribution
+license (3 clauses).
 
-See the files INSTALL.txt for building and installation instructions. See the
-file LICENCE for copying conditions. 
-
+See [LICENCE](LICENCE) for more information.
 
 (* OASIS_STOP *)

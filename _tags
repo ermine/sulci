@@ -9,10 +9,11 @@ true: debug
 "plugin_google.ml": syntax_camlp4o, use_json_static.syntax
 
 # OASIS_START
-# DO NOT EDIT (digest: d1ea6a4e9b5345293d4145a326acfbb9)
-# Ignore VCS directories, you can use the same kind of rule outside 
-# OASIS_START/STOP if you want to exclude directories that contains 
+# DO NOT EDIT (digest: bccd98f98c235d585fcbd626eddc19ac)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
+true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -26,40 +27,40 @@ true: debug
 # Executable langcompile
 # Executable createtld
 <tlds/createtlds.{native,byte}>: pkg_dbm
-<tlds/*.ml{,i}>: pkg_dbm
+<tlds/*.ml{,i,y}>: pkg_dbm
 # Executable sulci
-<sulci.{native,byte}>: pkg_threads
+<sulci.{native,byte}>: pkg_dbm
+<sulci.{native,byte}>: pkg_dynlink
 <sulci.{native,byte}>: pkg_erm_brainfuck
-<sulci.{native,byte}>: pkg_erm_logger
 <sulci.{native,byte}>: pkg_erm_dehtml
+<sulci.{native,byte}>: pkg_erm_logger
 <sulci.{native,byte}>: pkg_erm_scheduler
 <sulci.{native,byte}>: pkg_erm_strftime
+<sulci.{native,byte}>: pkg_erm_treap
 <sulci.{native,byte}>: pkg_erm_xml
 <sulci.{native,byte}>: pkg_erm_xmpp
-<sulci.{native,byte}>: pkg_text
-<sulci.{native,byte}>: pkg_dynlink
-<sulci.{native,byte}>: pkg_sqlite3
-<sulci.{native,byte}>: pkg_ulex
-<sulci.{native,byte}>: pkg_pcre
-<sulci.{native,byte}>: pkg_netclient
-<sulci.{native,byte}>: pkg_dbm
 <sulci.{native,byte}>: pkg_json-static
-<sulci.{native,byte}>: pkg_erm_treap
-<*.ml{,i}>: pkg_threads
-<*.ml{,i}>: pkg_erm_brainfuck
-<*.ml{,i}>: pkg_erm_logger
-<*.ml{,i}>: pkg_erm_dehtml
-<*.ml{,i}>: pkg_erm_scheduler
-<*.ml{,i}>: pkg_erm_strftime
-<*.ml{,i}>: pkg_erm_xml
-<*.ml{,i}>: pkg_erm_xmpp
-<*.ml{,i}>: pkg_text
-<*.ml{,i}>: pkg_dynlink
-<*.ml{,i}>: pkg_sqlite3
-<*.ml{,i}>: pkg_ulex
-<*.ml{,i}>: pkg_pcre
-<*.ml{,i}>: pkg_netclient
-<*.ml{,i}>: pkg_dbm
-<*.ml{,i}>: pkg_json-static
-<*.ml{,i}>: pkg_erm_treap
+<sulci.{native,byte}>: pkg_netclient
+<sulci.{native,byte}>: pkg_pcre
+<sulci.{native,byte}>: pkg_sqlite3
+<sulci.{native,byte}>: pkg_text
+<sulci.{native,byte}>: pkg_threads
+<sulci.{native,byte}>: pkg_ulex
+<*.ml{,i,y}>: pkg_dbm
+<*.ml{,i,y}>: pkg_dynlink
+<*.ml{,i,y}>: pkg_erm_brainfuck
+<*.ml{,i,y}>: pkg_erm_dehtml
+<*.ml{,i,y}>: pkg_erm_logger
+<*.ml{,i,y}>: pkg_erm_scheduler
+<*.ml{,i,y}>: pkg_erm_strftime
+<*.ml{,i,y}>: pkg_erm_treap
+<*.ml{,i,y}>: pkg_erm_xml
+<*.ml{,i,y}>: pkg_erm_xmpp
+<*.ml{,i,y}>: pkg_json-static
+<*.ml{,i,y}>: pkg_netclient
+<*.ml{,i,y}>: pkg_pcre
+<*.ml{,i,y}>: pkg_sqlite3
+<*.ml{,i,y}>: pkg_text
+<*.ml{,i,y}>: pkg_threads
+<*.ml{,i,y}>: pkg_ulex
 # OASIS_STOP
