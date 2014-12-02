@@ -108,7 +108,7 @@ let do_command ctx xmpp env kind jid_from text =
       match proc with
         | None -> true
         | Some c ->
-          if check_access jid_from c.access then
+          if check_access (env.env_identity jid_from) c.access then
             let params =
               try string_after text (String.index text ' ') with _ -> ""
             in
