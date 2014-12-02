@@ -59,7 +59,7 @@ let regexp prefix = cn ca | cn cie | cn ci | cp co | co | ca | cv
    | cp cr ci | cz ca | cd co | ci cs | cp ce cr ce | cr ca cs | cr ca cz
    | cp cr co | cp cie cr cie | cn cie cd co | cv cy
    | cs chard_sign | cv chard_sign | cn ce cv chard_sign 
-   | cs csoft_sign | co ct chard_sign
+   | cs csoft_sign | co ct chard_sign | co ct 
    | co cd cn co | cn ce cd co | cs cu cp cie cr | cg ci cp cie cr
          
 type t =
@@ -97,6 +97,8 @@ let rec analyze = lexer
       Bad (Ulexing.utf8_lexeme lexbuf)
   | cm cl cya (ct | cd) csoft_sign ->
       Bad (Ulexing.utf8_lexeme lexbuf)
+  | prefix* cl ca cp ci cd ca cr ->
+      Good
   | cyrillic* cs ck ci cp ci cd ca cr (* cyrillic* *) ->
       Good
   | cs cr ca (ck | ct) ->
