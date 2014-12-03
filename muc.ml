@@ -14,12 +14,15 @@ open MUC
 open Sqlite3
 module Sql = Muc_sql.Make(Sqlgg_sqlite3)
 
+module Resource = Set.Make(String)
+
 type occupant = {
-  (* nick : string; *)
-  mutable jid : JID.t option;
-  mutable affiliation : affiliation;
-  mutable role : role
-}
+    (* nick : string; *)
+    mutable jid : JID.t option;
+    mutable resources : Resource.t;
+    mutable affiliation : affiliation;
+    mutable role : role
+  }
 
 module Occupant = Map.Make(String)
 
@@ -235,6 +238,7 @@ let get_reason = function
   | None -> None
   | Some i -> i.User.reason
   
+
 let process_presence_user ctx xmpp env stanza from room_env data enter =
   let () =
     match data.User.item with
@@ -243,15 +247,17 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
           if stanza.content.presence_type = None then
             let occupant =
               Occupant.find from.lresource room_env.occupants in
-              (match item.User.jid with
-                 | None -> ()
-                 | Some jid -> occupant.jid <- Some jid);
-              (match item.User.role with
-                 | None -> ()
-                 | Some r -> occupant.role <- r);
-              (match item.User.affiliation with
-                 | None -> ()
-                 | Some a -> occupant.affiliation <- a)
+            (match item.User.jid with
+               | None -> ()
+               | Some jid ->
+                   occupant.jid <- Some (JID.bare_jid jid);
+                   occupant.resources <- Resource.add jid.lresource occupant.resources);
+            (match item.User.role with
+               | None -> ()
+               | Some r -> occupant.role <- r);
+            (match item.User.affiliation with
+               | None -> ()
+               | Some a -> occupant.affiliation <- a)
   in
   let removal =
     match data.User.destroy with
@@ -272,29 +278,29 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
               full JID *)
            removal
        | 110 ->
-           (* context Any room presence *)
+           (* context: Any room presence *)
            (* Inform user that presence refers to one of its own
               room occupants *)
            removal
        | 170 ->
-           (* context Configuration change *)
+           (* context: Configuration change *)
            (* Inform occupants that room logging is now enabled *)
            removal
        | 201 ->
-           (* context Entering a room *)
+           (* context: Entering a room *)
            (* Inform user that a new room has been created *)
            if enter then
              hook_muc_event ctx xmpp env from MUC_room_created;
            removal
        | 210 ->
-           (* context Entering a room *)
+           (* context: Entering a room *)
            (* Inform user that service has assigned or modified
               occupant's roomnick *)
            if enter then
              room_env.mynick <- from.lresource;
            removal
        | 301 ->
-           (* context Removal from room *)
+           (* context: Removal from room *)
            (* Inform user that he or she has been banned from the room *)
            if stanza.content.presence_type = Some Unavailable then
              let reason = get_reason data.User.item in
@@ -303,25 +309,28 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
            else
              removal
        | 303 -> (
-           (* context Exiting a room *)
+           (* context: Exiting a room *)
            (* Inform all occupants of new room nickname *)
-           if stanza.content.presence_type = Some Unavailable then
+           if stanza.content.presence_type = Some Unavailable then (
              match data.User.item with
                | None -> removal
                | Some i ->
                    match i.User.nick with
                      | None -> removal
                      | Some newnick ->
-                         if from.lresource = room_env.mynick then
+                         let oldnick = from.lresource in
+                         if oldnick = room_env.mynick then
                            room_env.mynick <- newnick;
-                         room_env.occupants <- Occupant.add newnick
-                           (Occupant.find from.lresource room_env.occupants)
-                           room_env.occupants;
+                         let old_occupant = Occupant.find oldnick room_env.occupants in
+                         if not (Occupant.mem newnick room_env.occupants) then (
+                           let o = {old_occupant with resources = Resource.empty} in
+                           room_env.occupants <- Occupant.add newnick o room_env.occupants
+                         );
                          let reason = get_reason data.User.item in
-                           hook_muc_event ctx xmpp env from
-                             (MUC_nick (newnick, reason));
-                           true
-           else
+                         hook_muc_event ctx xmpp env from
+                                        (MUC_nick (newnick, reason));
+                         true
+           ) else
              removal
          )
        | 307 -> (
@@ -373,14 +382,82 @@ let process_presence_user ctx xmpp env stanza from room_env data enter =
     if stanza.content.presence_type = Some Unavailable && not removal then
       hook_muc_event ctx xmpp env from (MUC_leave stanza.content.status)
 
+let get_user_item stanza =
+  let data = 
+    try
+      let data =
+        List.find (function
+                    | Xmlelement (qname, _, _) -> qname = (ns_muc_user, "x")
+                    | _ -> false
+                  ) stanza.x
+      in
+      Some data
+    with Not_found -> None in
+  let item =
+    match data with
+      | None -> None
+      | Some el ->
+          let data = User.decode el in
+          data.User.item in
+  item
+
+let new_occupant room_env stanza from item =
+  if stanza.content.presence_type = None then
+    try
+      let occupant =
+        Occupant.find from.lresource room_env.occupants in
+      if item.User.role = Some occupant.role ||
+           item.User.affiliation = Some occupant.affiliation then (
+        match occupant.jid, item.User.jid with
+          | None, None -> false
+          | Some _, None ->
+              occupant.jid <- None;
+              false
+          | None, Some jid ->
+              occupant.jid <- Some (JID.bare_jid jid);
+              occupant.resources <- Resource.add jid.lresource occupant.resources;
+              false
+          | Some _, Some jid ->
+              if Resource.mem jid.lresource occupant.resources then
+                false
+              else (
+                occupant.resources <- Resource.add jid.lresource occupant.resources;
+                true
+              )
+      ) else
+        false
+    with Not_found ->
+      let jid =
+        match item.User.jid with
+          | None -> None
+          | Some jid -> Some (JID.bare_jid jid) in
+      let resources =
+        match item.User.jid with
+          | None -> Resource.empty
+          | Some jid -> Resource.add jid.lresource Resource.empty in
+      let affiliation =
+        match item.User.affiliation with
+          | None -> AffiliationNone
+          | Some a -> a in
+      let role =
+        match item.User.role with
+          | None -> RoleNone
+          | Some r -> r in
+      room_env.occupants <- Occupant.add from.lresource {
+                                           jid; resources; affiliation; role;}
+                                         room_env.occupants;
+      true
+  else
+    false
+
 let process_presence_x ctx xmpp env stanza from room_env enter =
   List.iter (function
-               | Xmlelement (qname, _, _) as el ->
-                   if qname = (ns_muc_user, "x") then
-                     process_presence_user ctx xmpp env stanza from room_env
-                       (User.decode el) enter
-               | _ ->
-                   ()
+              | Xmlelement (qname, _, _) as el ->
+                  if qname = (ns_muc_user, "x") then
+                    process_presence_user ctx xmpp env stanza from room_env
+                                          (User.decode el) enter
+              | _ ->
+                  ()
             ) stanza.x
                           
 let process_presence ctx xmpp env stanza hooks =
@@ -402,38 +479,37 @@ let process_presence ctx xmpp env stanza hooks =
                          env_message = make_msg ctx;
                         }
               in
-                match stanza.content.presence_type with
-                  | None
-                  | Some Unavailable ->
-                      let enter =
-                        if stanza.content.presence_type = None &&
-                          not (Occupant.mem from.lresource
-                                 room_env.occupants) then
-                            true
-                        else
-                          false
-                      in
-                        if enter then
-                            room_env.occupants <- Occupant.add from.lresource
-                              {jid = None;
-                               affiliation = AffiliationNone;
-                               role = RoleNone} room_env.occupants;
-                        process_presence_x ctx xmpp env stanza from
-                          room_env enter;
-                        if enter then
-                          hook_muc_event ctx xmpp env from MUC_join;
-                        if stanza.content.presence_type = Some Unavailable then
-                          if from.lresource = room_env.mynick then
-                            ctx.groupchats <-
-                              Groupchat.remove (from.lnode, from.ldomain)
-                              ctx.groupchats
-                          else
-                            room_env.occupants <-
-                              Occupant.remove from.lresource
-                              room_env.occupants;
-                        do_hook xmpp env stanza hooks
-                  | _ ->
-                      do_hook xmpp env stanza hooks
+              let user_item = get_user_item stanza in
+              let enter =
+                match user_item with
+                  | None -> false
+                  | Some item ->
+                      new_occupant room_env stanza from item in
+              process_presence_x ctx xmpp env stanza from room_env enter;
+              if enter then
+                hook_muc_event ctx xmpp env from MUC_join;
+              if stanza.content.presence_type = Some Unavailable then
+                if from.lresource = room_env.mynick then
+                  ctx.groupchats <-
+                    Groupchat.remove (from.lnode, from.ldomain)
+                                     ctx.groupchats;
+              if stanza.content.presence_type = Some Unavailable then (
+                match user_item with
+                  | None -> ()
+                  | Some item ->
+                      let occupant = Occupant.find from.lresource room_env.occupants in
+                      match item.User.jid with
+                        | None ->
+                            room_env.occupants <- Occupant.remove from.lresource room_env.occupants
+                        | Some jid ->
+                            occupant.resources <- Resource.remove jid.lresource occupant.resources;
+                            if Resource.is_empty occupant.resources then
+                              room_env.occupants <-
+                                Occupant.remove from.lresource room_env.occupants
+              );
+              do_hook xmpp env stanza hooks
+          | _ ->
+              do_hook xmpp env stanza hooks
                         
 let process_invite xmpp env jid_from jid_to reason password () =
   ()
@@ -600,25 +676,26 @@ let process_message ctx xmpp env stanza hooks =
             do_hook xmpp env stanza hooks
               
 let enter_room ctx xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
-    ?lang ?nick room =
+               ?lang ?nick room =
   let nick =
     match nick with
       | None -> (
-          match ctx.default_mynick with
-            | None -> xmpp.myjid.node
-            | Some v -> v
-        )
+        match ctx.default_mynick with
+          | None -> xmpp.myjid.node
+          | Some v -> v
+      )
       | Some v -> v
   in
-    ctx.groupchats <- Groupchat.add (room.lnode, room.ldomain)
-      {mynick = nick;
-       can_send = true;
-       queue = Queue.create ();
-       lang = (match lang with | None -> xmpp.user_data.deflang | Some v -> v);
-       occupants = Occupant.empty} ctx.groupchats;
-    MUC.enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
-      ~nick room
-
+  ctx.groupchats <-
+    Groupchat.add (room.lnode, room.ldomain)
+                  {mynick = nick;
+                   can_send = true;
+                   queue = Queue.create ();
+                   lang = (match lang with | None -> xmpp.user_data.deflang | Some v -> v);
+                   occupants = Occupant.empty} ctx.groupchats;
+  MUC.enter_room xmpp ?maxchars ?maxstanzas ?seconds ?since ?password
+                 ~nick room
+                 
 let leave_room ctx xmpp ?reason room =
   let nick = (get_room_env ctx room).mynick in
     MUC.leave_room  xmpp ?reason ~nick room
