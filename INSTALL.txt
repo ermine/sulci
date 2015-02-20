@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: edfae4272ae0895bfd0c56ba52217fe8) *)
+(* DO NOT EDIT (digest: a348c2629c9cb149cf3defda343d293b) *)
 
 This is the INSTALL file for the sulci distribution.
 
@@ -24,7 +24,7 @@ In order to compile this package, you will need:
 * sqlite3 for executable sulci
 * ulex for executable sulci
 * pcre for executable sulci
-* netclient for executable sulci
+* netclient (>= 4.0.1) for executable sulci
 * json-static for executable sulci
 * erm_treap for executable sulci
 

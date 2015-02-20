@@ -1,4 +1,4 @@
-open Http_client
+open Nethttp_client
 open Hooks
 
 exception ClientError
@@ -69,10 +69,10 @@ type result =
 let get_media_type call =
   let headers = call # response_header in
     try
-      let media_type, params = headers # content_type () in
+      let media_type, params = Netmime_header.get_content_type headers in
       let charset = 
         try let value = List.assoc "charset" params in
-          Some (Mimestring.param_value value)
+          Some (Netmime_string.param_value value)
         with Not_found -> None in
         Some media_type, charset
     with Not_found ->
@@ -106,6 +106,7 @@ let http_get url callback =
   request (new get url) callback
     
 let http_post url headers data callback =
+
   let p = new post_call in
   let h = p # request_header `Base in
     p # set_request_uri url;
