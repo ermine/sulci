@@ -34,6 +34,7 @@ and mevent =
   | MCount of context * xmpp * env * message_type option * JID.t
   | MTop of context * xmpp * env * message_type option * JID.t
 
+
 let add_queue (m:m) (mevent:mevent) =
   Mutex.lock m.mutex;
   Queue.add mevent m.queue;
@@ -131,8 +132,6 @@ let process_markov ctx db muc_context xmpp env kind jid_from nick text =
         | Some Groupchat ->
             if nick = room_env.mynick then
               let chain = generate ctx db "" in
-              (* hack *)
-              Muc.process_conversation room_env.mynick chain muc_context;
                 env.env_message xmpp kind jid_from chain
         | Some Chat ->
             let chain = generate ctx db "" in
