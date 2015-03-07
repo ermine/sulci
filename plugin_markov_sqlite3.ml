@@ -16,6 +16,9 @@ module MarkovMap = Map.Make(GroupID)
 
 let () = Random.self_init ()
 
+(* id attribute in stanza *)
+let id = Some "talkers"
+
 type context = {
   dir : string;
   max_words : int;
@@ -132,10 +135,10 @@ let process_markov ctx db muc_context xmpp env kind jid_from nick text =
         | Some Groupchat ->
             if nick = room_env.mynick then
               let chain = generate ctx db "" in
-                env.env_message xmpp kind jid_from chain
+                env.env_message xmpp kind jid_from ?id chain
         | Some Chat ->
             let chain = generate ctx db "" in
-              env.env_message xmpp kind jid_from chain
+              env.env_message xmpp kind jid_from ?id chain
         | _ ->
             ()
     )        

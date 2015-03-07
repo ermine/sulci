@@ -51,6 +51,13 @@ let muc_talkers db muc_context xmpp env kind jid_from nick text =
             ()
     | _ ->
         ()
+
+let muc_talkers_echo db muc_context xmpp env kind jid_from id nick text =
+  match id with
+    | Some "talkers" ->
+        muc_talkers db muc_context xmpp env kind jid_from nick text
+    | _ ->
+        ()
           
 let cmd_talkers db muc_context xmpp env kind jid_from text =
   let room = string_of_jid (bare_jid jid_from) in
@@ -110,6 +117,7 @@ let plugin opts =
            ignore (Sql.create_index_talkers_idx db);
            ignore (Sql.create_index_words_idx db);
            Muc.add_hook_conversation muc_context (muc_talkers db);
+           Muc.add_hook_echo muc_context (muc_talkers_echo db);
            Plugin_command.add_commands xmpp
              ["talkers", cmd_talkers db muc_context] opts
       )

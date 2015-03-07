@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2012 Anastasia Gornostaeva
+ * (c) 2004-2015 Anastasia Gornostaeva
  *)
 
 open JID
@@ -54,8 +54,8 @@ and env = {
   env_identity : JID.t -> JID.t;
   env_lang: string;
   env_get_entity: string -> JID.t -> entity;
-  env_message : xmpp -> message_type option -> JID.t -> ?response_tail:string ->
-                                               string -> unit;
+  env_message : xmpp -> message_type option -> JID.t -> ?id:string ->
+                ?response_tail:string -> string -> unit;
 }
 and entity =
   | EntityMe of JID.t
@@ -107,7 +107,7 @@ let get_entity text jid_from =
       else
         EntityUser (text, jid)
 
-let make_msg xmpp kind jid_to ?response_tail response =
+let make_msg xmpp kind jid_to ?id ?response_tail response =
   let tail =
     match response_tail with
       | None -> ""
@@ -116,7 +116,7 @@ let make_msg xmpp kind jid_to ?response_tail response =
   let max_message_length = xmpp.user_data.max_message_length in
   let msgs = split_long_message max_message_length response tail in
     List.iter (fun body ->
-      XMPPClient.send_message xmpp ?kind ~jid_to ~body ()
+      XMPPClient.send_message xmpp ?id ?kind ~jid_to ~body ()
     ) msgs
 
 let add_tmp_hook hooks name hook =

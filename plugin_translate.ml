@@ -3,9 +3,11 @@
  *)
 
 (*
-  prev: wap.translate.ru/default.asp?cp=cyr&dir=er&source=hello
-  curr: m.translate.ru/translator/result/?dirCode=er&text=hello
+  old: wap.translate.ru/default.asp?cp=cyr&dir=er&source=hello
+  prev: m.translate.ru/translator/result/?dirCode=er&text=hello
+  curr: http://m.translate.ru/services/MobileService.asmx/TranslateText4Touch?direction=er&template=General&text=test&intLang=ru
 *)
+
 
 open Pcre
 open Light_xml

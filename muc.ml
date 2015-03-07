@@ -1,5 +1,5 @@
 (*
- * (c) 2004-2012 Anastasia Gornostaeva
+ * (c) 2004-2015 Anastasia Gornostaeva
  *)
 
 open Xml
@@ -66,6 +66,9 @@ type muc_context = {
   mutable conversation_procs :
     (muc_context -> xmpp -> env -> message_type option ->
      JID.t -> string -> string -> unit) list;
+  mutable echo_procs :
+    (muc_context -> xmpp -> env -> message_type option ->
+     JID.t -> XMPP.id option -> string -> string -> unit) list;
   mutable muc_event_handlers :
     (muc_context -> xmpp -> env -> JID.t -> muc_event -> unit) list;
 }
@@ -81,7 +84,7 @@ let hook_muc_event muc_context xmpp env jid_from event =
 
 let add_hook_conversation ctx proc =
   ctx.conversation_procs <- proc :: ctx.conversation_procs
-    
+
 let process_conversation nick text ctx xmpp env stanza hooks =
   let () =
     match stanza.jid_from with
@@ -94,6 +97,20 @@ let process_conversation nick text ctx xmpp env stanza hooks =
   in
     do_hook xmpp env stanza hooks
 
+let add_hook_echo ctx proc =
+  ctx.echo_procs <- proc :: ctx.echo_procs
+
+let process_echo nick text ctx xmpp env stanza hooks =
+  let () =
+    match stanza.jid_from with
+      | None -> ()
+      | Some from ->
+          List.iter (fun proc ->
+                       proc ctx xmpp env
+                         stanza.content.message_type from stanza.id nick text)
+            ctx.echo_procs;
+  in
+    do_hook xmpp env stanza hooks
 (*
 let add_room room nick lang chatlog filter =
   let sql = Printf.sprintf
@@ -196,7 +213,7 @@ let split_nick_body room_env body =
     | NickBody (nick, body) ->
         nick, body
 
-let make_msg ctx xmpp kind jid_from ?response_tail response =
+let make_msg ctx xmpp kind jid_from ?id ?response_tail response =
   match kind with
     | Some Groupchat ->
         let tail =
@@ -220,19 +237,19 @@ let make_msg ctx xmpp kind jid_from ?response_tail response =
         in
         let room_env = get_room_env ctx jid_from in
           if room_env.can_send then (
-            XMPPClient.send_message xmpp
+            XMPPClient.send_message xmpp ?id
               ~jid_to:(bare_jid jid_from) ?kind ~body ();
             room_env.can_send <- false
           ) else (
             let send_message xmpp () =
-              XMPPClient.send_message xmpp
+              XMPPClient.send_message xmpp ?id
                 ~jid_to:(bare_jid jid_from) ~body ?kind () in
               Queue.add (jid_from.lresource, send_message) room_env.queue
           );
           if cut then
             Hooks.make_msg xmpp (Some Chat) jid_from ?response_tail response
     | _ ->
-        Hooks.make_msg xmpp kind jid_from ?response_tail response
+        Hooks.make_msg xmpp kind jid_from ?id ?response_tail response
 
 let get_reason = function
   | None -> None
@@ -610,6 +627,13 @@ let do_hook_with_muc_context ctx xmpp env stanza hooks =
                 | None -> do_hook xmpp env stanza hooks
                 | Some room_env ->
                     if from.lresource = room_env.mynick then ( (* echo *)
+                      let () =
+                        match stanza.content.body with
+                          | None-> ()
+                          | Some b ->
+                              let nick, text = split_nick_body room_env b in
+                              process_echo nick text ctx xmpp  env stanza [];
+                      in
                       room_env.can_send <- true;
                       if not (Queue.is_empty room_env.queue) then
                         let nick, send_message = Queue.take room_env.queue in
@@ -763,6 +787,7 @@ let plugin opts =
            db = db;
            groupchats = Groupchat.empty;
            conversation_procs = [];
+           echo_procs = [];
            muc_event_handlers = [];
          } in
            ignore (Sql.create_muc db);
