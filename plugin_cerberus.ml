@@ -295,6 +295,7 @@ let can_kill room_env jid_from =
     else
       false
 
+(*
 let check ctx muc_context xmpp env jid_from place text =
   match cerberus text with
     | Good -> true
@@ -318,6 +319,7 @@ let check ctx muc_context xmpp env jid_from place text =
                   false
             else
               false
+*)
     
 let process_presence ctx muc_context xmpp env stanza hooks =
   match stanza.jid_from with
