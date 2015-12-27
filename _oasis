@@ -26,15 +26,53 @@ Executable createtld
   MainIs:         createtlds.ml
   BuildDepends:   dbm
 
+Library brainfuck
+  Path:		libs/brainfuck
+  Modules:	Brainfuck
+
+Library logger
+  Path:		libs/logger/src
+  Modules:	Logger
+  BuildDepends:	unix
+
+Library "logger-syntax"
+  FindlibName: syntax
+  FindlibParent: logger
+  XMETAType:   syntax
+  XMETARequires: camlp4
+  Path:       libs/logger/syntax
+  Modules:    Pa_logger
+  BuildDepends: camlp4.lib, camlp4.extend, camlp4.quotations.o
+
+Library scheduler
+  Path:		libs/scheduler
+  Modules:    Heapqueue, Scheduler
+  BuildDepends: threads
+
+Library strftime
+  Path:		libs/strftime
+  BuildTools: ocamlbuild
+  Modules:    Strftime
+
+Library dehtml
+  Path:		libs/dehtml
+  Modules:    Dehtml
+  InternalModules: Rlex1, Rlex2
+  BuildDepends: netstring, ulex
+
+Library treap
+  Path:		libs/treap
+  Modules:	Treap
+
 Executable sulci
   Path:           .
   Install:        true
   CompiledObject: best
   MainIs:         sulci.ml
-  BuildDepends:   threads, erm_brainfuck, erm_logger, erm_dehtml, 
-                  erm_scheduler, erm_strftime, erm_xml, erm_xmpp, 
+  BuildDepends:   threads, brainfuck, logger, dehtml, 
+                  scheduler, strftime, erm_xml, erm_xmpp (>= 0.4), 
                   text, dynlink, sqlite3, ulex, pcre, netclient (>= 4.0.1), dbm, 
-                   json-static, erm_treap
+                   json-static, treap
   DataFiles:      _build/tlds/tlds.db ($datadir/$pkg_name/tlds),
      _build/lang/*.htbl ($datadir/$pkg_name/lang), 
      sulci.conf.example ($sysconfdir)

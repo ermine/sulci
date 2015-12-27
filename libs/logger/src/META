@@ -1,0 +1,22 @@
+# OASIS_START
+# DO NOT EDIT (digest: 0ef474060983a1f6d71cb29a473dc537)
+version = "3.0"
+description = "An Jabber/XMPP bot"
+requires = "unix"
+archive(byte) = "logger.cma"
+archive(byte, plugin) = "logger.cma"
+archive(native) = "logger.cmxa"
+archive(native, plugin) = "logger.cmxs"
+exists_if = "logger.cma"
+package "syntax" (
+ version = "3.0"
+ description = "An Jabber/XMPP bot"
+ requires = "camlp4"
+ archive(syntax, preprocessor) = "logger-syntax.cma"
+ archive(syntax, toploop) = "logger-syntax.cma"
+ archive(syntax, preprocessor, native) = "logger-syntax.cmxa"
+ archive(syntax, preprocessor, native, plugin) = "logger-syntax.cmxs"
+ exists_if = "logger-syntax.cma"
+)
+# OASIS_STOP
+

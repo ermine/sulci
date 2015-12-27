@@ -1,0 +1,11 @@
+# OASIS_START
+# DO NOT EDIT (digest: cb4ef0b8aa4ea41e156808770680b29d)
+version = "3.0"
+description = "An Jabber/XMPP bot"
+archive(byte) = "treap.cma"
+archive(byte, plugin) = "treap.cma"
+archive(native) = "treap.cmxa"
+archive(native, plugin) = "treap.cmxs"
+exists_if = "treap.cma"
+# OASIS_STOP
+

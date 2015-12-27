@@ -1,0 +1,2 @@
+<syntax/pa_logger.ml>: syntax_camlp4o
+<tests/*.ml>: syntax_camlp4o, pkg_camlp4, pa_logger
