@@ -1,6 +1,6 @@
 OASISFormat:          0.3
 Name:                 sulci
-Version:              3.0
+Version:              3.0.1
 Synopsis:             An Jabber/XMPP bot
 Authors:              Anastasia Gornostaeva
 License:              BSD-3-clause
@@ -8,7 +8,7 @@ LicenseFile:          LICENCE
 Copyrights:           (C) 2004-2011 Anastasia Gornostaeva
 Plugins:              DevFiles (0.3), META (0.3), StdFiles (0.3)
 BuildTools:           ocamlbuild
-FilesAB:              version.ml.ab, sulci.conf.example.ab
+FilesAB:              src/version.ml.ab, sulci.conf.example.ab
 PreInstallCommand:    $ocamlbuild data_files
 OCamlVersion:        >= 3.12
 
@@ -65,7 +65,7 @@ Library treap
   Modules:	Treap
 
 Executable sulci
-  Path:           .
+  Path:           src
   Install:        true
   CompiledObject: best
   MainIs:         sulci.ml

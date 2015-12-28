@@ -1,1 +1,3 @@
-<*.ml>: rectypes, include_lang
+"../src": include
+<*.ml>: rectypes
+<*.cm{o,x}>: include_lang

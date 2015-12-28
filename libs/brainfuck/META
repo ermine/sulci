@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: 748c0b042172a7dad40388d85082c0d7)
-version = "3.0"
+# DO NOT EDIT (digest: c6072ae0c03f7d9ba1b371259faa62d4)
+version = "3.0.1"
 description = "An Jabber/XMPP bot"
 archive(byte) = "brainfuck.cma"
 archive(byte, plugin) = "brainfuck.cma"

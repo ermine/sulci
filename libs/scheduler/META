@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: b74aaa125aa41f9b262e42a1f0ef6dce)
-version = "3.0"
+# DO NOT EDIT (digest: ad8bfc0006095b88b9a376d173170abd)
+version = "3.0.1"
 description = "An Jabber/XMPP bot"
 requires = "threads"
 archive(byte) = "scheduler.cma"

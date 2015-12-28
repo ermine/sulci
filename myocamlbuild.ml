@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: dbd95b413788c595d0b9695e2da9fe71) *)
+(* DO NOT EDIT (digest: 1576dd3d474658cc94fd3c827e108c75) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -621,7 +621,7 @@ let package_default =
      flags = [];
      includes =
        [
-          ("",
+          ("src",
             [
                "libs/brainfuck";
                "libs/dehtml";
@@ -651,10 +651,10 @@ let sulci_plugins () =
     let res =
       List.fold_left (fun acc line ->
                         if line.[0] <> '#' then
-                          line -.- ext :: acc
+                          "src" / line -.- ext :: acc
                         else
                           acc
-                     ) [] (string_list_of_file "plugins.list") in
+                     ) [] (string_list_of_file "src/plugins.list") in
       List.rev res
   in
   let plugins_byte = plugins "cmo"
@@ -695,6 +695,9 @@ let my_dispatch =
               );
             
             sulci_plugins ();
+
+            flag_and_dep ["compile"; "include_lang"] &
+              S[A"-I"; A"src"];
 
             flag_and_dep ["ocaml"; "compile"; "native"; "use_lang"] &
               S(List.map (fun a -> P ("lang" / a -.- "cmx"))

@@ -1,0 +1,8 @@
+<sulci.{byte,native}>: use_lang, use_plugins
+
+"find_url.ml": syntax_camlp4o, use_ulex.syntax
+<*_ulex.ml>: syntax_camlp4o, use_ulex.syntax
+"plugin_cerberus.ml": syntax_camlp4o, use_ulex.xyntax
+"plugin_weather.ml": syntax_camlp4o
+"plugin_google.ml": syntax_camlp4o, use_json_static.syntax
+

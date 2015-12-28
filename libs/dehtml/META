@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: f7ca4136d561263e8cebd09e0e87b2ff)
-version = "3.0"
+# DO NOT EDIT (digest: d284afac9ddeeaf76b51be74f1718c03)
+version = "3.0.1"
 description = "An Jabber/XMPP bot"
 requires = "netstring ulex"
 archive(byte) = "dehtml.cma"

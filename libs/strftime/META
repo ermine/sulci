@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: f30844e4de4e8ac675ef64285477cdf9)
-version = "3.0"
+# DO NOT EDIT (digest: bddde822fe26a8a3579dec6f33fd5e6e)
+version = "3.0.1"
 description = "An Jabber/XMPP bot"
 archive(byte) = "strftime.cma"
 archive(byte, plugin) = "strftime.cma"

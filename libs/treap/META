@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: cb4ef0b8aa4ea41e156808770680b29d)
-version = "3.0"
+# DO NOT EDIT (digest: 4e2e2275a0255d935e2f7deec327f242)
+version = "3.0.1"
 description = "An Jabber/XMPP bot"
 archive(byte) = "treap.cma"
 archive(byte, plugin) = "treap.cma"
