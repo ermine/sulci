@@ -684,29 +684,31 @@ let my_dispatch =
       begin function
         | After_rules ->
             rule "version.ml"
-              ~prod:"version.ml"
-              ~deps:["version.ml.src"]
+              ~prod:"src/version.ml"
+              ~deps:["src/version.ml.src"]
               (fun _ _ ->
-                 Seq [rm_f "version.ml";
-                      Cmd (S[A"sed"; A"-e";
-                             A(Format.sprintf "s,VERSION,%s," revision);
-                             Sh"<"; P"version.ml.src"; Sh">"; Px"version.ml"]);
-                      chmod (A"-w") "version.ml"]
+                 Seq [Cmd (S[A"sed"; A"-e";
+                            A(Format.sprintf "s,VERSION,%s," revision);
+                            Sh"<"; P"src/version.ml.src"; Sh">"; Px"src/version.ml"]);
+                      chmod (A"-w") "src/version.ml"]
               );
             
             sulci_plugins ();
 
-            flag_and_dep ["compile"; "include_lang"] &
-              S[A"-I"; A"src"];
-
             flag_and_dep ["ocaml"; "compile"; "native"; "use_lang"] &
-              S(List.map (fun a -> P ("lang" / a -.- "cmx"))
+              S(List.map (fun a -> P ("src" / a -.- "cmx"))
                   ["ru_time"; "en_time"; "es_time"]);
         
             flag_and_dep ["ocaml"; "compile"; "byte"; "use_lang"] & 
-              S(List.map (fun a -> P ("lang" / a -.- "cmo"))
+              S(List.map (fun a -> P ("src" / a -.- "cmo"))
                   ["ru_time"; "en_time"; "es_time"]);
         
+             rule "copy lang time files"
+              ~prod:"src/%_time.ml"
+              ~dep:"lang/%_time.ml"
+              (fun env _ -> 
+                 Cmd (S[A"cp"; Px(env "lang/%_time.ml"); Px(env "src/%_time.ml")])); 
+
             rule "generating lang hashtable for sulci"
               ~prod:"lang/%.htbl"
               ~deps:["lang/langcompile.native"; "lang/%.msg"]

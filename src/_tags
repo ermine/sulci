@@ -1,4 +1,4 @@
-<sulci.{byte,native}>: use_lang, use_plugins
+<sulci.cm{o,x}>: use_plugins, use_lang
 
 "find_url.ml": syntax_camlp4o, use_ulex.syntax
 <*_ulex.ml>: syntax_camlp4o, use_ulex.syntax

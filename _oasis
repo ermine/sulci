@@ -8,7 +8,7 @@ LicenseFile:          LICENCE
 Copyrights:           (C) 2004-2011 Anastasia Gornostaeva
 Plugins:              DevFiles (0.3), META (0.3), StdFiles (0.3)
 BuildTools:           ocamlbuild
-FilesAB:              src/version.ml.ab, sulci.conf.example.ab
+FilesAB:              src/version.ml.src.ab, sulci.conf.example.ab
 PreInstallCommand:    $ocamlbuild data_files
 OCamlVersion:        >= 3.12
 
