@@ -92,7 +92,7 @@ let run timerQ =
 	      | _x :: _xs -> 
 		        if timerQ.input_wrote then (
 		          Mutex.lock timerQ.mutex;
-		          let s = String.create 1 in
+		          let s = Bytes.create 1 in
 		          let _ = Unix.read timerQ.reader s 0 1 in
 		            timerQ.input_wrote <- false;
 		            Mutex.unlock timerQ.mutex

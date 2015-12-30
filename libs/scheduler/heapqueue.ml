@@ -20,12 +20,12 @@ struct
   let is_empty q = q.n = 0
 
   let create () =
-	  { n = 0; a = Array.create 8192 None; }
+	  { n = 0; a = Array.make 8192 None; }
       
   let swap a i j =
 	  let tmp = a.(i) in
-	    a.(i) <- a.(j);
-	    a.(j) <- tmp
+	  a.(i) <- a.(j);
+	  a.(j) <- tmp
 
   let lt q e1 e2 =
 	  match q.a.(e1), q.a.(e2) with
@@ -56,7 +56,7 @@ struct
 	      
   let add q x =
 	  let n = q.n in
-	    q.a.(n) <- Some x;
+	    q.a .(n) <- Some x;
 	    q.n <- n+1;
 	    sift_up q n
 	      

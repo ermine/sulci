@@ -40,7 +40,7 @@ let parse_content content =
                      value = 
                         let x = get_cdata v ~path:["Value"] in
                         let pos = String.index x ',' in
-                          String.set x pos '.';
+                          Bytes.set x pos '.';
                           try float_of_string (x) with exn ->
                             log#error "plugin_currency.ml: %s"
                               (Printexc.to_string exn);

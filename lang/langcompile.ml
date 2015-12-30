@@ -20,9 +20,9 @@ let skip_ws str =
 	    cycle 0
 
 let prepare msg =
-  let tab = String.create 1 in
-    tab.[0] <- '\t';
-    let rec cycle part =
+  let tab = Bytes.create 1 in
+  Bytes.set tab 0 '\t';
+  let rec cycle part =
 	    try
 	      let mark = String.index part '\\' in
 	        if part.[mark+1] = 't' then
