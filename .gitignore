@@ -5,3 +5,5 @@ setup.data
 *.docdir
 _build
 sulci.conf
+sulci.conf.example
+src/version.ml.src
