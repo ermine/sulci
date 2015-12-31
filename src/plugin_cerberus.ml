@@ -304,6 +304,9 @@ let check ctx muc_context xmpp env jid_from place text =
             report ctx room_env xmpp env jid_from place word text;
           if jid_from.lresource <> "" then
             match ctx.action with
+              | Scold -> env.env_message xmpp (Some Groupchat) jid_from
+                         (Lang.get_msg env.env_lang "plugin_cerberus_cannot_kick_admin" []);
+                         false
               | Kick
               | Ban ->
                   if can_kill room_env jid_from then
@@ -389,7 +392,7 @@ let plugin opts =
       | "kick" -> Kick
       | "ban" -> Ban
       | "scold" -> Scold
-      | _ -> Kick
+      | _ -> Scold
   in
     Muc.add_for_muc_context
       (fun muc_context xmpp ->
