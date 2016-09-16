@@ -167,10 +167,10 @@ let weather xmpp env kind jid_from text =
       in
         env.env_message xmpp kind jid_from resp
     in
-      Http_suck.http_get
-        ("http://weather.noaa.gov/pub/data/observations/metar/decoded/" ^
-           String.uppercase  text ^ ".TXT")
-        callback
+    Http_suck.http_get
+      ("http://tgftp.nws.noaa.gov/data/observations/metar/decoded/" ^
+         String.uppercase  text ^ ".TXT")
+      callback
   else
     env.env_message xmpp kind jid_from
       (Lang.get_msg env.env_lang "plugin_weather_invalid_syntax" [])
