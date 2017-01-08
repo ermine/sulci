@@ -177,7 +177,7 @@
   </plugin>
 
   <plugin name='cerberus' path='$(datadir)/$(pkg_name)/plugins/plugin_cerberus'>
-   <action value='kick;/>
+   <action value='kick'/>
    <notify jid='jid@jabber.server'/>
   </plugin>
 
